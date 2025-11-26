@@ -4,13 +4,19 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   UploadOutlined,
-  UserOutlined,
   VideoCameraOutlined,
+  DatabaseOutlined,
+  ShopOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons'
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import DataSources from './pages/DataSources'
+import Companies from './pages/Companies'
+import CompanyDetail from './pages/CompanyDetail'
+import Reports from './pages/Reports'
 
 const { Header, Sider, Content } = Layout
 
@@ -35,38 +41,76 @@ const DashboardLayout: React.FC = () => {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken()
   const { logout } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const menuItems = [
+    {
+      key: '/companies',
+      icon: <ShopOutlined />,
+      label: 'Companies',
+    },
+    {
+      key: '/data-sources',
+      icon: <DatabaseOutlined />,
+      label: 'Data Sources',
+    },
+    {
+      key: '/dashboard',
+      icon: <VideoCameraOutlined />,
+      label: 'Dashboard',
+    },
+    {
+      key: '/reports',
+      icon: <UploadOutlined />,
+      label: 'Reports',
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Logout',
+      onClick: logout,
+    },
+  ]
+
+  const handleMenuClick = ({ key }: { key: string }) => {
+    if (key === 'logout') {
+      logout()
+    } else {
+      navigate(key)
+    }
+  }
+
+  // Determine selected menu key based on current path
+  const getSelectedKey = () => {
+    const path = location.pathname
+    if (path === '/' || path.startsWith('/companies')) {
+      return '/companies'
+    }
+    if (path.startsWith('/data-sources')) {
+      return '/data-sources'
+    }
+    if (path.startsWith('/reports')) {
+      return '/reports'
+    }
+    if (path.startsWith('/dashboard')) {
+      return '/dashboard'
+    }
+    return path
+  }
+
+  const selectedKey = getSelectedKey()
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider trigger={null} collapsible collapsed={collapsed}>
-        <div className="demo-logo-vertical" />
+        <div className="demo-logo-vertical" style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.3)' }} />
         <Menu
           theme="dark"
           mode="inline"
-          defaultSelectedKeys={['1']}
-          items={[
-            {
-              key: '1',
-              icon: <UserOutlined />,
-              label: 'Profile',
-            },
-            {
-              key: '2',
-              icon: <VideoCameraOutlined />,
-              label: 'Dashboard',
-            },
-            {
-              key: '3',
-              icon: <UploadOutlined />,
-              label: 'Reports',
-            },
-            {
-              key: 'logout',
-              icon: <UserOutlined />,
-              label: 'Logout',
-              onClick: logout,
-            }
-          ]}
+          selectedKeys={[selectedKey]}
+          items={menuItems}
+          onClick={handleMenuClick}
         />
       </Sider>
       <Layout>
@@ -85,13 +129,20 @@ const DashboardLayout: React.FC = () => {
         <Content
           style={{
             margin: '24px 16px',
-            padding: 24,
+            padding: '32px',
             minHeight: 280,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
           }}
         >
-          <h2>Welcome to Wildberries CRM</h2>
+          <Routes>
+            <Route path="/companies" element={<Companies />} />
+            <Route path="/companies/:id" element={<CompanyDetail />} />
+            <Route path="/data-sources" element={<DataSources />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/dashboard" element={<div><h2>Welcome to Market CRM</h2><p>Dashboard coming soon...</p></div>} />
+            <Route path="/" element={<Navigate to="/companies" replace />} />
+          </Routes>
         </Content>
       </Layout>
     </Layout>
@@ -106,7 +157,7 @@ const App: React.FC = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route
-            path="/"
+            path="/*"
             element={
               <PrivateRoute>
                 <DashboardLayout />
