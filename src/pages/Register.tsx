@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Form, Input, Button, Card, Alert, Typography, message } from 'antd'
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
+import { LockOutlined, MailOutlined } from '@ant-design/icons'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '../api/axios'
 
