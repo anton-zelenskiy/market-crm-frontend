@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8001/api/v1}
+    container_name: market-crm-frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    restart: unless-stopped
+    environment:
+      - NGINX_HOST=${NGINX_HOST:-localhost}
+      - NGINX_PORT=80
+    networks:
+      - frontend-network
+      - reverse_proxy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  frontend-network:
+    driver: bridge
+  reverse_proxy:
+    external: true
+    # Network name depends on your nginx-bot project directory name
+    # Default: nginx-bot_reverse_proxy (if nginx-bot directory is named "nginx-bot")
+    # To find the exact name: docker network ls | grep reverse_proxy
+    name: reverse_proxy

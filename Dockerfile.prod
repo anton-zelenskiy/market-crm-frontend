@@ -1,0 +1,37 @@
+# Stage 1: Build the application
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production=false
+
+# Copy source code
+COPY . .
+
+# Build arguments for environment variables
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
+# Build the application
+RUN npm run build
+
+# Stage 2: Serve static files with a simple HTTP server
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install serve package for serving static files
+RUN npm install -g serve
+
+# Copy built files from builder stage
+COPY --from=builder /app/dist ./dist
+
+# Expose port 80
+EXPOSE 80
+
+# Start serve with SPA routing support
+CMD ["serve", "-s", "dist", "-l", "80"]
