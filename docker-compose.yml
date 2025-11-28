@@ -1,24 +1,26 @@
-version: '3.8'
-
 services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: ${DOCKERFILE:-Dockerfile}
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8001/api/v1}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8001/markets/api/v1}
     container_name: market-crm-frontend
     ports:
-      - "${FRONTEND_PORT:-80}:80"
+      - "${FRONTEND_PORT:-3001}:3001"
     restart: unless-stopped
-    environment:
-      - NGINX_HOST=${NGINX_HOST:-localhost}
-      - NGINX_PORT=80
     networks:
       - frontend-network
-      - reverse_proxy
+      - nginx-bot_reverse_proxy
+    # volumes:
+    #   # Uncomment this if you want to mount the source code for hot reload in development
+    #   # But it will not work with Dockerfile.prod
+    #   - .:/app
+    #   - /app/node_modules
+    env_file:
+      - .env
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3001 || nc -z localhost 3001 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -27,9 +29,5 @@ services:
 networks:
   frontend-network:
     driver: bridge
-  reverse_proxy:
+  nginx-bot_reverse_proxy:
     external: true
-    # Network name depends on your nginx-bot project directory name
-    # Default: nginx-bot_reverse_proxy (if nginx-bot directory is named "nginx-bot")
-    # To find the exact name: docker network ls | grep reverse_proxy
-    name: reverse_proxy

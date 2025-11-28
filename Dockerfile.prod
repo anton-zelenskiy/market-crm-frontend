@@ -30,8 +30,7 @@ RUN npm install -g serve
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Expose port 80
-EXPOSE 80
+EXPOSE 3001
 
 # Start serve with SPA routing support
-CMD ["serve", "-s", "dist", "-l", "80"]
+CMD ["serve", "-s", "dist", "-l", "3001"]
