@@ -51,8 +51,8 @@ const Companies: React.FC = () => {
         companiesApi.getAll(),
         dataSourcesApi.getAll(),
       ])
-      setCompanies(companiesData)
-      setDataSources(dataSourcesData)
+      setCompanies(Array.isArray(companiesData) ? companiesData : [])
+      setDataSources(Array.isArray(dataSourcesData) ? dataSourcesData : [])
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Failed to load data')
     } finally {

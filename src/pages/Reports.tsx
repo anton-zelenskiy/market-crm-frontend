@@ -46,7 +46,7 @@ const Reports: React.FC = () => {
     setLoading(true)
     try {
       const reportsData = await reportsApi.getAll()
-      setReports(reportsData)
+      setReports(Array.isArray(reportsData) ? reportsData : [])
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Failed to load reports')
     } finally {
@@ -60,7 +60,7 @@ const Reports: React.FC = () => {
     setDataSourcesLoading(true)
     try {
       const dataSourcesData = await dataSourcesApi.getAll()
-      setDataSources(dataSourcesData)
+      setDataSources(Array.isArray(dataSourcesData) ? dataSourcesData : [])
       setDataSourcesLoaded(true)
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Failed to load data sources')
