@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   Table,
   Button,
@@ -206,6 +206,7 @@ const Companies: React.FC = () => {
       title: 'Название',
       dataIndex: 'name',
       key: 'name',
+      render: (_: any, record: Company) => <Link to={`/companies/${record.id}`}>{record.name}</Link>,
     },
     {
       title: 'Источник данных',
