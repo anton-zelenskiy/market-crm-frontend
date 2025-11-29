@@ -44,7 +44,7 @@ const DataSources: React.FC = () => {
       const data = await dataSourcesApi.getAll()
       setDataSources(data)
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to load data sources')
+      message.error(error.response?.data?.detail || 'Ошибка загрузки источников данных')
     } finally {
       setLoading(false)
     }
@@ -70,10 +70,10 @@ const DataSources: React.FC = () => {
   const handleDelete = async (id: number) => {
     try {
       await dataSourcesApi.delete(id)
-      message.success('Data source deleted successfully')
+      message.success('Источник данных успешно удален')
       loadDataSources()
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to delete data source')
+      message.error(error.response?.data?.detail || 'Ошибка удаления источника данных')
     }
   }
 
@@ -88,10 +88,10 @@ const DataSources: React.FC = () => {
 
       if (editingDataSource) {
         await dataSourcesApi.update(editingDataSource.id, data)
-        message.success('Data source updated successfully')
+        message.success('Источник данных успешно обновлен')
       } else {
         await dataSourcesApi.create(data)
-        message.success('Data source created successfully')
+        message.success('Источник данных успешно создан')
       }
 
       setModalVisible(false)
@@ -101,7 +101,7 @@ const DataSources: React.FC = () => {
         // Form validation errors
         return
       }
-      message.error(error.response?.data?.detail || 'Failed to save data source')
+      message.error(error.response?.data?.detail || 'Ошибка сохранения источника данных')
     }
   }
 
@@ -136,22 +136,22 @@ const DataSources: React.FC = () => {
       width: 80,
     },
     {
-      title: 'Title',
+      title: 'Название',
       dataIndex: 'title',
       key: 'title',
     },
     {
-      title: 'Name',
+      title: 'Имя',
       dataIndex: 'name',
       key: 'name',
     },
     {
-      title: 'Credential Fields',
+      title: 'Поля учетных данных',
       key: 'credential_fields',
       render: (_: any, record: DataSource) => record.credential_fields.length,
     },
     {
-      title: 'Actions',
+      title: 'Действия',
       key: 'actions',
       width: 150,
       render: (_: any, record: DataSource) => (
@@ -161,16 +161,16 @@ const DataSources: React.FC = () => {
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            Edit
+            Редактировать
           </Button>
           <Popconfirm
-            title="Are you sure you want to delete this data source?"
+            title="Вы уверены, что хотите удалить этот источник данных?"
             onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
+            okText="Да"
+            cancelText="Нет"
           >
             <Button type="link" danger icon={<DeleteOutlined />}>
-              Delete
+              Удалить
             </Button>
           </Popconfirm>
         </Space>
@@ -183,10 +183,10 @@ const DataSources: React.FC = () => {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <Title level={2} style={{ margin: 0 }}>
-            <DatabaseOutlined /> Data Sources
+            <DatabaseOutlined /> Источники данных
           </Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            Create Data Source
+            Создать источник данных
           </Button>
         </div>
 
@@ -195,34 +195,34 @@ const DataSources: React.FC = () => {
           dataSource={dataSources}
           rowKey="id"
           loading={loading}
-          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} items` }}
+          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Всего ${total} записей` }}
         />
       </Card>
 
       <Modal
-        title={editingDataSource ? 'Edit Data Source' : 'Create Data Source'}
+        title={editingDataSource ? 'Редактировать источник данных' : 'Создать источник данных'}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
         width={800}
-        okText={editingDataSource ? 'Update' : 'Create'}
-        cancelText="Cancel"
+        okText={editingDataSource ? 'Обновить' : 'Создать'}
+        cancelText="Отмена"
       >
         <Form form={form} layout="vertical">
           <Form.Item
             name="title"
-            label="Title"
-            rules={[{ required: true, message: 'Please enter title' }]}
+            label="Название"
+            rules={[{ required: true, message: 'Пожалуйста, введите название' }]}
           >
-            <Input placeholder="e.g., Ozon" />
+            <Input placeholder="Например: Ozon" />
           </Form.Item>
 
           <Form.Item
             name="name"
-            label="Name (System Slug)"
-            rules={[{ required: true, message: 'Please select name' }]}
+            label="Имя (системный идентификатор)"
+            rules={[{ required: true, message: 'Пожалуйста, выберите имя' }]}
           >
-            <Select placeholder="Select data source name">
+            <Select placeholder="Выберите имя источника данных">
               <Option value="ozon">ozon</Option>
               <Option value="wildberries">wildberries</Option>
             </Select>
@@ -230,9 +230,9 @@ const DataSources: React.FC = () => {
 
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Title level={5}>Credential Fields</Title>
+              <Title level={5}>Поля учетных данных</Title>
               <Button type="dashed" onClick={addCredentialField}>
-                Add Field
+                Добавить поле
               </Button>
             </div>
 
@@ -247,36 +247,36 @@ const DataSources: React.FC = () => {
                     danger
                     onClick={() => removeCredentialField(index)}
                   >
-                    Remove
+                    Удалить
                   </Button>
                 }
               >
                 <Space direction="vertical" style={{ width: '100%' }} size="small">
                   <Input
-                    placeholder="Field name (e.g., api_key)"
+                    placeholder="Имя поля (например, api_key)"
                     value={field.name}
                     onChange={(e) =>
                       updateCredentialField(index, { name: e.target.value })
                     }
                   />
                   <Input
-                    placeholder="Field label (e.g., API Key)"
+                    placeholder="Метка поля (например, API ключ)"
                     value={field.label}
                     onChange={(e) =>
                       updateCredentialField(index, { label: e.target.value })
                     }
                   />
                   <Select
-                    placeholder="Field type"
+                    placeholder="Тип поля"
                     value={field.type}
                     onChange={(value) =>
                       updateCredentialField(index, { type: value })
                     }
                     style={{ width: '100%' }}
                   >
-                    <Option value="string">String</Option>
-                    <Option value="password">Password</Option>
-                    <Option value="number">Number</Option>
+                    <Option value="string">Строка</Option>
+                    <Option value="password">Пароль</Option>
+                    <Option value="number">Число</Option>
                   </Select>
                   <div>
                     <Switch
@@ -285,10 +285,10 @@ const DataSources: React.FC = () => {
                         updateCredentialField(index, { required: checked })
                       }
                     />
-                    <span style={{ marginLeft: 8 }}>Required</span>
+                    <span style={{ marginLeft: 8 }}>Обязательное поле</span>
                   </div>
                   <TextArea
-                    placeholder="Description (optional)"
+                    placeholder="Описание (необязательно)"
                     value={field.description || ''}
                     onChange={(e) =>
                       updateCredentialField(index, {

@@ -19,10 +19,10 @@ const Register: React.FC = () => {
         email: values.email,
         password: values.password,
       })
-      message.success('Registration successful! Please login.')
+      message.success('Регистрация успешна! Пожалуйста, войдите.')
       navigate('/login')
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to register')
+      setError(err.response?.data?.detail || 'Ошибка регистрации')
     } finally {
       setLoading(false)
     }
@@ -33,7 +33,7 @@ const Register: React.FC = () => {
       <Card style={{ width: 400 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <Title level={2}>Wildberries CRM</Title>
-          <Title level={4} type="secondary">Register</Title>
+          <Title level={4} type="secondary">Регистрация</Title>
         </div>
         
         {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 24 }} />}
@@ -46,8 +46,8 @@ const Register: React.FC = () => {
           <Form.Item
             name="email"
             rules={[
-              { required: true, message: 'Please input your Email!' },
-              { type: 'email', message: 'Please enter a valid email!' }
+              { required: true, message: 'Пожалуйста, введите Email!' },
+              { type: 'email', message: 'Пожалуйста, введите корректный email!' }
             ]}
           >
             <Input prefix={<MailOutlined />} placeholder="Email" />
@@ -56,39 +56,39 @@ const Register: React.FC = () => {
           <Form.Item
             name="password"
             rules={[
-              { required: true, message: 'Please input your Password!' },
-              { min: 8, message: 'Password must be at least 8 characters!' }
+              { required: true, message: 'Пожалуйста, введите пароль!' },
+              { min: 8, message: 'Пароль должен содержать минимум 8 символов!' }
             ]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+            <Input.Password prefix={<LockOutlined />} placeholder="Пароль" />
           </Form.Item>
 
           <Form.Item
             name="confirm_password"
             dependencies={['password']}
             rules={[
-              { required: true, message: 'Please confirm your password!' },
+              { required: true, message: 'Пожалуйста, подтвердите пароль!' },
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (!value || getFieldValue('password') === value) {
                     return Promise.resolve()
                   }
-                  return Promise.reject(new Error('The two passwords that you entered do not match!'))
+                  return Promise.reject(new Error('Введенные пароли не совпадают!'))
                 },
               }),
             ]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Confirm Password" />
+            <Input.Password prefix={<LockOutlined />} placeholder="Подтвердите пароль" />
           </Form.Item>
 
           <Form.Item>
             <Button type="primary" htmlType="submit" block loading={loading}>
-              Register
+              Зарегистрироваться
             </Button>
           </Form.Item>
           
           <div style={{ textAlign: 'center' }}>
-            <Text>Already have an account? <Link to="/login">Login now</Link></Text>
+            <Text>Уже есть аккаунт? <Link to="/login">Войти</Link></Text>
           </div>
         </Form>
       </Card>

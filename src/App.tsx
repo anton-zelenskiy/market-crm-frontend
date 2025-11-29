@@ -4,7 +4,6 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   UploadOutlined,
-  VideoCameraOutlined,
   DatabaseOutlined,
   ShopOutlined,
   LogoutOutlined,
@@ -25,7 +24,7 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const location = useLocation()
 
   if (isLoading) {
-    return <div>Loading...</div>
+    return <div>Загрузка...</div>
   }
 
   if (!isAuthenticated) {
@@ -48,27 +47,22 @@ const DashboardLayout: React.FC = () => {
     {
       key: '/companies',
       icon: <ShopOutlined />,
-      label: 'Companies',
+      label: 'Компании',
     },
     {
       key: '/data-sources',
       icon: <DatabaseOutlined />,
-      label: 'Data Sources',
-    },
-    {
-      key: '/dashboard',
-      icon: <VideoCameraOutlined />,
-      label: 'Dashboard',
+      label: 'Источники данных',
     },
     {
       key: '/reports',
       icon: <UploadOutlined />,
-      label: 'Reports',
+      label: 'Отчеты',
     },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
-      label: 'Logout',
+      label: 'Выйти',
       onClick: logout,
     },
   ]
@@ -92,9 +86,6 @@ const DashboardLayout: React.FC = () => {
     }
     if (path.startsWith('/reports')) {
       return '/reports'
-    }
-    if (path.startsWith('/dashboard')) {
-      return '/dashboard'
     }
     return path
   }
@@ -140,7 +131,6 @@ const DashboardLayout: React.FC = () => {
             <Route path="/companies/:id" element={<CompanyDetail />} />
             <Route path="/data-sources" element={<DataSources />} />
             <Route path="/reports" element={<Reports />} />
-            <Route path="/dashboard" element={<div><h2>Welcome to Market CRM</h2><p>Dashboard coming soon...</p></div>} />
             <Route path="/" element={<Navigate to="/companies" replace />} />
           </Routes>
         </Content>

@@ -48,7 +48,7 @@ const Reports: React.FC = () => {
       const reportsData = await reportsApi.getAll()
       setReports(Array.isArray(reportsData) ? reportsData : [])
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to load reports')
+      message.error(error.response?.data?.detail || 'Ошибка загрузки отчетов')
     } finally {
       setLoading(false)
     }
@@ -63,7 +63,7 @@ const Reports: React.FC = () => {
       setDataSources(Array.isArray(dataSourcesData) ? dataSourcesData : [])
       setDataSourcesLoaded(true)
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to load data sources')
+      message.error(error.response?.data?.detail || 'Ошибка загрузки источников данных')
     } finally {
       setDataSourcesLoading(false)
     }
@@ -91,10 +91,10 @@ const Reports: React.FC = () => {
   const handleDelete = async (id: number) => {
     try {
       await reportsApi.delete(id)
-      message.success('Report deleted successfully')
+      message.success('Отчет успешно удален')
       loadData()
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to delete report')
+      message.error(error.response?.data?.detail || 'Ошибка удаления отчета')
     }
   }
 
@@ -110,10 +110,10 @@ const Reports: React.FC = () => {
 
       if (editingReport) {
         await reportsApi.update(editingReport.id, data)
-        message.success('Report updated successfully')
+        message.success('Отчет успешно обновлен')
       } else {
         await reportsApi.create(data)
-        message.success('Report created successfully')
+        message.success('Отчет успешно создан')
       }
 
       setModalVisible(false)
@@ -123,7 +123,7 @@ const Reports: React.FC = () => {
         // Form validation errors
         return
       }
-      message.error(error.response?.data?.detail || 'Failed to save report')
+      message.error(error.response?.data?.detail || 'Ошибка сохранения отчета')
     }
   }
 
@@ -135,23 +135,23 @@ const Reports: React.FC = () => {
       width: 80,
     },
     {
-      title: 'Title',
+      title: 'Название',
       dataIndex: 'title',
       key: 'title',
     },
     {
-      title: 'Name',
+      title: 'Имя',
       dataIndex: 'name',
       key: 'name',
     },
     {
-      title: 'Report Type',
+      title: 'Тип отчета',
       dataIndex: 'report_type',
       key: 'report_type',
       render: (type: string) => <Tag color="blue">{type}</Tag>,
     },
     {
-      title: 'Data Source',
+      title: 'Источник данных',
       key: 'data_source',
       render: (_: any, record: Report) => (
         <Tag color="green">
@@ -160,13 +160,13 @@ const Reports: React.FC = () => {
       ),
     },
     {
-      title: 'Created',
+      title: 'Создано',
       dataIndex: 'created_at',
       key: 'created_at',
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
     {
-      title: 'Actions',
+      title: 'Действия',
       key: 'actions',
       width: 150,
       render: (_: any, record: Report) => (
@@ -176,16 +176,16 @@ const Reports: React.FC = () => {
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            Edit
+            Редактировать
           </Button>
           <Popconfirm
-            title="Are you sure you want to delete this report?"
+            title="Вы уверены, что хотите удалить этот отчет?"
             onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
+            okText="Да"
+            cancelText="Нет"
           >
             <Button type="link" danger icon={<DeleteOutlined />}>
-              Delete
+              Удалить
             </Button>
           </Popconfirm>
         </Space>
@@ -204,10 +204,10 @@ const Reports: React.FC = () => {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <Title level={2} style={{ margin: 0 }}>
-            <FileTextOutlined /> Reports
+            <FileTextOutlined /> Отчеты
           </Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            Create Report
+            Создать отчет
           </Button>
         </div>
 
@@ -216,42 +216,42 @@ const Reports: React.FC = () => {
           dataSource={reports}
           rowKey="id"
           loading={loading}
-          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} items` }}
+          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Всего ${total} записей` }}
         />
       </Card>
 
       <Modal
-        title={editingReport ? 'Edit Report' : 'Create Report'}
+        title={editingReport ? 'Редактировать отчет' : 'Создать отчет'}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
         width={600}
-        okText={editingReport ? 'Update' : 'Create'}
-        cancelText="Cancel"
+        okText={editingReport ? 'Обновить' : 'Создать'}
+        cancelText="Отмена"
       >
         <Form form={form} layout="vertical">
           <Form.Item
             name="title"
-            label="Title"
-            rules={[{ required: true, message: 'Please enter title' }]}
+            label="Название"
+            rules={[{ required: true, message: 'Пожалуйста, введите название' }]}
           >
-            <Input placeholder="e.g., Ozon Stocks Report" />
+            <Input placeholder="Например: Отчет по остаткам Ozon" />
           </Form.Item>
 
           <Form.Item
             name="name"
-            label="Name (System Slug)"
-            rules={[{ required: true, message: 'Please enter name' }]}
+            label="Имя (системный идентификатор)"
+            rules={[{ required: true, message: 'Пожалуйста, введите имя' }]}
           >
-            <Input placeholder="e.g., ozon_stocks" />
+            <Input placeholder="Например: ozon_stocks" />
           </Form.Item>
 
           <Form.Item
             name="report_type"
-            label="Report Type"
-            rules={[{ required: true, message: 'Please select report type' }]}
+            label="Тип отчета"
+            rules={[{ required: true, message: 'Пожалуйста, выберите тип отчета' }]}
           >
-            <Select placeholder="Select report type">
+            <Select placeholder="Выберите тип отчета">
               {reportTypes.map((type) => (
                 <Option key={type.value} value={type.value}>
                   {type.label}
@@ -262,11 +262,11 @@ const Reports: React.FC = () => {
 
           <Form.Item
             name="data_source_id"
-            label="Data Source"
-            rules={[{ required: true, message: 'Please select a data source' }]}
+            label="Источник данных"
+            rules={[{ required: true, message: 'Пожалуйста, выберите источник данных' }]}
           >
             <Select 
-              placeholder="Select data source"
+              placeholder="Выберите источник данных"
               loading={dataSourcesLoading}
               showSearch
               filterOption={(input, option) => {
@@ -275,7 +275,7 @@ const Reports: React.FC = () => {
                   : String(option?.children || '')
                 return label.toLowerCase().includes(input.toLowerCase())
               }}
-              notFoundContent={dataSourcesLoading ? <span>Loading...</span> : <span>No data sources found</span>}
+              notFoundContent={dataSourcesLoading ? <span>Загрузка...</span> : <span>Источники данных не найдены</span>}
             >
               {dataSources.map((ds) => (
                 <Option key={ds.id} value={ds.id}>

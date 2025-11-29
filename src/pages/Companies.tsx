@@ -54,7 +54,7 @@ const Companies: React.FC = () => {
       setCompanies(Array.isArray(companiesData) ? companiesData : [])
       setDataSources(Array.isArray(dataSourcesData) ? dataSourcesData : [])
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to load data')
+      message.error(error.response?.data?.detail || 'Ошибка загрузки данных')
     } finally {
       setLoading(false)
     }
@@ -82,10 +82,10 @@ const Companies: React.FC = () => {
   const handleDelete = async (id: number) => {
     try {
       await companiesApi.delete(id)
-      message.success('Company deleted successfully')
+      message.success('Компания успешно удалена')
       loadData()
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to delete company')
+      message.error(error.response?.data?.detail || 'Ошибка удаления компании')
     }
   }
 
@@ -146,10 +146,10 @@ const Companies: React.FC = () => {
 
       if (editingCompany) {
         await companiesApi.update(editingCompany.id, data)
-        message.success('Company updated successfully')
+        message.success('Компания успешно обновлена')
       } else {
         await companiesApi.create(data)
-        message.success('Company created successfully')
+        message.success('Компания успешно создана')
       }
 
       setModalVisible(false)
@@ -159,7 +159,7 @@ const Companies: React.FC = () => {
         // Form validation errors
         return
       }
-      message.error(error.response?.data?.detail || 'Failed to save company')
+      message.error(error.response?.data?.detail || 'Ошибка сохранения компании')
     }
   }
 
@@ -167,7 +167,7 @@ const Companies: React.FC = () => {
     if (!selectedDataSource) {
       return (
         <div style={{ textAlign: 'center', padding: 20, color: '#999' }}>
-          Please select a data source to configure credentials
+          Пожалуйста, выберите источник данных для настройки учетных данных
         </div>
       )
     }
@@ -184,12 +184,12 @@ const Companies: React.FC = () => {
           rules={[
             {
               required: field.required ?? true,
-              message: `Please enter ${field.label}`,
+              message: `Пожалуйста, введите ${field.label}`,
             },
           ]}
           tooltip={field.description || undefined}
         >
-          <InputComponent placeholder={`Enter ${field.label}`} />
+          <InputComponent placeholder={`Введите ${field.label}`} />
         </Form.Item>
       )
     })
@@ -203,12 +203,12 @@ const Companies: React.FC = () => {
       width: 80,
     },
     {
-      title: 'Name',
+      title: 'Название',
       dataIndex: 'name',
       key: 'name',
     },
     {
-      title: 'Data Source',
+      title: 'Источник данных',
       key: 'data_source',
       render: (_: any, record: Company) => (
         <Tag color="blue">
@@ -217,13 +217,13 @@ const Companies: React.FC = () => {
       ),
     },
     {
-      title: 'Created',
+      title: 'Создано',
       dataIndex: 'created_at',
       key: 'created_at',
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
     {
-      title: 'Actions',
+      title: 'Действия',
       key: 'actions',
       width: 200,
       render: (_: any, record: Company) => (
@@ -233,23 +233,23 @@ const Companies: React.FC = () => {
             icon={<EyeOutlined />}
             onClick={() => navigate(`/companies/${record.id}`)}
           >
-            View
+            Просмотр
           </Button>
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            Edit
+            Редактировать
           </Button>
           <Popconfirm
-            title="Are you sure you want to delete this company?"
+            title="Вы уверены, что хотите удалить эту компанию?"
             onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
+            okText="Да"
+            cancelText="Нет"
           >
             <Button type="link" danger icon={<DeleteOutlined />}>
-              Delete
+              Удалить
             </Button>
           </Popconfirm>
         </Space>
@@ -262,10 +262,10 @@ const Companies: React.FC = () => {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <Title level={2} style={{ margin: 0 }}>
-            <ShopOutlined /> Companies
+            <ShopOutlined /> Компании
           </Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            Create Company
+            Создать компанию
           </Button>
         </div>
 
@@ -274,35 +274,35 @@ const Companies: React.FC = () => {
           dataSource={companies}
           rowKey="id"
           loading={loading}
-          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} items` }}
+          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Всего ${total} записей` }}
         />
       </Card>
 
       <Modal
-        title={editingCompany ? 'Edit Company' : 'Create Company'}
+        title={editingCompany ? 'Редактировать компанию' : 'Создать компанию'}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
         width={600}
-        okText={editingCompany ? 'Update' : 'Create'}
-        cancelText="Cancel"
+        okText={editingCompany ? 'Обновить' : 'Создать'}
+        cancelText="Отмена"
       >
         <Form form={form} layout="vertical">
           <Form.Item
             name="name"
-            label="Company Name"
-            rules={[{ required: true, message: 'Please enter company name' }]}
+            label="Название компании"
+            rules={[{ required: true, message: 'Пожалуйста, введите название компании' }]}
           >
-            <Input placeholder="Enter company name" />
+            <Input placeholder="Введите название компании" />
           </Form.Item>
 
           <Form.Item
             name="data_source_id"
-            label="Data Source"
-            rules={[{ required: true, message: 'Please select a data source' }]}
+            label="Источник данных"
+            rules={[{ required: true, message: 'Пожалуйста, выберите источник данных' }]}
           >
             <Select
-              placeholder="Select data source"
+              placeholder="Выберите источник данных"
               onChange={handleDataSourceChange}
             >
               {dataSources.map((ds) => (
@@ -315,7 +315,7 @@ const Companies: React.FC = () => {
 
           {selectedDataSource && (
             <div style={{ marginTop: 16 }}>
-              <Title level={5}>Credentials</Title>
+              <Title level={5}>Учетные данные</Title>
               {renderCredentialFields()}
             </div>
           )}

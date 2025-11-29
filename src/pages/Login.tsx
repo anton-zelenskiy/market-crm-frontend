@@ -24,7 +24,7 @@ const Login: React.FC = () => {
       login(response.data.access_token, response.data.refresh_token)
       navigate('/')
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to login')
+      setError(err.response?.data?.detail || 'Ошибка входа')
     } finally {
       setLoading(false)
     }
@@ -35,7 +35,7 @@ const Login: React.FC = () => {
       <Card style={{ width: 400 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <Title level={2}>Wildberries CRM</Title>
-          <Title level={4} type="secondary">Login</Title>
+          <Title level={4} type="secondary">Вход</Title>
         </div>
         
         {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 24 }} />}
@@ -48,26 +48,26 @@ const Login: React.FC = () => {
         >
           <Form.Item
             name="email"
-            rules={[{ required: true, message: 'Please input your Email!' }, { type: 'email', message: 'Please enter a valid email!' }]}
+            rules={[{ required: true, message: 'Пожалуйста, введите Email!' }, { type: 'email', message: 'Пожалуйста, введите корректный email!' }]}
           >
             <Input prefix={<UserOutlined />} placeholder="Email" />
           </Form.Item>
 
           <Form.Item
             name="password"
-            rules={[{ required: true, message: 'Please input your Password!' }]}
+            rules={[{ required: true, message: 'Пожалуйста, введите пароль!' }]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+            <Input.Password prefix={<LockOutlined />} placeholder="Пароль" />
           </Form.Item>
 
           <Form.Item>
             <Button type="primary" htmlType="submit" block loading={loading}>
-              Log in
+              Войти
             </Button>
           </Form.Item>
 
           <div style={{ textAlign: 'center' }}>
-            <Typography.Text>Don't have an account? <Link to="/register">Register now</Link></Typography.Text>
+            <Typography.Text>Нет аккаунта? <Link to="/register">Зарегистрироваться</Link></Typography.Text>
           </div>
         </Form>
       </Card>

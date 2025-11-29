@@ -55,7 +55,7 @@ const CompanyDetail: React.FC = () => {
       )
       setReports(filteredReports)
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to load company data')
+      message.error(error.response?.data?.detail || 'Ошибка загрузки данных компании')
       navigate('/companies')
     } finally {
       setLoading(false)
@@ -88,9 +88,9 @@ const CompanyDetail: React.FC = () => {
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
 
-      message.success(`Report "${report.title}" generated and downloaded successfully`)
+      message.success(`Отчет "${report.title}" успешно сгенерирован и загружен`)
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to run report')
+      message.error(error.response?.data?.detail || 'Ошибка выполнения отчета')
     } finally {
       setRunningReportId(null)
     }
@@ -98,18 +98,18 @@ const CompanyDetail: React.FC = () => {
 
   const columns = [
     {
-      title: 'Title',
+      title: 'Название',
       dataIndex: 'title',
       key: 'title',
     },
     {
-      title: 'Report Type',
+      title: 'Тип отчета',
       dataIndex: 'report_type',
       key: 'report_type',
       render: (type: string) => <Tag color="blue">{type}</Tag>,
     },
     {
-      title: 'Actions',
+      title: 'Действия',
       key: 'actions',
       width: 200,
       render: (_: any, record: Report) => (
@@ -119,7 +119,7 @@ const CompanyDetail: React.FC = () => {
           loading={runningReportId === record.id}
           onClick={() => handleRunReport(record)}
         >
-          Run
+          Запустить
         </Button>
       ),
     },
@@ -147,7 +147,7 @@ const CompanyDetail: React.FC = () => {
                 icon={<ArrowLeftOutlined />}
                 onClick={() => navigate('/companies')}
               >
-                Back to Companies
+                Назад к компаниям
               </Button>
               <Title level={2} style={{ margin: 0 }}>
                 <ShopOutlined /> {company.name}
@@ -165,24 +165,24 @@ const CompanyDetail: React.FC = () => {
           </div>
 
           <Descriptions bordered column={2}>
-            <Descriptions.Item label="Company Name">{company.name}</Descriptions.Item>
-            <Descriptions.Item label="Data Source">
+            <Descriptions.Item label="Название компании">{company.name}</Descriptions.Item>
+            <Descriptions.Item label="Источник данных">
               <Tag color="green">{company.data_source?.title || `ID: ${company.data_source_id}`}</Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="Created">
+            <Descriptions.Item label="Создано">
               {new Date(company.created_at).toLocaleString()}
             </Descriptions.Item>
-            <Descriptions.Item label="Updated">
+            <Descriptions.Item label="Обновлено">
               {new Date(company.updated_at).toLocaleString()}
             </Descriptions.Item>
           </Descriptions>
 
           <div>
-            <Title level={4} style={{ marginBottom: 16 }}>Available Reports</Title>
+            <Title level={4} style={{ marginBottom: 16 }}>Доступные отчеты</Title>
             {reports.length === 0 ? (
               <Card>
                 <Typography.Text type="secondary">
-                  No reports available for this data source. Please create reports in the Reports page.
+                  Нет доступных отчетов для этого источника данных. Пожалуйста, создайте отчеты на странице Отчеты.
                 </Typography.Text>
               </Card>
             ) : (
