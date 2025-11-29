@@ -3,6 +3,7 @@ import { Form, Input, Button, Card, Alert, Typography, message } from 'antd'
 import { LockOutlined, MailOutlined } from '@ant-design/icons'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '../api/axios'
+import { APP_NAME } from '../constants'
 
 const { Title, Text } = Typography
 
@@ -32,7 +33,7 @@ const Register: React.FC = () => {
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f0f2f5' }}>
       <Card style={{ width: 400 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <Title level={2}>Wildberries CRM</Title>
+          <Title level={2}>{APP_NAME}</Title>
           <Title level={4} type="secondary">Регистрация</Title>
         </div>
         

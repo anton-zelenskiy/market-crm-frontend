@@ -4,6 +4,7 @@ import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
+import { APP_NAME } from '../constants'
 
 const { Title } = Typography
 
@@ -34,7 +35,7 @@ const Login: React.FC = () => {
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f0f2f5' }}>
       <Card style={{ width: 400 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <Title level={2}>Wildberries CRM</Title>
+          <Title level={2}>{APP_NAME}</Title>
           <Title level={4} type="secondary">Вход</Title>
         </div>
         
