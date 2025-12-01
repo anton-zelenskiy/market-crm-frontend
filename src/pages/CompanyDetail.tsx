@@ -166,6 +166,9 @@ const CompanyDetail: React.FC = () => {
 
           <Descriptions bordered column={2}>
             <Descriptions.Item label="Название компании">{company.name}</Descriptions.Item>
+            <Descriptions.Item label="Slug">
+              {company.slug ? <Tag color="purple">{company.slug}</Tag> : <span style={{ color: '#999' }}>Не задан</span>}
+            </Descriptions.Item>
             <Descriptions.Item label="Источник данных">
               <Tag color="green">{company.data_source?.title || `ID: ${company.data_source_id}`}</Tag>
             </Descriptions.Item>

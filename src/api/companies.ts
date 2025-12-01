@@ -4,6 +4,7 @@ import type { DataSource } from './dataSources'
 export interface Company {
   id: number
   name: string
+  slug: string | null
   data_source_id: number
   user_id: number
   credentials: Record<string, any>
@@ -14,12 +15,14 @@ export interface Company {
 
 export interface CompanyCreate {
   name: string
+  slug?: string | null
   data_source_id: number
   credentials: Record<string, any>
 }
 
 export interface CompanyUpdate {
   name?: string
+  slug?: string | null
   data_source_id?: number
   credentials?: Record<string, any>
 }

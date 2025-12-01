@@ -73,6 +73,7 @@ const Companies: React.FC = () => {
     setSelectedDataSource(ds || null)
     form.setFieldsValue({
       name: record.name,
+      slug: record.slug,
       data_source_id: record.data_source_id,
       ...record.credentials,
     })
@@ -136,10 +137,11 @@ const Companies: React.FC = () => {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
-      const { name, data_source_id, ...credentials } = values
+      const { name, slug, data_source_id, ...credentials } = values
 
       const data: CompanyCreate = {
         name,
+        slug: slug || null,
         data_source_id,
         credentials,
       }
@@ -207,6 +209,12 @@ const Companies: React.FC = () => {
       dataIndex: 'name',
       key: 'name',
       render: (_: any, record: Company) => <Link to={`/companies/${record.id}`}>{record.name}</Link>,
+    },
+    {
+      title: 'Slug',
+      dataIndex: 'slug',
+      key: 'slug',
+      render: (slug: string | null) => slug ? <Tag color="purple">{slug}</Tag> : <span style={{ color: '#999' }}>—</span>,
     },
     {
       title: 'Источник данных',
@@ -295,6 +303,20 @@ const Companies: React.FC = () => {
             rules={[{ required: true, message: 'Пожалуйста, введите название компании' }]}
           >
             <Input placeholder="Введите название компании" />
+          </Form.Item>
+
+          <Form.Item
+            name="slug"
+            label="Slug (уникальный идентификатор)"
+            tooltip="Используется для идентификации компании в конфигурации отчетов. Оставьте пустым, если не требуется."
+            rules={[
+              {
+                pattern: /^[a-z0-9_]+$/,
+                message: 'Slug может содержать только строчные буквы, цифры и подчеркивания',
+              },
+            ]}
+          >
+            <Input placeholder="например: kazakova, mecherikov" />
           </Form.Item>
 
           <Form.Item
