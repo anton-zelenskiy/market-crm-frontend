@@ -21,4 +21,32 @@ api.interceptors.request.use(
   }
 )
 
+// Add a response interceptor to handle 401 errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const originalRequest = error.config
+
+    // Check if it's a 401 error with the specific message
+    if (
+      error.response?.status === 401 &&
+      error.response?.data?.detail === 'Could not validate credentials' &&
+      !originalRequest._retry
+    ) {
+      originalRequest._retry = true
+
+      // Clear tokens from localStorage
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+
+      // Redirect to login page
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+    }
+
+    return Promise.reject(error)
+  }
+)
+
 export default api
