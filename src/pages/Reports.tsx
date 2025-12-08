@@ -195,6 +195,7 @@ const Reports: React.FC = () => {
 
   const reportTypes: { value: ReportType; label: string }[] = [
     { value: 'ozon_stocks', label: 'Ozon Stocks' },
+    { value: 'ozon_transit_stocks', label: 'Ozon Transit Stocks' },
     { value: 'ozon_shipments', label: 'Ozon Shipments' },
     { value: 'ozon_product_volumes', label: 'Ozon Product Volumes' },
   ]
