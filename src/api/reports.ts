@@ -1,7 +1,7 @@
 import api from './axios'
 import type { DataSource } from './dataSources'
 
-export type ReportType = 'ozon_stocks' | 'ozon_transit_stocks' | 'ozon_shipments' | 'ozon_product_volumes'
+export type ReportType = 'ozon_stocks' | 'ozon_transit_stocks' | 'ozon_shipments' | 'ozon_product_volumes' | 'ozon_available_transit_stocks'
 
 export interface Report {
   id: number
