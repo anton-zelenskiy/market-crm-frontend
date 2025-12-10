@@ -20,7 +20,7 @@ import {
 import { companiesApi } from '../api/companies'
 import type { Company } from '../api/companies'
 import { reportsApi } from '../api/reports'
-import type { Report, ReportType } from '../api/reports'
+import type { Report } from '../api/reports'
 
 const { Title } = Typography
 const { Option } = Select
@@ -69,10 +69,11 @@ const CompanyDetail: React.FC = () => {
     try {
       const blob = await reportsApi.run({
         company_id: parseInt(id),
-        report_type: report.report_type as ReportType,
+        report_type: report.report_type,
         encoding,
       })
-
+      
+      // TODO: backend already return file response, we don't click to link etc.
       // Create download link
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')

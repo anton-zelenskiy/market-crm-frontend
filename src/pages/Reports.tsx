@@ -30,6 +30,7 @@ const { Option } = Select
 const Reports: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([])
   const [dataSources, setDataSources] = useState<DataSource[]>([])
+  const [reportTypes, setReportTypes] = useState<{ value: ReportType; label: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [dataSourcesLoading, setDataSourcesLoading] = useState(false)
   const [dataSourcesLoaded, setDataSourcesLoaded] = useState(false)
@@ -46,7 +47,25 @@ const Reports: React.FC = () => {
     setLoading(true)
     try {
       const reportsData = await reportsApi.getAll()
-      setReports(Array.isArray(reportsData) ? reportsData : [])
+      const reportsList = Array.isArray(reportsData) ? reportsData : []
+      setReports(reportsList)
+      
+      // Extract unique report types from reports
+      const uniqueReportTypes = new Map<string, string>()
+      reportsList.forEach((report) => {
+        if (report.report_type && !uniqueReportTypes.has(report.report_type)) {
+          // Use title as label, fallback to report_type if title is not available
+          uniqueReportTypes.set(report.report_type, report.title || report.report_type)
+        }
+      })
+      
+      // Convert to array format for Select component
+      const reportTypesArray = Array.from(uniqueReportTypes.entries()).map(([value, label]) => ({
+        value,
+        label,
+      }))
+      
+      setReportTypes(reportTypesArray)
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка загрузки отчетов')
     } finally {
@@ -193,13 +212,6 @@ const Reports: React.FC = () => {
     },
   ]
 
-  const reportTypes: { value: ReportType; label: string }[] = [
-    { value: 'ozon_stocks', label: 'Ozon Stocks' },
-    { value: 'ozon_transit_stocks', label: 'Ozon Transit Stocks' },
-    { value: 'ozon_available_transit_stocks', label: 'Ozon Available + Transit Stocks' },
-    { value: 'ozon_shipments', label: 'Ozon Shipments' },
-    { value: 'ozon_product_volumes', label: 'Ozon Product Volumes' },
-  ]
 
   return (
     <div>
@@ -253,7 +265,10 @@ const Reports: React.FC = () => {
             label="Тип отчета"
             rules={[{ required: true, message: 'Пожалуйста, выберите тип отчета' }]}
           >
-            <Select placeholder="Выберите тип отчета">
+            <Select 
+              placeholder="Выберите тип отчета"
+              notFoundContent={reportTypes.length === 0 ? <span>Нет доступных типов отчетов</span> : undefined}
+            >
               {reportTypes.map((type) => (
                 <Option key={type.value} value={type.value}>
                   {type.label}
