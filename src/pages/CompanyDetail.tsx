@@ -32,7 +32,7 @@ const CompanyDetail: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(false)
   const [runningReportId, setRunningReportId] = useState<number | null>(null)
-  const [encoding, setEncoding] = useState<'cp1251' | 'utf-8' | 'utf-16'>('cp1251')
+  const [encoding, setEncoding] = useState<'cp1251' | 'utf-8' | 'utf-8-sig'>('utf-8-sig')
 
   useEffect(() => {
     if (id) {
@@ -160,7 +160,7 @@ const CompanyDetail: React.FC = () => {
             >
               <Option value="cp1251">CP1251</Option>
               <Option value="utf-8">UTF-8</Option>
-              <Option value="utf-16">UTF-16</Option>
+              <Option value="utf-8-sig">UTF-8-SIG (Windows)</Option>
             </Select>
           </div>
 
