@@ -21,7 +21,6 @@ import {
 } from '@ant-design/icons'
 import { companiesApi } from '../api/companies'
 import type { Company } from '../api/companies'
-import { connectionsApi } from '../api/connections'
 import type { Connection } from '../api/connections'
 import { reportsApi } from '../api/reports'
 import type { Report } from '../api/reports'
