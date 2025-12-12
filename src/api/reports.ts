@@ -29,7 +29,7 @@ export interface ReportUpdate {
 }
 
 export interface ReportRunRequest {
-  company_id: number
+  connection_id: number
   report_type: ReportType
   encoding?: 'cp1251' | 'utf-8' | 'utf-8-sig'
 }

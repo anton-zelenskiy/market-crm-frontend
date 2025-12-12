@@ -251,7 +251,7 @@ const DataSources: React.FC = () => {
                   </Button>
                 }
               >
-                <Space direction="vertical" style={{ width: '100%' }} size="small">
+                <Space orientation="vertical" style={{ width: '100%' }} size="small">
                   <Input
                     placeholder="Имя поля (например, api_key)"
                     value={field.name}

@@ -1,14 +1,12 @@
 import api from './axios'
-import type { DataSource } from './dataSources'
+import type { Connection } from './connections'
 
 export interface Company {
   id: number
   name: string
   slug: string | null
-  data_source_id: number
   user_id: number
-  credentials: Record<string, any>
-  data_source?: DataSource | null
+  connections: Connection[]
   created_at: string
   updated_at: string
 }
@@ -16,15 +14,11 @@ export interface Company {
 export interface CompanyCreate {
   name: string
   slug?: string | null
-  data_source_id: number
-  credentials: Record<string, any>
 }
 
 export interface CompanyUpdate {
   name?: string
   slug?: string | null
-  data_source_id?: number
-  credentials?: Record<string, any>
 }
 
 export const companiesApi = {

@@ -11,14 +11,18 @@ import {
   Select,
   Spin,
   Descriptions,
+  Alert,
 } from 'antd'
 import {
   ArrowLeftOutlined,
   PlayCircleOutlined,
   ShopOutlined,
+  LinkOutlined,
 } from '@ant-design/icons'
 import { companiesApi } from '../api/companies'
 import type { Company } from '../api/companies'
+import { connectionsApi } from '../api/connections'
+import type { Connection } from '../api/connections'
 import { reportsApi } from '../api/reports'
 import type { Report } from '../api/reports'
 
@@ -29,9 +33,11 @@ const CompanyDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [company, setCompany] = useState<Company | null>(null)
+  const [connections, setConnections] = useState<Connection[]>([])
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(false)
   const [runningReportId, setRunningReportId] = useState<number | null>(null)
+  const [selectedConnectionId, setSelectedConnectionId] = useState<number | null>(null)
   const [encoding, setEncoding] = useState<'cp1251' | 'utf-8' | 'utf-8-sig'>('utf-8-sig')
 
   useEffect(() => {
@@ -47,13 +53,16 @@ const CompanyDetail: React.FC = () => {
     try {
       const companyData = await companiesApi.getById(parseInt(id))
       setCompany(companyData)
+      setConnections(companyData.connections || [])
 
-      // Load all reports and filter by data source
+      // Set first connection as selected by default
+      if (companyData.connections && companyData.connections.length > 0) {
+        setSelectedConnectionId(companyData.connections[0].id)
+      }
+
+      // Load all reports - we'll filter by connection's data source when running
       const allReports = await reportsApi.getAll()
-      const filteredReports = allReports.filter(
-        (report) => report.data_source_id === companyData.data_source_id
-      )
-      setReports(filteredReports)
+      setReports(allReports)
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка загрузки данных компании')
       navigate('/companies')
@@ -63,12 +72,28 @@ const CompanyDetail: React.FC = () => {
   }
 
   const handleRunReport = async (report: Report) => {
-    if (!company || !id) return
+    if (!company || !selectedConnectionId) {
+      message.warning('Пожалуйста, выберите подключение для выполнения отчета')
+      return
+    }
+
+    // Find the selected connection to check data source
+    const selectedConnection = connections.find((c) => c.id === selectedConnectionId)
+    if (!selectedConnection) {
+      message.error('Выбранное подключение не найдено')
+      return
+    }
+
+    // Filter reports by connection's data source
+    if (selectedConnection.data_source_id !== report.data_source_id) {
+      message.warning('Этот отчет не доступен для выбранного подключения')
+      return
+    }
 
     setRunningReportId(report.id)
     try {
       const blob = await reportsApi.run({
-        company_id: parseInt(id),
+        connection_id: selectedConnectionId,
         report_type: report.report_type,
         encoding,
       })
@@ -97,6 +122,14 @@ const CompanyDetail: React.FC = () => {
     }
   }
 
+  // Filter reports by selected connection's data source
+  const getAvailableReports = () => {
+    if (!selectedConnectionId) return []
+    const selectedConnection = connections.find((c) => c.id === selectedConnectionId)
+    if (!selectedConnection) return []
+    return reports.filter((report) => report.data_source_id === selectedConnection.data_source_id)
+  }
+
   const columns = [
     {
       title: 'Название',
@@ -119,6 +152,7 @@ const CompanyDetail: React.FC = () => {
           icon={<PlayCircleOutlined />}
           loading={runningReportId === record.id}
           onClick={() => handleRunReport(record)}
+          disabled={!selectedConnectionId}
         >
           Запустить
         </Button>
@@ -141,7 +175,7 @@ const CompanyDetail: React.FC = () => {
   return (
     <div>
       <Card>
-        <Space direction="vertical" style={{ width: '100%', gap: '24px' }} size="large">
+        <Space orientation="vertical" style={{ width: '100%', gap: '24px' }} size="large">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Space>
               <Button
@@ -170,8 +204,12 @@ const CompanyDetail: React.FC = () => {
             <Descriptions.Item label="Slug">
               {company.slug ? <Tag color="purple">{company.slug}</Tag> : <span style={{ color: '#999' }}>Не задан</span>}
             </Descriptions.Item>
-            <Descriptions.Item label="Источник данных">
-              <Tag color="green">{company.data_source?.title || `ID: ${company.data_source_id}`}</Tag>
+            <Descriptions.Item label="Подключения">
+              {connections.length > 0 ? (
+                <Tag color="blue">{connections.length} подключений</Tag>
+              ) : (
+                <span style={{ color: '#999' }}>Нет подключений</span>
+              )}
             </Descriptions.Item>
             <Descriptions.Item label="Создано">
               {new Date(company.created_at).toLocaleString()}
@@ -182,17 +220,89 @@ const CompanyDetail: React.FC = () => {
           </Descriptions>
 
           <div>
-            <Title level={4} style={{ marginBottom: 16 }}>Доступные отчеты</Title>
-            {reports.length === 0 ? (
+            <Title level={4} style={{ marginBottom: 16 }}>
+              <LinkOutlined /> Подключения
+            </Title>
+            {connections.length === 0 ? (
+              <Alert
+                message="Нет подключений"
+                description="Создайте подключение для этой компании на странице Подключения."
+                type="info"
+                showIcon
+                action={
+                  <Button size="small" onClick={() => navigate('/connections')}>
+                    Перейти к подключениям
+                  </Button>
+                }
+              />
+            ) : (
+              <Table
+                columns={[
+                  {
+                    title: 'ID',
+                    dataIndex: 'id',
+                    key: 'id',
+                    width: 80,
+                  },
+                  {
+                    title: 'Источник данных',
+                    key: 'data_source',
+                    render: (_: any, record: Connection) => (
+                      <Tag color="blue">
+                        {record.data_source?.title || `ID: ${record.data_source_id}`}
+                      </Tag>
+                    ),
+                  },
+                  {
+                    title: 'Создано',
+                    dataIndex: 'created_at',
+                    key: 'created_at',
+                    render: (date: string) => new Date(date).toLocaleDateString(),
+                  },
+                ]}
+                dataSource={connections}
+                rowKey="id"
+                pagination={false}
+                size="small"
+              />
+            )}
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Title level={4} style={{ margin: 0 }}>Доступные отчеты</Title>
+              {connections.length > 0 && (
+                <Select
+                  value={selectedConnectionId}
+                  onChange={(value) => setSelectedConnectionId(value)}
+                  style={{ width: 300 }}
+                  placeholder="Выберите подключение"
+                >
+                  {connections.map((conn) => (
+                    <Option key={conn.id} value={conn.id}>
+                      {conn.data_source?.title || `ID: ${conn.data_source_id}`}
+                    </Option>
+                  ))}
+                </Select>
+              )}
+            </div>
+            {!selectedConnectionId && connections.length > 0 ? (
+              <Alert
+                message="Выберите подключение"
+                description="Пожалуйста, выберите подключение для просмотра доступных отчетов."
+                type="info"
+                showIcon
+              />
+            ) : getAvailableReports().length === 0 ? (
               <Card>
                 <Typography.Text type="secondary">
-                  Нет доступных отчетов для этого источника данных. Пожалуйста, создайте отчеты на странице Отчеты.
+                  Нет доступных отчетов для выбранного подключения. Пожалуйста, создайте отчеты на странице Отчеты.
                 </Typography.Text>
               </Card>
             ) : (
               <Table
                 columns={columns}
-                dataSource={reports}
+                dataSource={getAvailableReports()}
                 rowKey="id"
                 pagination={false}
               />

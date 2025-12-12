@@ -6,6 +6,7 @@ import {
   UploadOutlined,
   DatabaseOutlined,
   ShopOutlined,
+  LinkOutlined,
   LogoutOutlined,
 } from '@ant-design/icons'
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
@@ -15,6 +16,7 @@ import Register from './pages/Register'
 import DataSources from './pages/DataSources'
 import Companies from './pages/Companies'
 import CompanyDetail from './pages/CompanyDetail'
+import Connections from './pages/Connections'
 import Reports from './pages/Reports'
 
 const { Header, Sider, Content } = Layout
@@ -50,6 +52,11 @@ const DashboardLayout: React.FC = () => {
       label: 'Компании',
     },
     {
+      key: '/connections',
+      icon: <LinkOutlined />,
+      label: 'Подключения',
+    },
+    {
       key: '/data-sources',
       icon: <DatabaseOutlined />,
       label: 'Источники данных',
@@ -80,6 +87,9 @@ const DashboardLayout: React.FC = () => {
     const path = location.pathname
     if (path === '/' || path.startsWith('/companies')) {
       return '/companies'
+    }
+    if (path.startsWith('/connections')) {
+      return '/connections'
     }
     if (path.startsWith('/data-sources')) {
       return '/data-sources'
@@ -129,6 +139,7 @@ const DashboardLayout: React.FC = () => {
           <Routes>
             <Route path="/companies" element={<Companies />} />
             <Route path="/companies/:id" element={<CompanyDetail />} />
+            <Route path="/connections" element={<Connections />} />
             <Route path="/data-sources" element={<DataSources />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/" element={<Navigate to="/companies" replace />} />
