@@ -106,32 +106,16 @@ const Companies: React.FC = () => {
 
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-    },
-    {
       title: 'Название',
       dataIndex: 'name',
       key: 'name',
       render: (_: any, record: Company) => <Link to={`/companies/${record.id}`}>{record.name}</Link>,
     },
     {
-      title: 'Slug',
-      dataIndex: 'slug',
-      key: 'slug',
-      render: (slug: string | null) => slug ? <Tag color="purple">{slug}</Tag> : <span style={{ color: '#999' }}>—</span>,
-    },
-    {
       title: 'Подключения',
       key: 'connections',
       render: (_: any, record: Company) => (
-        <Badge count={record.connections?.length || 0} showZero>
-          <Tag color="blue">
-            {record.connections?.length || 0} подключений
-          </Tag>
-        </Badge>
+        <Badge count={record.connections?.length || 0} showZero></Badge>
       ),
     },
     {
@@ -144,15 +128,9 @@ const Companies: React.FC = () => {
       title: 'Действия',
       key: 'actions',
       width: 200,
+      align: 'center',
       render: (_: any, record: Company) => (
         <Space>
-          <Button
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => navigate(`/companies/${record.id}`)}
-          >
-            Просмотр
-          </Button>
           <Button
             type="link"
             icon={<EditOutlined />}

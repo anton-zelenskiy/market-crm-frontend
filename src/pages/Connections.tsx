@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Table,
   Button,
@@ -31,6 +32,7 @@ const { Option } = Select
 const { Password } = Input
 
 const Connections: React.FC = () => {
+  const navigate = useNavigate()
   const [connections, setConnections] = useState<Connection[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [dataSources, setDataSources] = useState<DataSource[]>([])
@@ -203,9 +205,10 @@ const Connections: React.FC = () => {
   const columns = [
     {
       title: 'ID',
-      dataIndex: 'id',
       key: 'id',
-      width: 80,
+      dataIndex: 'id',
+      width: 100,
+      align: 'center',
     },
     {
       title: 'Компания',
@@ -233,7 +236,8 @@ const Connections: React.FC = () => {
     {
       title: 'Действия',
       key: 'actions',
-      width: 200,
+      width: 250,
+      align: 'center',
       render: (_: any, record: Connection) => (
         <Space>
           <Button

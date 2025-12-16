@@ -10,7 +10,6 @@ import {
   Tag,
   Select,
   Spin,
-  Descriptions,
   Alert,
 } from 'antd'
 import {
@@ -198,29 +197,26 @@ const CompanyDetail: React.FC = () => {
             </Select>
           </div>
 
-          <Descriptions bordered column={2}>
-            <Descriptions.Item label="Название компании">{company.name}</Descriptions.Item>
-            <Descriptions.Item label="Slug">
-              {company.slug ? <Tag color="purple">{company.slug}</Tag> : <span style={{ color: '#999' }}>Не задан</span>}
-            </Descriptions.Item>
-            <Descriptions.Item label="Подключения">
-              {connections.length > 0 ? (
-                <Tag color="blue">{connections.length} подключений</Tag>
-              ) : (
-                <span style={{ color: '#999' }}>Нет подключений</span>
-              )}
-            </Descriptions.Item>
-            <Descriptions.Item label="Создано">
-              {new Date(company.created_at).toLocaleString()}
-            </Descriptions.Item>
-            <Descriptions.Item label="Обновлено">
-              {new Date(company.updated_at).toLocaleString()}
-            </Descriptions.Item>
-          </Descriptions>
+          <div>
+            <Space wrap>
+              <Button
+                type="primary"
+                onClick={() => navigate(`/companies/${id}/vendor-products`)}
+              >
+                Управление товарами поставщика
+              </Button>
+              <Button
+                type="primary"
+                onClick={() => navigate(`/companies/${id}/supplies`)}
+              >
+                Поставки
+              </Button>
+            </Space>
+          </div>
 
           <div>
             <Title level={4} style={{ marginBottom: 16 }}>
-              <LinkOutlined /> Подключения
+              <LinkOutlined /> API Подключения
             </Title>
             {connections.length === 0 ? (
               <Alert
@@ -238,12 +234,6 @@ const CompanyDetail: React.FC = () => {
               <Table
                 columns={[
                   {
-                    title: 'ID',
-                    dataIndex: 'id',
-                    key: 'id',
-                    width: 80,
-                  },
-                  {
                     title: 'Источник данных',
                     key: 'data_source',
                     render: (_: any, record: Connection) => (
@@ -257,6 +247,24 @@ const CompanyDetail: React.FC = () => {
                     dataIndex: 'created_at',
                     key: 'created_at',
                     render: (date: string) => new Date(date).toLocaleDateString(),
+                  },
+                  {
+                    title: 'Действия',
+                    key: 'actions',
+                    width: 350,
+                    align: 'center',
+                    render: (_: any, record: Connection) => (
+                      <Space>
+                        {record.data_source?.name === 'ozon' && (
+                          <Button
+                            type="link"
+                            onClick={() => navigate(`/connections/${record.id}/ozon-products`)}
+                          >
+                            Товары
+                          </Button>
+                        )}
+                      </Space>
+                    ),
                   },
                 ]}
                 dataSource={connections}

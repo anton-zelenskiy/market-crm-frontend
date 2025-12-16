@@ -148,12 +148,6 @@ const Reports: React.FC = () => {
 
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-    },
-    {
       title: 'Название',
       dataIndex: 'title',
       key: 'title',
@@ -188,6 +182,7 @@ const Reports: React.FC = () => {
       title: 'Действия',
       key: 'actions',
       width: 150,
+      align: 'center',
       render: (_: any, record: Report) => (
         <Space>
           <Button

@@ -130,30 +130,15 @@ const DataSources: React.FC = () => {
 
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-    },
-    {
       title: 'Название',
       dataIndex: 'title',
       key: 'title',
     },
     {
-      title: 'Имя',
-      dataIndex: 'name',
-      key: 'name',
-    },
-    {
-      title: 'Поля учетных данных',
-      key: 'credential_fields',
-      render: (_: any, record: DataSource) => record.credential_fields.length,
-    },
-    {
       title: 'Действия',
       key: 'actions',
       width: 150,
+      align: 'center',
       render: (_: any, record: DataSource) => (
         <Space>
           <Button
