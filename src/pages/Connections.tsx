@@ -32,7 +32,6 @@ const { Option } = Select
 const { Password } = Input
 
 const Connections: React.FC = () => {
-  const navigate = useNavigate()
   const [connections, setConnections] = useState<Connection[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [dataSources, setDataSources] = useState<DataSource[]>([])

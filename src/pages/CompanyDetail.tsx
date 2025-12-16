@@ -260,7 +260,7 @@ const CompanyDetail: React.FC = () => {
                         {record.data_source?.name === 'ozon' && (
                           <Button
                             type="primary"
-                            onClick={() => navigate(`/companies/${id}/supplies`)}
+                            onClick={() => navigate(`/connections/${record.id}/supplies`)}
                           >
                             Поставки
                           </Button>

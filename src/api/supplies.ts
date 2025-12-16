@@ -14,17 +14,16 @@ export interface SupplyOrdersResponse {
 }
 
 export interface SupplyOrderListRequest {
-  connection_id: number
   states?: string[]
   limit?: number
 }
 
 export const suppliesApi = {
-  getByCompanyId: async (
-    companyId: number,
-    request: SupplyOrderListRequest
+  getByConnectionId: async (
+    connectionId: number,
+    request: SupplyOrderListRequest = {}
   ): Promise<SupplyOrdersResponse> => {
-    const response = await api.post(`/supplies/company/${companyId}`, request)
+    const response = await api.post(`/supplies/connection/${connectionId}`, request)
     return response.data
   },
 }

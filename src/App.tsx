@@ -143,9 +143,9 @@ const DashboardLayout: React.FC = () => {
             <Route path="/companies" element={<Companies />} />
             <Route path="/companies/:id" element={<CompanyDetail />} />
             <Route path="/companies/:companyId/vendor-products" element={<VendorProducts />} />
-            <Route path="/companies/:companyId/supplies" element={<Supplies />} />
             <Route path="/connections" element={<Connections />} />
             <Route path="/connections/:connectionId/ozon-products" element={<OzonProducts />} />
+            <Route path="/connections/:connectionId/supplies" element={<Supplies />} />
             <Route path="/data-sources" element={<DataSources />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/" element={<Navigate to="/companies" replace />} />

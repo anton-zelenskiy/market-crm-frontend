@@ -9,57 +9,49 @@ import {
   message,
   Spin,
   Tag,
-  Select,
   Alert,
 } from 'antd'
 import { ArrowLeftOutlined } from '@ant-design/icons'
 import { suppliesApi, type SupplyOrder } from '../api/supplies'
 import { companiesApi, type Company } from '../api/companies'
-import type { Connection } from '../api/connections'
+import { connectionsApi, type Connection } from '../api/connections'
 
 const { Title } = Typography
-const { Option } = Select
 
 const Supplies: React.FC = () => {
-  const { companyId } = useParams<{ companyId: string }>()
+  const { connectionId } = useParams<{ connectionId: string }>()
   const navigate = useNavigate()
   const [supplies, setSupplies] = useState<SupplyOrder[]>([])
   const [loading, setLoading] = useState(false)
   const [company, setCompany] = useState<Company | null>(null)
-  const [connections, setConnections] = useState<Connection[]>([])
-  const [selectedConnectionId, setSelectedConnectionId] = useState<number | null>(null)
+  const [connection, setConnection] = useState<Connection | null>(null)
 
   useEffect(() => {
-    if (companyId) {
-      loadCompanyData()
+    if (connectionId) {
+      loadConnectionData()
     }
-  }, [companyId])
+  }, [connectionId])
 
   useEffect(() => {
-    if (companyId && selectedConnectionId) {
+    if (connection) {
       loadSupplies()
     }
-  }, [companyId, selectedConnectionId])
+  }, [connection])
 
-  const loadCompanyData = async () => {
-    if (!companyId) return
+  const loadConnectionData = async () => {
+    if (!connectionId) return
 
     setLoading(true)
     try {
-      const companyData = await companiesApi.getById(parseInt(companyId))
-      setCompany(companyData)
-      setConnections(companyData.connections || [])
+      const connectionData = await connectionsApi.getById(parseInt(connectionId))
+      setConnection(connectionData)
 
-      // Set first Ozon connection as selected by default
-      const ozonConnections = companyData.connections?.filter(
-        (c) => c.data_source?.name === 'ozon'
-      ) || []
-      if (ozonConnections.length > 0) {
-        setSelectedConnectionId(ozonConnections[0].id)
-      }
+      // Load company data to get company name
+      const companyData = await companiesApi.getById(connectionData.company_id)
+      setCompany(companyData)
     } catch (error: any) {
       message.error(
-        error.response?.data?.detail || 'Ошибка загрузки данных компании'
+        error.response?.data?.detail || 'Ошибка загрузки данных подключения'
       )
     } finally {
       setLoading(false)
@@ -67,13 +59,11 @@ const Supplies: React.FC = () => {
   }
 
   const loadSupplies = async () => {
-    if (!companyId || !selectedConnectionId) return
+    if (!connection) return
 
     setLoading(true)
     try {
-      const response = await suppliesApi.getByCompanyId(parseInt(companyId), {
-        connection_id: selectedConnectionId,
-      })
+      const response = await suppliesApi.getByConnectionId(connection.id)
       setSupplies(response.orders)
     } catch (error: any) {
       message.error(
@@ -180,7 +170,13 @@ const Supplies: React.FC = () => {
             <Space>
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(`/companies/${companyId}`)}
+                onClick={() => {
+                  if (company) {
+                    navigate(`/companies/${company.id}`)
+                  } else {
+                    navigate('/connections')
+                  }
+                }}
               >
                 Назад
               </Button>
@@ -188,44 +184,28 @@ const Supplies: React.FC = () => {
                 Поставки - {company?.name || ''}
               </Title>
             </Space>
-            {connections.length > 0 && (
-              <Select
-                value={selectedConnectionId}
-                onChange={(value) => setSelectedConnectionId(value)}
-                style={{ width: 300 }}
-                placeholder="Выберите подключение"
-              >
-                {connections
-                  .filter((c) => c.data_source?.name === 'ozon')
-                  .map((conn) => (
-                    <Option key={conn.id} value={conn.id}>
-                      {conn.data_source?.title || `ID: ${conn.data_source_id}`}
-                    </Option>
-                  ))}
-              </Select>
-            )}
           </div>
 
-          {!selectedConnectionId && connections.length > 0 ? (
+          {!connection ? (
             <Alert
-              message="Выберите подключение"
-              description="Пожалуйста, выберите Ozon подключение для просмотра поставок."
+              message="Загрузка..."
+              description="Загрузка данных подключения..."
               type="info"
               showIcon
             />
-          ) : connections.filter((c) => c.data_source?.name === 'ozon').length === 0 ? (
+          ) : connection.data_source?.name !== 'ozon' ? (
             <Alert
-              message="Нет Ozon подключений"
-              description="У этой компании нет Ozon подключений. Пожалуйста, создайте подключение на странице компании."
+              message="Неверное подключение"
+              description="Это подключение не является Ozon подключением."
               type="warning"
               showIcon
             />
           ) : (
             <Table
-            columns={columns}
-            dataSource={supplies}
-            rowKey="order_id"
-            loading={loading}
+              columns={columns}
+              dataSource={supplies}
+              rowKey="order_id"
+              loading={loading}
               pagination={{
                 pageSize: 50,
                 showSizeChanger: true,
