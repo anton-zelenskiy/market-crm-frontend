@@ -233,11 +233,15 @@ const Supplies: React.FC = () => {
         external_order_id: externalOrderId,
       })
 
-      // Create download link
+      // Construct filename using storage warehouse name from supply data
+      const filenameSuffix = supply.storage_warehouse_name || supplyId
+      const filename = `supply_documents_${filenameSuffix}.zip`
+
+      // Create download link using constructed filename
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `supply_documents_${supplyId}.zip`
+      link.download = filename
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
