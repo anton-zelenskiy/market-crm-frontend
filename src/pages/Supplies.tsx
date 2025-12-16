@@ -10,13 +10,100 @@ import {
   Spin,
   Tag,
   Alert,
+  Popover,
+  Form,
+  Input,
+  Checkbox,
+  Divider,
 } from 'antd'
-import { ArrowLeftOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, MoreOutlined } from '@ant-design/icons'
 import { suppliesApi, type SupplyOrder } from '../api/supplies'
 import { companiesApi, type Company } from '../api/companies'
 import { connectionsApi, type Connection } from '../api/connections'
 
 const { Title } = Typography
+
+interface SupplyActionsProps {
+  supply: SupplyOrder
+  connection: Connection
+  onCreateCargoes: (supply: SupplyOrder, deleteCurrentVersion: boolean) => Promise<void>
+  onDownloadDocuments: (supply: SupplyOrder, externalOrderId: string) => Promise<void>
+  isCreating: boolean
+  isDownloading: boolean
+}
+
+const SupplyActions: React.FC<SupplyActionsProps> = ({
+  supply,
+  onCreateCargoes,
+  onDownloadDocuments,
+  isCreating,
+  isDownloading,
+}) => {
+  const [cargoForm] = Form.useForm()
+  const [docForm] = Form.useForm()
+
+  return (
+    <div style={{ padding: '16px', minWidth: '300px' }}>
+      <Form
+        form={cargoForm}
+        layout="vertical"
+        onFinish={(values) => {
+          onCreateCargoes(supply, values.delete_current_version ?? true)
+        }}
+      >
+        <Typography.Title level={5}>Сгенерировать грузоместа</Typography.Title>
+        <Form.Item
+          name="delete_current_version"
+          valuePropName="checked"
+          initialValue={false}
+        >
+          <Checkbox>Удалить предыдущие грузоместа</Checkbox>
+        </Form.Item>
+        <Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={isCreating}
+            block
+          >
+            Создать
+          </Button>
+        </Form.Item>
+      </Form>
+
+      <Divider />
+
+      <Form
+        form={docForm}
+        layout="vertical"
+        onFinish={(values) => {
+          onDownloadDocuments(supply, values.external_order_id)
+        }}
+      >
+        <Typography.Title level={5}>Скачать документы к поставке</Typography.Title>
+        <Form.Item
+          name="external_order_id"
+          label="Номер внешнего заказа"
+          rules={[
+            { required: true, message: 'Пожалуйста, введите номер внешнего заказа' },
+          ]}
+        >
+          <Input placeholder="Для транспортной компании" />
+        </Form.Item>
+        <Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={isDownloading}
+            block
+          >
+            Скачать
+          </Button>
+        </Form.Item>
+      </Form>
+    </div>
+  )
+}
 
 const Supplies: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
@@ -25,6 +112,8 @@ const Supplies: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [company, setCompany] = useState<Company | null>(null)
   const [connection, setConnection] = useState<Connection | null>(null)
+  const [creatingCargoes, setCreatingCargoes] = useState<Record<string, boolean>>({})
+  const [downloadingDocs, setDownloadingDocs] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if (connectionId) {
@@ -109,6 +198,62 @@ const Supplies: React.FC = () => {
     return stateLabels[state] || state
   }
 
+  const handleCreateCargoes = async (supply: SupplyOrder, deleteCurrentVersion: boolean) => {
+    if (!connection) return
+
+    const supplyId = supply.order_number
+    setCreatingCargoes((prev) => ({ ...prev, [supplyId]: true }))
+
+    try {
+      await suppliesApi.createCargoes(supplyId, {
+        connection_id: connection.id,
+        order_id: supply.order_id.toString(),
+        delete_current_version: deleteCurrentVersion,
+      })
+      message.success('Грузоместа успешно созданы')
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка создания грузомест'
+      )
+    } finally {
+      setCreatingCargoes((prev) => ({ ...prev, [supplyId]: false }))
+    }
+  }
+
+  const handleDownloadDocuments = async (supply: SupplyOrder, externalOrderId: string) => {
+    if (!connection) return
+
+    const supplyId = supply.order_number
+    setDownloadingDocs((prev) => ({ ...prev, [supplyId]: true }))
+
+    try {
+      const blob = await suppliesApi.downloadDocuments(supplyId, {
+        connection_id: connection.id,
+        order_id: supply.order_id.toString(),
+        external_order_id: externalOrderId,
+      })
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `supply_documents_${supplyId}.zip`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      message.success('Документы успешно скачаны')
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка скачивания документов'
+      )
+    } finally {
+      setDownloadingDocs((prev) => ({ ...prev, [supplyId]: false }))
+    }
+  }
+
+
   const columns = [
     {
       title: 'ID заказа',
@@ -141,6 +286,36 @@ const Supplies: React.FC = () => {
       key: 'created_date',
       render: (date: string) =>
         date ? new Date(date).toLocaleString('ru-RU') : '-',
+    },
+    {
+      title: 'Действия',
+      key: 'actions',
+      width: 100,
+      render: (_: any, record: SupplyOrder) => {
+        if (!connection) return null
+        const supplyId = record.order_number
+        const isCreating = creatingCargoes[supplyId] || false
+        const isDownloading = downloadingDocs[supplyId] || false
+
+        return (
+          <Popover
+            content={
+              <SupplyActions
+                supply={record}
+                connection={connection}
+                onCreateCargoes={handleCreateCargoes}
+                onDownloadDocuments={handleDownloadDocuments}
+                isCreating={isCreating}
+                isDownloading={isDownloading}
+              />
+            }
+            trigger="click"
+            placement="bottomRight"
+          >
+            <Button icon={<MoreOutlined />} />
+          </Popover>
+        )
+      },
     },
   ]
 
@@ -188,14 +363,14 @@ const Supplies: React.FC = () => {
 
           {!connection ? (
             <Alert
-              message="Загрузка..."
+              title="Загрузка..."
               description="Загрузка данных подключения..."
               type="info"
               showIcon
             />
           ) : connection.data_source?.name !== 'ozon' ? (
             <Alert
-              message="Неверное подключение"
+              title="Неверное подключение"
               description="Это подключение не является Ozon подключением."
               type="warning"
               showIcon
