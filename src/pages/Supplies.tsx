@@ -86,10 +86,10 @@ const Supplies: React.FC = () => {
 
   const getStateColor = (state: string) => {
     const stateColors: Record<string, string> = {
-      DATA_FILLING: 'blue',
+      DATA_FILLING: 'orange',
       READY_TO_SUPPLY: 'green',
       ACCEPTED_AT_SUPPLY_WAREHOUSE: 'cyan',
-      IN_TRANSIT: 'orange',
+      IN_TRANSIT: 'blue',
       ACCEPTANCE_AT_STORAGE_WAREHOUSE: 'purple',
       REPORTS_CONFIRMATION_AWAITING: 'gold',
       REPORT_REJECTED: 'red',
@@ -121,13 +121,13 @@ const Supplies: React.FC = () => {
 
   const columns = [
     {
-      title: 'ID поставки',
+      title: 'ID заказа',
       dataIndex: 'order_id',
       key: 'order_id',
       width: 120,
     },
     {
-      title: 'Номер заявки',
+      title: 'ID поставки',
       dataIndex: 'order_number',
       key: 'order_number',
     },

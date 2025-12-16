@@ -267,7 +267,7 @@ const Connections: React.FC = () => {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <Title level={2} style={{ margin: 0 }}>
-            <LinkOutlined /> Подключения
+            <LinkOutlined /> API Подключения
           </Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
             Создать подключение

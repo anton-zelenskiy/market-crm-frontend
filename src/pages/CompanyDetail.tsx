@@ -205,12 +205,6 @@ const CompanyDetail: React.FC = () => {
               >
                 Управление товарами поставщика
               </Button>
-              <Button
-                type="primary"
-                onClick={() => navigate(`/companies/${id}/supplies`)}
-              >
-                Поставки
-              </Button>
             </Space>
           </div>
 
@@ -257,10 +251,18 @@ const CompanyDetail: React.FC = () => {
                       <Space>
                         {record.data_source?.name === 'ozon' && (
                           <Button
-                            type="link"
+                            type="primary"
                             onClick={() => navigate(`/connections/${record.id}/ozon-products`)}
                           >
                             Товары
+                          </Button>
+                        )}
+                        {record.data_source?.name === 'ozon' && (
+                          <Button
+                            type="primary"
+                            onClick={() => navigate(`/companies/${id}/supplies`)}
+                          >
+                            Поставки
                           </Button>
                         )}
                       </Space>

@@ -11,7 +11,6 @@ import {
   message,
   Card,
   Typography,
-  Tag,
   Badge,
 } from 'antd'
 import {
@@ -19,7 +18,6 @@ import {
   EditOutlined,
   DeleteOutlined,
   ShopOutlined,
-  EyeOutlined,
 } from '@ant-design/icons'
 import { companiesApi } from '../api/companies'
 import type { Company, CompanyCreate } from '../api/companies'
@@ -27,7 +25,6 @@ import type { Company, CompanyCreate } from '../api/companies'
 const { Title } = Typography
 
 const Companies: React.FC = () => {
-  const navigate = useNavigate()
   const [companies, setCompanies] = useState<Company[]>([])
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
