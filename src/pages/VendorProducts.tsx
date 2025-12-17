@@ -14,6 +14,7 @@ import {
   Popconfirm,
   Upload,
   Spin,
+  Tooltip,
 } from 'antd'
 import {
   ArrowLeftOutlined,
@@ -182,9 +183,6 @@ const VendorProducts: React.FC = () => {
               >
                 Назад к компании
               </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Товары поставщика: {companyName}
-              </Title>
             </Space>
             <Space>
               <Upload
@@ -192,15 +190,21 @@ const VendorProducts: React.FC = () => {
                 beforeUpload={handleCSVUpload}
                 showUploadList={false}
               >
-                <Button icon={<UploadOutlined />}>
-                  Загрузить из CSV
-                </Button>
+                <Tooltip title="Загрузите csv с колонками: 'Артикул', 'Наименование', 'Количество на складе'">
+                  <Button icon={<UploadOutlined />}>
+                    Загрузить из CSV
+                  </Button>
+                </Tooltip>
               </Upload>
               <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
                 Добавить товар
               </Button>
             </Space>
           </div>
+
+          <Title level={2} style={{ margin: 0 }}>
+            Товары поставщика: {companyName}
+          </Title>
 
           <Table
             columns={columns}

@@ -15,6 +15,7 @@ import {
   Upload,
   Tag,
   Select,
+  Tooltip,
 } from 'antd'
 import {
   ArrowLeftOutlined,
@@ -31,6 +32,7 @@ import {
   type OzonProductUpdate,
 } from '../api/products'
 import { connectionsApi, type Connection } from '../api/connections'
+import { companiesApi, type Company } from '../api/companies'
 import { vendorProductsApi, type VendorProduct } from '../api/products'
 
 const { Title } = Typography
@@ -46,6 +48,7 @@ const OzonProducts: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false)
   const [editingProduct, setEditingProduct] = useState<OzonProduct | null>(null)
   const [connection, setConnection] = useState<Connection | null>(null)
+  const [company, setCompany] = useState<Company | null>(null)
   const [form] = Form.useForm()
 
   useEffect(() => {
@@ -62,8 +65,16 @@ const OzonProducts: React.FC = () => {
       const connectionData = await connectionsApi.getById(parseInt(connectionId))
       setConnection(connectionData)
 
-      // Load vendor products for the company (for vendor_offer_id dropdown)
+      // Load company data
       if (connectionData.company_id) {
+        try {
+          const companyData = await companiesApi.getById(connectionData.company_id)
+          setCompany(companyData)
+        } catch (error) {
+          console.log('Failed to load company data')
+        }
+
+        // Load vendor products for the company (for vendor_offer_id dropdown)
         try {
           const vendorProductsData = await vendorProductsApi.getAll(connectionData.company_id)
           setVendorProducts(vendorProductsData)
@@ -182,6 +193,13 @@ const OzonProducts: React.FC = () => {
 
   const columns = [
     {
+      title: 'Артикул Ozon',
+      dataIndex: 'offer_id',
+      key: 'offer_id',
+      width: 200,
+      fixed: 'left' as const,
+    },
+    {
       title: 'Product ID',
       dataIndex: 'product_id',
       key: 'product_id',
@@ -191,23 +209,20 @@ const OzonProducts: React.FC = () => {
       title: 'SKU',
       dataIndex: 'sku',
       key: 'sku',
-      width: 100,
-    },
-    {
-      title: 'Артикул Ozon',
-      dataIndex: 'offer_id',
-      key: 'offer_id',
+      width: 120,
     },
     {
       title: 'Наименование',
       dataIndex: 'name',
       key: 'name',
+      width: 300,
       ellipsis: true,
     },
     {
       title: 'Штрихкоды',
       dataIndex: 'barcodes',
       key: 'barcodes',
+      width: 200,
       render: (barcodes: string[]) => (
         <Space wrap>
           {barcodes.slice(0, 2).map((barcode, idx) => (
@@ -221,19 +236,23 @@ const OzonProducts: React.FC = () => {
       title: 'Количество в коробке',
       dataIndex: 'box_quantity',
       key: 'box_quantity',
+      width: 150,
       render: (quantity: number | null) => quantity ?? <span style={{ color: '#999' }}>Не задано</span>,
     },
     {
       title: 'Артикул поставщика',
       dataIndex: 'vendor_offer_id',
       key: 'vendor_offer_id',
+      width: 180,
+      ellipsis: true,
       render: (vendorOfferId: string | null) =>
         vendorOfferId ? <Tag color="blue">{vendorOfferId}</Tag> : <span style={{ color: '#999' }}>Не задан</span>,
     },
     {
       title: 'Действия',
       key: 'actions',
-      width: 150,
+      width: 180,
+      fixed: 'right' as const,
       render: (_: any, record: OzonProduct) => (
         <Space>
           <Button
@@ -270,14 +289,7 @@ const OzonProducts: React.FC = () => {
               >
                 Назад к подключениям
               </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Товары Ozon
-                {connection && (
-                  <span style={{ fontSize: '16px', fontWeight: 'normal', marginLeft: '8px' }}>
-                    (Подключение ID: {connection.id})
-                  </span>
-                )}
-              </Title>
+              
             </Space>
             <Space>
               <Button
@@ -292,9 +304,11 @@ const OzonProducts: React.FC = () => {
                 beforeUpload={handleCSVUpload}
                 showUploadList={false}
               >
-                <Button icon={<UploadOutlined />}>
-                  Загрузить box_quantity из CSV
-                </Button>
+                <Tooltip title="Загрузите csv с колонками: 'Артикул', 'Количество в коробке', 'Артикул продавца'">
+                  <Button icon={<UploadOutlined />}>
+                    Обновить из CSV
+                  </Button>
+                </Tooltip>
               </Upload>
               <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
                 Добавить товар
@@ -302,11 +316,16 @@ const OzonProducts: React.FC = () => {
             </Space>
           </div>
 
+          <Title level={2} style={{ margin: 0 }}>
+            Товары Ozon{company && ': ' + company.name}
+          </Title>
+
           <Table
             columns={columns}
             dataSource={products}
             rowKey="id"
             loading={loading}
+            scroll={{ x: 1400 }}
             pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `Всего ${total} товаров` }}
           />
         </Space>
