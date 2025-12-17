@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Table,
   Button,
@@ -207,7 +206,7 @@ const Connections: React.FC = () => {
       key: 'id',
       dataIndex: 'id',
       width: 100,
-      align: 'center',
+      align: 'center' as const,
     },
     {
       title: 'Компания',
@@ -236,7 +235,7 @@ const Connections: React.FC = () => {
       title: 'Действия',
       key: 'actions',
       width: 250,
-      align: 'center',
+      align: 'center' as const,
       render: (_: any, record: Connection) => (
         <Space>
           <Button

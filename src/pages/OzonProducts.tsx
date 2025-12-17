@@ -31,7 +31,7 @@ import {
   type OzonProductCreate,
   type OzonProductUpdate,
 } from '../api/products'
-import { connectionsApi, type Connection } from '../api/connections'
+import { connectionsApi } from '../api/connections'
 import { companiesApi, type Company } from '../api/companies'
 import { vendorProductsApi, type VendorProduct } from '../api/products'
 
@@ -47,7 +47,6 @@ const OzonProducts: React.FC = () => {
   const [syncing, setSyncing] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
   const [editingProduct, setEditingProduct] = useState<OzonProduct | null>(null)
-  const [connection, setConnection] = useState<Connection | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
   const [form] = Form.useForm()
 
@@ -63,7 +62,6 @@ const OzonProducts: React.FC = () => {
     setLoading(true)
     try {
       const connectionData = await connectionsApi.getById(parseInt(connectionId))
-      setConnection(connectionData)
 
       // Load company data
       if (connectionData.company_id) {

@@ -138,7 +138,7 @@ const DataSources: React.FC = () => {
       title: 'Действия',
       key: 'actions',
       width: 150,
-      align: 'center',
+      align: 'center' as const,
       render: (_: any, record: DataSource) => (
         <Space>
           <Button

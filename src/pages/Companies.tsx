@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
   Table,
   Button,
@@ -125,7 +125,7 @@ const Companies: React.FC = () => {
       title: 'Действия',
       key: 'actions',
       width: 200,
-      align: 'center',
+      align: 'center' as const,
       render: (_: any, record: Company) => (
         <Space>
           <Button

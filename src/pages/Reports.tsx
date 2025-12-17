@@ -182,7 +182,7 @@ const Reports: React.FC = () => {
       title: 'Действия',
       key: 'actions',
       width: 150,
-      align: 'center',
+      align: 'center' as const,
       render: (_: any, record: Report) => (
         <Space>
           <Button
