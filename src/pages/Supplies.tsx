@@ -198,6 +198,22 @@ const Supplies: React.FC = () => {
     return stateLabels[state] || state
   }
 
+  const formatErrorReason = (errorReason: string) => {
+    const errorLabels: Record<string, string> = {
+      INVALID_STATE: 'Недопустимое состояние поставки',
+      VALIDATION_FAILED: 'Ошибки валидации',
+      WAREHOUSE_LIMITS_EXCEED: 'Превышены лимиты склада',
+      SUPPLY_NOT_BELONG_CONTRACTOR: 'Поставка не относится к указанному контрагенту',
+      SUPPLY_NOT_BELONG_COMPANY: 'Поставка не относится к указанной компании',
+      IS_FINALIZED: 'Редактирование поставки недоступно',
+      SKU_DISTRIBUTION_DISABLED: 'Распределение состава недоступно',
+      SUPPLY_IS_NOT_EMPTY: 'Поставка содержит распределение состава',
+      OPERATION_NOT_FOUND: 'Операция не найдена',
+      OPERATION_FAILED: 'Ошибка при обработке операции',
+    }
+    return errorLabels[errorReason] || errorReason
+  }
+
   const handleCreateCargoes = async (supply: SupplyOrder, deleteCurrentVersion: boolean) => {
     if (!connection) return
 
@@ -211,6 +227,8 @@ const Supplies: React.FC = () => {
         delete_current_version: deleteCurrentVersion,
       })
       message.success('Грузоместа успешно созданы')
+      // Reload supplies to show updated cargoes_count and errors
+      await loadSupplies()
     } catch (error: any) {
       message.error(
         error.response?.data?.detail || 'Ошибка создания грузомест'
@@ -292,6 +310,18 @@ const Supplies: React.FC = () => {
         date ? new Date(date).toLocaleString('ru-RU') : '-',
     },
     {
+      title: 'Грузоместа',
+      dataIndex: 'cargoes_count',
+      key: 'cargoes_count',
+      width: 120,
+      render: (count: number | null) => {
+        if (count === null) {
+          return <span style={{ color: '#999' }}>Не созданы</span>
+        }
+        return count
+      },
+    },
+    {
       title: 'Действия',
       key: 'actions',
       width: 100,
@@ -363,6 +393,16 @@ const Supplies: React.FC = () => {
                 Поставки - {company?.name || ''}
               </Title>
             </Space>
+            {connection && connection.data_source?.name === 'ozon' && (
+              <Button
+                type="primary"
+                onClick={() => {
+                  navigate(`/connections/${connectionId}/supply-draft`)
+                }}
+              >
+                Сформировать поставку
+              </Button>
+            )}
           </div>
 
           {!connection ? (
@@ -389,6 +429,33 @@ const Supplies: React.FC = () => {
                 pageSize: 50,
                 showSizeChanger: true,
                 showTotal: (total) => `Всего: ${total}`,
+              }}
+              expandable={{
+                expandedRowRender: (record: SupplyOrder) => {
+                  if (!record.errors || record.errors.length === 0) {
+                    return null
+                  }
+                  return (
+                    <div style={{ padding: '16px' }}>
+                      <Typography.Title level={5} style={{ marginBottom: '12px' }}>
+                        Ошибки при создании грузомест:
+                      </Typography.Title>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        {record.errors.map((error, index) => (
+                          <Alert
+                            key={index}
+                            message={formatErrorReason(error)}
+                            type="error"
+                            showIcon
+                          />
+                        ))}
+                      </Space>
+                    </div>
+                  )
+                },
+                rowExpandable: (record: SupplyOrder) => {
+                  return !!(record.errors && record.errors.length > 0)
+                },
               }}
             />
           )}

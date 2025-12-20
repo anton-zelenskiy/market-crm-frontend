@@ -283,9 +283,9 @@ const OzonProducts: React.FC = () => {
             <Space>
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/connections')}
+                onClick={() => navigate(`/companies/${company?.id || ''}`)}
               >
-                Назад к подключениям
+                Назад к компании
               </Button>
               
             </Space>

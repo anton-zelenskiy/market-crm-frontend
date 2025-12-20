@@ -21,6 +21,7 @@ import Reports from './pages/Reports'
 import VendorProducts from './pages/VendorProducts'
 import OzonProducts from './pages/OzonProducts'
 import Supplies from './pages/Supplies'
+import SupplyDraftPage from './pages/SupplyDraft'
 
 const { Header, Sider, Content } = Layout
 
@@ -146,6 +147,7 @@ const DashboardLayout: React.FC = () => {
             <Route path="/connections" element={<Connections />} />
             <Route path="/connections/:connectionId/ozon-products" element={<OzonProducts />} />
             <Route path="/connections/:connectionId/supplies" element={<Supplies />} />
+            <Route path="/connections/:connectionId/supply-draft" element={<SupplyDraftPage />} />
             <Route path="/data-sources" element={<DataSources />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/" element={<Navigate to="/companies" replace />} />
