@@ -20,8 +20,12 @@ import {
   ArrowLeftOutlined,
   ReloadOutlined,
 } from '@ant-design/icons'
-import { SimpleTable } from 'simple-table-core'
-import 'simple-table-core/styles.css'
+import { AgGridReact } from 'ag-grid-react'
+import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community'
+import type { ColDef, ColGroupDef, CellValueChangedEvent } from 'ag-grid-community'
+
+// Register AG Grid modules
+ModuleRegistry.registerModules([AllCommunityModule])
 import {
   suppliesApi,
   type SupplySnapshotResponse,
@@ -53,27 +57,69 @@ const getWarehouseTypeLabel = (warehouseType: string | undefined): string => {
 }
 
 // Memoized table component to prevent re-renders when warehouse state changes
-const MemoizedTable = memo(({ headers, rows, onCellEdit }: {
-  headers: any[]
-  rows: any[]
-  onCellEdit: (data: any) => void
+const MemoizedTable = memo(({ columnDefs, rowData, onCellValueChanged }: {
+  columnDefs: (ColDef | ColGroupDef)[]
+  rowData: any[]
+  onCellValueChanged: (event: CellValueChangedEvent) => void
 }) => {
   return (
-    <div style={{ height: '600px', overflow: 'auto' }}>
-      <SimpleTable
-        defaultHeaders={headers}
-        rows={rows}
-        rowIdAccessor="offer_id"
-        height="600px"
-        columnResizing={true}
-        columnReordering={true}
-        onCellEdit={onCellEdit}
+    <div style={{ height: '600px', width: '100%' }}>
+      <AgGridReact
+        theme={themeAlpine}
+        columnDefs={columnDefs}
+        rowData={rowData}
+        getRowId={(params) => params.data.offer_id}
+        defaultColDef={{
+          resizable: true,
+          sortable: true,
+        }}
+        cellSelection={false}
+        suppressColumnMoveAnimation={false}
+        onCellValueChanged={onCellValueChanged}
+        animateRows={true}
+        rowSelection={{ mode: 'multiRow' }}
       />
     </div>
   )
 })
 
 MemoizedTable.displayName = 'MemoizedTable'
+
+// Header group component for cluster columns with "Create Draft" button
+// For column groups, AG Grid uses headerGroupComponent instead of headerComponent
+// The component receives params with: columnGroup, displayName, setExpanded, setTooltip, showColumnMenu
+// Custom params are passed via headerGroupComponentParams and merged into params
+const ClusterHeaderComponent = (params: any) => {
+  // Get cluster name from displayName (which respects headerValueGetter)
+  const clusterName = params.displayName || params.columnGroup?.getColGroupDef()?.headerName
+  
+  // Get custom params (clusterName and onCreateDraft) from headerGroupComponentParams
+  // These are merged into the params object directly
+  const onCreateDraft = params.onCreateDraft || params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.onCreateDraft
+  
+  if (!clusterName) {
+    return <span>{params.displayName || 'Unknown'}</span>
+  }
+  
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', height: '100%', padding: '4px', width: '100%' }}>
+      <span>{clusterName}</span>
+      {onCreateDraft && (
+        <Button
+          size="small"
+          type="primary"
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            onCreateDraft(clusterName)
+          }}
+        >
+          Создать черновик
+        </Button>
+      )}
+    </div>
+  )
+}
 
 interface SupplyDataItem {
   offer_id: string
@@ -358,15 +404,31 @@ const SupplyDraftPage: React.FC = () => {
       return prevData.map((item) => {
         if (item.offer_id === rowId) {
           const updated = { ...item }
-          if (accessor.includes('.')) {
-            const [clusterName, field] = accessor.split('.')
-            if (updated[clusterName]) {
-              updated[clusterName] = {
-                ...updated[clusterName],
-                [field]: Number(newValue) || 0,
-              }
+          // Accessor format: clusterName_field (e.g., "cluster1_to_supply")
+          // Extract cluster name and field name
+          const clusterNames = Object.keys(item).filter(
+            (key) => !['offer_id', 'sku', 'name', 'box_count', 'totals'].includes(key)
+          )
+          
+          // Find matching cluster name by checking if accessor starts with cluster name + underscore
+          let matchedClusterName: string | null = null
+          let fieldName: string | null = null
+          
+          for (const cn of clusterNames) {
+            if (accessor.startsWith(cn + '_')) {
+              matchedClusterName = cn
+              fieldName = accessor.substring(cn.length + 1) // Remove "clusterName_" prefix
+              break
+            }
+          }
+          
+          if (matchedClusterName && fieldName && updated[matchedClusterName]) {
+            updated[matchedClusterName] = {
+              ...updated[matchedClusterName],
+              [fieldName]: Number(newValue) || 0,
             }
           } else {
+            // Fallback for non-cluster fields
             updated[accessor] = newValue
           }
           return updated
@@ -406,36 +468,7 @@ const SupplyDraftPage: React.FC = () => {
     }
   }
 
-  // Value formatter for number columns - more performant than cellRenderer
-  const formatNumber = useCallback(({ value, row, accessor }: any) => {
-    // If value is undefined (can happen with nested headers), get it from row directly
-    const actualValue = value !== undefined && value !== null 
-      ? value 
-      : (row[accessor] !== undefined && row[accessor] !== null ? row[accessor] : 0)
-    
-    return actualValue
-  }, [])
 
-  // Header renderer for cluster columns with "Create Draft" button
-  const renderClusterHeader = useCallback((clusterName: string) => {
-    return ({}: any) => {
-      return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-          <span>{clusterName}</span>
-          <Button
-            size="small"
-            type="primary"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleCreateDraft(clusterName)
-            }}
-          >
-            Создать черновик
-          </Button>
-        </div>
-      )
-    }
-  }, [handleCreateDraft])
 
   // Check if there are any invalid values in tableData
   const hasInvalidValues = useMemo(() => {
@@ -463,15 +496,18 @@ const SupplyDraftPage: React.FC = () => {
     return false
   }, [tableData])
 
-  // Handle cell editing for to_supply columns
-  const handleCellEdit = useCallback(({ accessor, newValue, row }: any) => {
-    // Only handle to_supply columns
-    if (!accessor.includes('.to_supply')) {
+  // Handle cell editing for to_supply columns (AG Grid format)
+  const handleCellValueChanged = useCallback((event: CellValueChangedEvent) => {
+    // Only handle to_supply columns (format: clusterName_to_supply)
+    const field = event.colDef?.field
+    if (!field || !field.endsWith('_to_supply')) {
       return
     }
 
-    const numValue = Number(newValue) || 0
-    handleCellChange(row.offer_id, accessor, numValue)
+    const numValue = Number(event.newValue) || 0
+    if (event.data?.offer_id) {
+      handleCellChange(event.data.offer_id, field, numValue)
+    }
   }, [handleCellChange])
 
   const handleLoadTimeslots = async (draft: SupplyDraft) => {
@@ -588,38 +624,34 @@ const SupplyDraftPage: React.FC = () => {
     }
   }
 
-  // Build table headers dynamically based on clusters
-  const headers = useMemo(() => {
+  // Build table column definitions dynamically based on clusters
+  const columnDefs = useMemo(() => {
     if (!snapshot || snapshot.data.length === 0) return []
 
-    const baseHeaders: any[] = [
+    const baseHeaders: (ColDef | ColGroupDef)[] = [
       {
-        accessor: 'offer_id',
-        label: 'Артикул',
+        field: 'offer_id',
+        headerName: 'Артикул',
         width: 120,
         pinned: 'left',
-        isSortable: true,
       },
       {
-        accessor: 'sku',
-        label: 'SKU',
+        field: 'sku',
+        headerName: 'SKU',
         width: 100,
         pinned: 'left',
-        isSortable: true,
       },
       {
-        accessor: 'name',
-        label: 'Наименование',
+        field: 'name',
+        headerName: 'Наименование',
         width: 200,
         pinned: 'left',
-        isSortable: true,
       },
       {
-        accessor: 'box_count',
-        label: 'Кратность короба',
+        field: 'box_count',
+        headerName: 'Кратность короба',
         width: 120,
         pinned: 'left',
-        isSortable: true,
       },
     ]
 
@@ -633,63 +665,92 @@ const SupplyDraftPage: React.FC = () => {
     // Add cluster columns with nested headers
     clusterNames.forEach((clusterName) => {
       baseHeaders.push({
-        accessor: clusterName,
-        label: clusterName,
-        width: 600, // Total width for 4 columns (150 * 4)
-        headerRenderer: renderClusterHeader(clusterName),
+        headerName: clusterName,
+        headerGroupComponent: ClusterHeaderComponent,
+        headerGroupComponentParams: {
+          clusterName,
+          onCreateDraft: handleCreateDraft,
+        },
         children: [
           {
-            accessor: `${clusterName}.marketplace_stocks_count`,
-            label: 'Остатки на маркетплейсе',
+            field: `${clusterName}_marketplace_stocks_count`,
+            headerName: 'Остатки на маркетплейсе',
             width: 150,
-            type: 'number',
-            valueGetter: ({ row }: any) => {
-              const key = `${clusterName}.marketplace_stocks_count`
-              const value = row[key]
-              return value !== undefined && value !== null ? value : 0
+            type: 'numericColumn',
+            valueGetter: (params) => {
+              const clusterData = params.data?.[clusterName]
+              if (clusterData && typeof clusterData === 'object') {
+                return clusterData.marketplace_stocks_count ?? 0
+              }
+              return 0
             },
-            valueFormatter: formatNumber,
+            valueFormatter: (params) => {
+              const value = params.value !== undefined && params.value !== null ? params.value : 0
+              return String(value)
+            },
           },
           {
-            accessor: `${clusterName}.orders_count`,
-            label: 'Кол-во заказов (мес.)',
+            field: `${clusterName}_orders_count`,
+            headerName: 'Кол-во заказов (мес.)',
             width: 150,
-            type: 'number',
-            valueGetter: ({ row }: any) => {
-              const key = `${clusterName}.orders_count`
-              const value = row[key]
-              return value !== undefined && value !== null ? value : 0
+            type: 'numericColumn',
+            valueGetter: (params) => {
+              const clusterData = params.data?.[clusterName]
+              if (clusterData && typeof clusterData === 'object') {
+                return clusterData.orders_count ?? 0
+              }
+              return 0
             },
-            valueFormatter: formatNumber,
+            valueFormatter: (params) => {
+              const value = params.value !== undefined && params.value !== null ? params.value : 0
+              return String(value)
+            },
           },
           {
-            accessor: `${clusterName}.vendor_stocks_count`,
-            label: 'Остатки на складе поставщика',
+            field: `${clusterName}_vendor_stocks_count`,
+            headerName: 'Остатки на складе поставщика',
             width: 150,
-            type: 'number',
-            valueGetter: ({ row }: any) => {
-              const key = `${clusterName}.vendor_stocks_count`
-              const value = row[key]
-              return value !== undefined && value !== null ? value : 0
+            type: 'numericColumn',
+            valueGetter: (params) => {
+              const clusterData = params.data?.[clusterName]
+              if (clusterData && typeof clusterData === 'object') {
+                return clusterData.vendor_stocks_count ?? 0
+              }
+              return 0
             },
-            valueFormatter: formatNumber,
+            valueFormatter: (params) => {
+              const value = params.value !== undefined && params.value !== null ? params.value : 0
+              return String(value)
+            },
           },
           {
-            accessor: `${clusterName}.to_supply`,
-            label: 'Отгрузить на маркетплейс',
+            field: `${clusterName}_to_supply`,
+            headerName: 'Отгрузить на маркетплейс',
             width: 150,
-            type: 'number',
-            isEditable: true,
-            valueGetter: ({ row }: any) => {
-              return row[`${clusterName}.to_supply`] || 0
+            type: 'numericColumn',
+            editable: true,
+            cellEditor: 'agNumberCellEditor',
+            cellEditorParams: {
+              min: 0,
+              precision: 0,
             },
-            valueFormatter: formatNumber,
-            cellRenderer: ({ value, row, accessor }: any) => {
-              const boxCount = row.box_count || 1
-              // Get value from row if not provided
-              const actualValue = value !== undefined && value !== null 
-                ? value 
-                : (row[accessor] !== undefined && row[accessor] !== null ? row[accessor] : 0)
+            valueGetter: (params) => {
+              const clusterData = params.data?.[clusterName]
+              if (clusterData && typeof clusterData === 'object') {
+                return clusterData.to_supply ?? 0
+              }
+              return 0
+            },
+            valueFormatter: (params) => {
+              const value = params.value !== undefined && params.value !== null ? params.value : 0
+              return String(value)
+            },
+            cellRenderer: (params: any) => {
+              const boxCount = params.data?.box_count || 1
+              const clusterData = params.data?.[clusterName]
+              const actualValue = params.value !== undefined && params.value !== null 
+                ? params.value 
+                : (clusterData && typeof clusterData === 'object' ? (clusterData.to_supply ?? 0) : 0)
               const numValue = Number(actualValue) || 0
               const isValid = boxCount <= 0 || numValue === 0 || numValue % boxCount === 0
               
@@ -726,52 +787,31 @@ const SupplyDraftPage: React.FC = () => {
             },
           },
         ],
-      })
+      } as ColGroupDef)
     })
 
     return baseHeaders
-  }, [snapshot, formatNumber, renderClusterHeader])
+  }, [snapshot, handleCreateDraft])
 
-  // Transform data for SimpleTable
+  // Transform data for AG Grid - keep nested structure, no flat keys with dots
   const tableRows = useMemo(() => {
     if (!tableData || tableData.length === 0) return []
 
-    const rows = tableData.map((item) => {
-      const row: any = {
-        offer_id: item.offer_id,
-        sku: item.sku,
-        name: item.name,
-        box_count: item.box_count,
-      }
-
-      // Add cluster data
-      const clusterNames = Object.keys(item).filter(
-        (key) =>
-          !['offer_id', 'sku', 'name', 'box_count', 'totals'].includes(key)
-      )
-
-      clusterNames.forEach((clusterName) => {
-        const clusterData = item[clusterName]
-        
-        if (clusterData && typeof clusterData === 'object' && clusterData !== null) {
-          row[`${clusterName}.marketplace_stocks_count`] =
-            clusterData.marketplace_stocks_count ?? 0
-          row[`${clusterName}.orders_count`] = clusterData.orders_count ?? 0
-          row[`${clusterName}.vendor_stocks_count`] =
-            clusterData.vendor_stocks_count ?? 0
-          row[`${clusterName}.to_supply`] = clusterData.to_supply ?? 0
-        } else {
-          row[`${clusterName}.marketplace_stocks_count`] = 0
-          row[`${clusterName}.orders_count`] = 0
-          row[`${clusterName}.vendor_stocks_count`] = 0
-          row[`${clusterName}.to_supply`] = 0
-        }
-      })
-
-      return row
-    })
-
-    return rows
+    // Return data as-is, keeping nested cluster structure
+    // AG Grid will access nested data via valueGetter
+    return tableData.map((item) => ({
+      offer_id: item.offer_id,
+      sku: item.sku,
+      name: item.name,
+      box_count: item.box_count,
+      // Keep cluster data as nested objects
+      ...Object.keys(item)
+        .filter(key => !['offer_id', 'sku', 'name', 'box_count', 'totals'].includes(key))
+        .reduce((acc, clusterName) => {
+          acc[clusterName] = item[clusterName]
+          return acc
+        }, {} as Record<string, any>)
+    }))
   }, [tableData])
 
   if (loading && !snapshot) {
@@ -858,9 +898,9 @@ const SupplyDraftPage: React.FC = () => {
           ) : (
             <>
               <MemoizedTable
-                headers={headers}
-                rows={tableRows}
-                onCellEdit={handleCellEdit}
+                columnDefs={columnDefs}
+                rowData={tableRows}
+                onCellValueChanged={handleCellValueChanged}
               />
 
               {/* Drafts list */}
