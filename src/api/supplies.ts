@@ -49,6 +49,7 @@ export interface SupplySnapshotResponse {
     sku: number
     name: string
     box_count: number
+    vendor_stocks_count: number
     [clusterName: string]: any
     totals: {
       marketplace_stocks_count: number

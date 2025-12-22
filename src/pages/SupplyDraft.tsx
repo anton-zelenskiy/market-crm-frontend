@@ -126,6 +126,7 @@ interface SupplyDataItem {
   sku: number
   name: string
   box_count: number
+  vendor_stocks_count: number
   [clusterName: string]: any
   totals: {
     marketplace_stocks_count: number
@@ -407,7 +408,7 @@ const SupplyDraftPage: React.FC = () => {
           // Accessor format: clusterName_field (e.g., "cluster1_to_supply")
           // Extract cluster name and field name
           const clusterNames = Object.keys(item).filter(
-            (key) => !['offer_id', 'sku', 'name', 'box_count', 'totals'].includes(key)
+            (key) => !['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals'].includes(key)
           )
           
           // Find matching cluster name by checking if accessor starts with cluster name + underscore
@@ -480,7 +481,7 @@ const SupplyDraftPage: React.FC = () => {
 
       // Check all cluster to_supply values
       const clusterNames = Object.keys(item).filter(
-        (key) => !['offer_id', 'sku', 'name', 'box_count', 'totals'].includes(key)
+        (key) => !['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals'].includes(key)
       )
 
       for (const clusterName of clusterNames) {
@@ -653,13 +654,20 @@ const SupplyDraftPage: React.FC = () => {
         width: 120,
         pinned: 'left',
       },
+      {
+        field: 'vendor_stocks_count',
+        headerName: 'Остатки на складе поставщика',
+        width: 150,
+        type: 'numericColumn',
+        pinned: 'left',
+      },
     ]
 
     // Get cluster names from first item (excluding totals and base fields)
     const firstItem = snapshot.data[0]
     const clusterNames = Object.keys(firstItem).filter(
       (key) =>
-        !['offer_id', 'sku', 'name', 'box_count', 'totals'].includes(key)
+        !['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals'].includes(key)
     )
 
     // Add cluster columns with nested headers
@@ -698,23 +706,6 @@ const SupplyDraftPage: React.FC = () => {
               const clusterData = params.data?.[clusterName]
               if (clusterData && typeof clusterData === 'object') {
                 return clusterData.orders_count ?? 0
-              }
-              return 0
-            },
-            valueFormatter: (params) => {
-              const value = params.value !== undefined && params.value !== null ? params.value : 0
-              return String(value)
-            },
-          },
-          {
-            field: `${clusterName}_vendor_stocks_count`,
-            headerName: 'Остатки на складе поставщика',
-            width: 150,
-            type: 'numericColumn',
-            valueGetter: (params) => {
-              const clusterData = params.data?.[clusterName]
-              if (clusterData && typeof clusterData === 'object') {
-                return clusterData.vendor_stocks_count ?? 0
               }
               return 0
             },
@@ -804,9 +795,10 @@ const SupplyDraftPage: React.FC = () => {
       sku: item.sku,
       name: item.name,
       box_count: item.box_count,
+      vendor_stocks_count: item.vendor_stocks_count,
       // Keep cluster data as nested objects
       ...Object.keys(item)
-        .filter(key => !['offer_id', 'sku', 'name', 'box_count', 'totals'].includes(key))
+        .filter(key => !['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals'].includes(key))
         .reduce((acc, clusterName) => {
           acc[clusterName] = item[clusterName]
           return acc
