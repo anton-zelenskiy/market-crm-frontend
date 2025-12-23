@@ -19,7 +19,7 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 # Build the application with memory limit (512MB for Node.js)
 # This leaves ~500MB for the system and Docker
-RUN NODE_OPTIONS="--max-old-space-size=512" npm run build
+RUN NODE_OPTIONS="--max-old-space-size=576" npm run build
 
 # Stage 2: Serve static files with a simple HTTP server
 FROM node:20-alpine
