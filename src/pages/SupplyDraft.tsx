@@ -144,7 +144,7 @@ const SupplyDraftPage: React.FC = () => {
   const [updating, setUpdating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [company, setCompany] = useState<Company | null>(null)
-  const [connection, setConnection] = useState<Connection | null>(null)
+  const [_, setConnection] = useState<Connection | null>(null) // connection
   const [drafts, setDrafts] = useState<SupplyDraft[]>([])
   const [warehouseModalVisible, setWarehouseModalVisible] = useState(false)
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null)
