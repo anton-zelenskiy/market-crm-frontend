@@ -134,6 +134,7 @@ interface SupplyDataItem {
   totals: {
     marketplace_stocks_count: number
     orders_count: number
+    avg_orders_leverage: number
     vendor_stocks_count: number
     to_supply: number
   }
@@ -761,6 +762,23 @@ const SupplyDraftPage: React.FC = () => {
               const clusterData = params.data?.[clusterName]
               if (clusterData && typeof clusterData === 'object') {
                 return clusterData.orders_count ?? 0
+              }
+              return 0
+            },
+            valueFormatter: (params) => {
+              const value = params.value !== undefined && params.value !== null ? params.value : 0
+              return String(value)
+            },
+          },
+          {
+            field: `${clusterName}_avg_orders_leverage`,
+            headerName: 'Сред. кол-во за 45 дн.',
+            width: 150,
+            type: 'numericColumn',
+            valueGetter: (params) => {
+              const clusterData = params.data?.[clusterName]
+              if (clusterData && typeof clusterData === 'object') {
+                return clusterData.avg_orders_leverage ?? 0
               }
               return 0
             },
