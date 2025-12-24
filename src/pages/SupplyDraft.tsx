@@ -28,6 +28,7 @@ import type { ColDef, ColGroupDef, CellValueChangedEvent } from 'ag-grid-communi
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule])
+import { debounce } from 'throttle-debounce'
 import {
   suppliesApi,
   type SupplySnapshotResponse,
@@ -170,6 +171,83 @@ const SupplyDraftPage: React.FC = () => {
   const [creatingSupply, setCreatingSupply] = useState<Record<number, boolean>>({})
   const [supplyCreateStatus, setSupplyCreateStatus] = useState<Record<number, SupplyCreateStatusResponse>>({})
 
+  // Check if there are any invalid values in tableData
+  const hasInvalidValues = useMemo(() => {
+    if (!tableData || tableData.length === 0) return false
+
+    for (const item of tableData) {
+      const boxCount = item.box_count || 1
+      if (boxCount <= 0) continue
+
+      // Check all cluster to_supply values
+      const clusterNames = Object.keys(item).filter(
+        (key) => !['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals'].includes(key)
+      )
+
+      for (const clusterName of clusterNames) {
+        const clusterData = item[clusterName]
+        if (clusterData && typeof clusterData === 'object' && clusterData !== null) {
+          const toSupply = clusterData.to_supply || 0
+          if (toSupply > 0 && toSupply % boxCount !== 0) {
+            return true
+          }
+        }
+      }
+    }
+    return false
+  }, [tableData])
+
+  const [isDirty, setIsDirty] = useState(false)
+
+  const handleSaveSnapshot = useCallback(async () => {
+    if (!connectionId || !tableData.length || saving) {
+      if (saving) setIsDirty(true)
+      return
+    }
+
+    // Check for invalid values before saving
+    if (hasInvalidValues) {
+      return
+    }
+
+    setIsDirty(false)
+    setSaving(true)
+    try {
+      const savedSnapshot = await saveSupplySnapshot(
+        parseInt(connectionId),
+        tableData
+      )
+      setSnapshot(savedSnapshot)
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка сохранения изменений'
+      )
+    } finally {
+      setSaving(false)
+    }
+  }, [connectionId, tableData, hasInvalidValues, saving])
+
+  // Use a ref to always call the latest version of handleSaveSnapshot
+  // This ensures that debouncedSave uses the most up-to-date tableData
+  const saveRef = useRef(handleSaveSnapshot)
+  useEffect(() => {
+    saveRef.current = handleSaveSnapshot
+  }, [handleSaveSnapshot])
+
+  const debouncedSave = useMemo(
+    () => debounce(700, () => {
+      saveRef.current()
+    }),
+    []
+  )
+
+  // Re-run save if changes were made while a save was in progress
+  useEffect(() => {
+    if (!saving && isDirty) {
+      debouncedSave()
+    }
+  }, [saving, isDirty, debouncedSave])
+
   useEffect(() => {
     if (connectionId) {
       loadConnectionData()
@@ -280,32 +358,6 @@ const SupplyDraftPage: React.FC = () => {
       setUpdating(false)
     }
     return false // Prevent default upload behavior
-  }
-
-  const handleSaveSnapshot = async () => {
-    if (!connectionId || !tableData.length) return
-
-    // Check for invalid values before saving
-    if (hasInvalidValues) {
-      message.error('Нельзя сохранить: есть невалидные значения в колонке "Отгрузить на маркетплейс"')
-      return
-    }
-
-    setSaving(true)
-    try {
-      const savedSnapshot = await saveSupplySnapshot(
-        parseInt(connectionId),
-        tableData
-      )
-      setSnapshot(savedSnapshot)
-      message.success('Изменения сохранены')
-    } catch (error: any) {
-      message.error(
-        error.response?.data?.detail || 'Ошибка сохранения изменений'
-      )
-    } finally {
-      setSaving(false)
-    }
   }
 
   const handleCreateDraft = useCallback((clusterName: string) => {
@@ -499,34 +551,6 @@ const SupplyDraftPage: React.FC = () => {
     }
   }
 
-
-
-  // Check if there are any invalid values in tableData
-  const hasInvalidValues = useMemo(() => {
-    if (!tableData || tableData.length === 0) return false
-
-    for (const item of tableData) {
-      const boxCount = item.box_count || 1
-      if (boxCount <= 0) continue
-
-      // Check all cluster to_supply values
-      const clusterNames = Object.keys(item).filter(
-        (key) => !['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals'].includes(key)
-      )
-
-      for (const clusterName of clusterNames) {
-        const clusterData = item[clusterName]
-        if (clusterData && typeof clusterData === 'object' && clusterData !== null) {
-          const toSupply = clusterData.to_supply || 0
-          if (toSupply > 0 && toSupply % boxCount !== 0) {
-            return true
-          }
-        }
-      }
-    }
-    return false
-  }, [tableData])
-
   // Handle cell editing for to_supply columns (AG Grid format)
   const handleCellValueChanged = useCallback((event: CellValueChangedEvent) => {
     // Only handle to_supply columns (format: clusterName_to_supply)
@@ -538,8 +562,9 @@ const SupplyDraftPage: React.FC = () => {
     const numValue = Number(event.newValue) || 0
     if (event.data?.offer_id) {
       handleCellChange(event.data.offer_id, field, numValue)
+      debouncedSave()
     }
-  }, [handleCellChange])
+  }, [handleCellChange, debouncedSave])
 
   const handleLoadTimeslots = async (draft: SupplyDraft) => {
     if (!draft.draft_id) {
@@ -924,13 +949,7 @@ const SupplyDraftPage: React.FC = () => {
                   Обновлено: {new Date(snapshot.updated_at).toLocaleString('ru-RU')}
                 </Text>
               )}
-              <Upload
-                accept=".xlsx"
-                showUploadList={false}
-                beforeUpload={handleUploadAvailability}
-              >
-                <Button icon={<UploadOutlined />}>Загрузить ограничения</Button>
-              </Upload>
+              
               <Button
                 icon={<ReloadOutlined />}
                 loading={updating}
@@ -938,14 +957,13 @@ const SupplyDraftPage: React.FC = () => {
               >
                 Обновить данные
               </Button>
-              <Button
-                type="primary"
-                onClick={handleSaveSnapshot}
-                loading={saving}
-                disabled={!snapshot || tableData.length === 0 || hasInvalidValues}
+              <Upload
+                accept=".xlsx"
+                showUploadList={false}
+                beforeUpload={handleUploadAvailability}
               >
-                Сохранить изменения
-              </Button>
+                <Button icon={<UploadOutlined />}>Загрузить ограничения</Button>
+              </Upload>
             </Space>
           </div>
 
