@@ -229,6 +229,24 @@ export const suppliesApi = {
     return response.data
   },
 
+  uploadWarehouseAvailability: async (
+    connectionId: number,
+    file: File
+  ): Promise<SupplySnapshotResponse> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await api.post(
+      `/supplies/connection/${connectionId}/snapshot/warehouse-availability`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    )
+    return response.data
+  },
+
   getWarehouses: async (
     connectionId: number,
     search?: string

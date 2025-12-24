@@ -15,10 +15,12 @@ import {
   Alert,
   Divider,
   Radio,
+  Upload,
 } from 'antd'
 import {
   ArrowLeftOutlined,
   ReloadOutlined,
+  UploadOutlined,
 } from '@ant-design/icons'
 import { AgGridReact } from 'ag-grid-react'
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community'
@@ -148,6 +150,12 @@ const SupplyDraftPage: React.FC = () => {
   const [drafts, setDrafts] = useState<SupplyDraft[]>([])
   const [warehouseModalVisible, setWarehouseModalVisible] = useState(false)
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null)
+  const [availabilityModalVisible, setAvailabilityModalVisible] = useState(false)
+  const [selectedAvailability, setSelectedAvailability] = useState<{
+    clusterName: string
+    offerId: string
+    availability: Record<string, any>
+  } | null>(null)
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [warehouseLoading, setWarehouseLoading] = useState(false)
   const [form] = Form.useForm()
@@ -250,6 +258,28 @@ const SupplyDraftPage: React.FC = () => {
     } finally {
       setUpdating(false)
     }
+  }
+
+  const handleUploadAvailability = async (file: File) => {
+    if (!connectionId) return
+
+    setUpdating(true)
+    try {
+      const updatedSnapshot = await suppliesApi.uploadWarehouseAvailability(
+        parseInt(connectionId),
+        file
+      )
+      setSnapshot(updatedSnapshot)
+      setTableData(updatedSnapshot.data)
+      message.success('Ограничения складов успешно загружены')
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка загрузки ограничений'
+      )
+    } finally {
+      setUpdating(false)
+    }
+    return false // Prevent default upload behavior
   }
 
   const handleSaveSnapshot = async () => {
@@ -715,6 +745,51 @@ const SupplyDraftPage: React.FC = () => {
             },
           },
           {
+            field: `${clusterName}_warehouse_availability`,
+            headerName: 'Максимальный размер поставки',
+            width: 180,
+            valueGetter: (params) => {
+              const clusterData = params.data?.[clusterName]
+              if (clusterData && typeof clusterData === 'object') {
+                return clusterData.warehouse_availability ?? null
+              }
+              return null
+            },
+            onCellClicked: (params) => {
+              if (params.value) {
+                setSelectedAvailability({
+                  clusterName: clusterName,
+                  offerId: params.data.offer_id,
+                  availability: params.value,
+                })
+                setAvailabilityModalVisible(true)
+              }
+            },
+            cellRenderer: (params: any) => {
+              const availability = params.value
+              if (!availability) {
+                return <Tag color="default">Неизвестно</Tag>
+              }
+
+              const values = Object.values(availability)
+              const hasNoLimits = values.some((v) => v === 'Без ограничений')
+              const hasLimited = values.some((v) => typeof v === 'number' && v > 0)
+              const allUnavailable = values.every((v) => v === '-' || v === 0)
+
+              if (hasNoLimits) {
+                return <Tag color="green">Без ограничений</Tag>
+              }
+              if (hasLimited) {
+                const maxLimit = Math.max(...values.filter((v) => typeof v === 'number') as number[])
+                return <Tag color="warning">Ограничено ({maxLimit})</Tag>
+              }
+              if (allUnavailable) {
+                return <Tag color="red">Недоступно</Tag>
+              }
+              return <Tag color="default">Неизвестно</Tag>
+            },
+          },
+          {
             field: `${clusterName}_to_supply`,
             headerName: 'Отгрузить на маркетплейс',
             width: 150,
@@ -842,9 +917,6 @@ const SupplyDraftPage: React.FC = () => {
               >
                 Назад
               </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Формирование поставки - {company?.name || ''}
-              </Title>
             </Space>
             <Space>
               {snapshot && (
@@ -852,6 +924,13 @@ const SupplyDraftPage: React.FC = () => {
                   Обновлено: {new Date(snapshot.updated_at).toLocaleString('ru-RU')}
                 </Text>
               )}
+              <Upload
+                accept=".xlsx"
+                showUploadList={false}
+                beforeUpload={handleUploadAvailability}
+              >
+                <Button icon={<UploadOutlined />}>Загрузить ограничения</Button>
+              </Upload>
               <Button
                 icon={<ReloadOutlined />}
                 loading={updating}
@@ -869,6 +948,10 @@ const SupplyDraftPage: React.FC = () => {
               </Button>
             </Space>
           </div>
+
+          <Title level={2} style={{ margin: 0 }}>
+            Формирование поставки - {company?.name || ''}
+          </Title>
 
           {!snapshot ? (
             <Alert
@@ -1301,6 +1384,59 @@ const SupplyDraftPage: React.FC = () => {
             </Select>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Warehouse availability details modal */}
+      <Modal
+        title={`Ограничения складов: ${selectedAvailability?.clusterName} - ${selectedAvailability?.offerId}`}
+        open={availabilityModalVisible}
+        onCancel={() => {
+          setAvailabilityModalVisible(false)
+          setSelectedAvailability(null)
+        }}
+        footer={[
+          <Button key="close" onClick={() => setAvailabilityModalVisible(false)}>
+            Закрыть
+          </Button>,
+        ]}
+        width={600}
+      >
+        <Table
+          dataSource={
+            selectedAvailability
+              ? Object.entries(selectedAvailability.availability).map(
+                  ([warehouse, limit]) => ({
+                    warehouse,
+                    limit,
+                  })
+                )
+              : []
+          }
+          rowKey="warehouse"
+          columns={[
+            {
+              title: 'Склад',
+              dataIndex: 'warehouse',
+              key: 'warehouse',
+            },
+            {
+              title: 'Максимальный размер поставки',
+              dataIndex: 'limit',
+              key: 'limit',
+              render: (limit: any) => {
+                if (limit === 'Без ограничений') {
+                  return <Tag color="green">{limit}</Tag>
+                }
+                if (limit === '-' || limit === 0) {
+                  return <Tag color="red">Недоступно</Tag>
+                }
+                return <Tag color="warning">{limit}</Tag>
+              },
+            },
+          ]}
+          pagination={false}
+          size="small"
+        />
       </Modal>
     </div>
   )
