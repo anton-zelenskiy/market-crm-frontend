@@ -12,6 +12,9 @@ import {
   Card,
   Typography,
   Badge,
+  Divider,
+  Row,
+  Col,
 } from 'antd'
 import {
   PlusOutlined,
@@ -58,6 +61,7 @@ const Companies: React.FC = () => {
     form.setFieldsValue({
       name: record.name,
       slug: record.slug,
+      ozon_consignee_note_info: record.ozon_consignee_note_info,
     })
     setModalVisible(true)
   }
@@ -75,11 +79,12 @@ const Companies: React.FC = () => {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
-      const { name, slug } = values
+      const { name, slug, ozon_consignee_note_info } = values
 
       const data: CompanyCreate = {
         name,
         slug: slug || null,
+        ozon_consignee_note_info: ozon_consignee_note_info || null,
       }
 
       if (editingCompany) {
@@ -202,6 +207,80 @@ const Companies: React.FC = () => {
           >
             <Input placeholder="например: kazakova, mecherikov" />
           </Form.Item>
+
+          <Divider orientation="left">Информация для накладных Ozon</Divider>
+          
+          <Typography.Paragraph type="secondary">
+            Данные отправителя (Shipper)
+          </Typography.Paragraph>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name={['ozon_consignee_note_info', 'shipper', 'name']}
+                label="Название организации"
+              >
+                <Input placeholder="ООО «Пример»" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name={['ozon_consignee_note_info', 'shipper', 'inn']}
+                label="ИНН"
+              >
+                <Input placeholder="1234567890" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item
+            name={['ozon_consignee_note_info', 'shipper', 'phone']}
+            label="Телефон отправителя"
+          >
+            <Input placeholder="8 (000) 000-00-00" />
+          </Form.Item>
+
+          <Typography.Paragraph type="secondary">
+            Данные получателя (Consignee)
+          </Typography.Paragraph>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name={['ozon_consignee_note_info', 'consignee', 'name']}
+                label="Название организации"
+              >
+                <Input placeholder="ООО «Интернет Решения»" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name={['ozon_consignee_note_info', 'consignee', 'inn']}
+                label="ИНН"
+              >
+                <Input placeholder="7704217370" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Typography.Paragraph type="secondary">
+            Менеджер
+          </Typography.Paragraph>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name={['ozon_consignee_note_info', 'manager', 'display']}
+                label="Имя (для отображения)"
+              >
+                <Input placeholder="Иван Иванов" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name={['ozon_consignee_note_info', 'manager', 'phone']}
+                label="Телефон"
+              >
+                <Input placeholder="+79990000000" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
     </div>
