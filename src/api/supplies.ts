@@ -54,8 +54,10 @@ export interface SupplySnapshotResponse {
     totals: {
       marketplace_stocks_count: number
       orders_count: number
+      avg_orders_leverage: number
       vendor_stocks_count: number
       to_supply: number
+      deficit: number
     }
   }>
   updated_at: string
@@ -304,6 +306,26 @@ export const suppliesApi = {
     const response = await api.post(
       `/supplies/supply-draft/${draftId}/create-supply-status`,
       request
+    )
+    return response.data
+  },
+
+  downloadDeficitCsv: async (connectionId: number): Promise<Blob> => {
+    const response = await api.get(
+      `/supplies/connection/${connectionId}/snapshot/deficit-csv`,
+      {
+        responseType: 'blob',
+      }
+    )
+    return response.data
+  },
+
+  downloadAvailabilityCsv: async (connectionId: number): Promise<Blob> => {
+    const response = await api.get(
+      `/supplies/connection/${connectionId}/snapshot/availability-csv`,
+      {
+        responseType: 'blob',
+      }
     )
     return response.data
   },

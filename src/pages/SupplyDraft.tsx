@@ -16,11 +16,13 @@ import {
   Divider,
   Radio,
   Upload,
+  Tooltip,
 } from 'antd'
 import {
   ArrowLeftOutlined,
   ReloadOutlined,
   UploadOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons'
 import { AgGridReact } from 'ag-grid-react'
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community'
@@ -137,6 +139,7 @@ interface SupplyDataItem {
     avg_orders_leverage: number
     vendor_stocks_count: number
     to_supply: number
+    deficit: number
   }
 }
 
@@ -178,7 +181,6 @@ const SupplyDraftPage: React.FC = () => {
 
     for (const item of tableData) {
       const boxCount = item.box_count || 1
-      if (boxCount <= 0) continue
 
       // Check all cluster to_supply values
       const clusterNames = Object.keys(item).filter(
@@ -189,8 +191,30 @@ const SupplyDraftPage: React.FC = () => {
         const clusterData = item[clusterName]
         if (clusterData && typeof clusterData === 'object' && clusterData !== null) {
           const toSupply = clusterData.to_supply || 0
-          if (toSupply > 0 && toSupply % boxCount !== 0) {
-            return true
+          if (toSupply > 0) {
+            // 1. Check box count
+            if (boxCount > 0 && toSupply % boxCount !== 0) {
+              return true
+            }
+
+            // 2. Check warehouse availability
+            if (clusterData.warehouse_availability) {
+              const availability = clusterData.warehouse_availability
+              const values = Object.values(availability)
+              const hasNoLimits = values.some((v) => v === 'NO_LIMITS')
+              const hasLimited = values.filter((v) => typeof v === 'number' && v > 0) as number[]
+              const allUnavailable = values.every((v) => v === 'UNAVAILABLE')
+
+              if (allUnavailable && !hasNoLimits) {
+                return true
+              }
+              if (!hasNoLimits && hasLimited.length > 0) {
+                const maxLimit = Math.max(...hasLimited)
+                if (toSupply > maxLimit) {
+                  return true
+                }
+              }
+            }
           }
         }
       }
@@ -359,6 +383,54 @@ const SupplyDraftPage: React.FC = () => {
       setUpdating(false)
     }
     return false // Prevent default upload behavior
+  }
+
+  const handleDownloadDeficit = async () => {
+    if (!connectionId) return
+
+    setUpdating(true)
+    try {
+      const blob = await suppliesApi.downloadDeficitCsv(parseInt(connectionId))
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `Дефициты_${company?.name}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode?.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      message.success('Отчет по дефициту скачан')
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка при скачивании отчета'
+      )
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleDownloadAvailability = async () => {
+    if (!connectionId) return
+
+    setUpdating(true)
+    try {
+      const blob = await suppliesApi.downloadAvailabilityCsv(parseInt(connectionId))
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `Ограничения_складов_${company?.name}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode?.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      message.success('Отчет по ограничениям складов скачан')
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка при скачивании отчета'
+      )
+    } finally {
+      setUpdating(false)
+    }
   }
 
   const handleCreateDraft = useCallback((clusterName: string) => {
@@ -831,9 +903,9 @@ const SupplyDraftPage: React.FC = () => {
               }
 
               const values = Object.values(availability)
-              const hasNoLimits = values.some((v) => v === 'Без ограничений')
+              const hasNoLimits = values.some((v) => v === 'NO_LIMITS')
               const hasLimited = values.some((v) => typeof v === 'number' && v > 0)
-              const allUnavailable = values.every((v) => v === '-' || v === 0)
+              const allUnavailable = values.every((v) => v === 'UNAVAILABLE')
 
               if (hasNoLimits) {
                 return <Tag color="green">Без ограничений</Tag>
@@ -877,24 +949,64 @@ const SupplyDraftPage: React.FC = () => {
                 ? params.value 
                 : (clusterData && typeof clusterData === 'object' ? (clusterData.to_supply ?? 0) : 0)
               const numValue = Number(actualValue) || 0
-              const isValid = boxCount <= 0 || numValue === 0 || numValue % boxCount === 0
+              
+              // 1. Check box count validity
+              const isBoxCountValid = boxCount <= 0 || numValue === 0 || numValue % boxCount === 0
+              let boxCountError = ''
+              if (!isBoxCountValid) {
+                boxCountError = `Количество должно быть кратно ${boxCount}`
+              }
+
+              // 2. Check warehouse availability validity if numValue > 0
+              let isAvailabilityValid = true
+              let availabilityError = ''
+              if (numValue > 0 && clusterData?.warehouse_availability) {
+                const availability = clusterData.warehouse_availability
+                const values = Object.values(availability)
+                const hasNoLimits = values.some((v) => v === 'NO_LIMITS')
+                const hasLimited = values.filter((v) => typeof v === 'number' && v > 0) as number[]
+                const allUnavailable = values.every((v) => v === 'UNAVAILABLE')
+
+                if (hasNoLimits) {
+                  // Valid
+                } else if (allUnavailable) {
+                  isAvailabilityValid = false
+                  availabilityError = 'Все склады в кластере недоступны для данного товара'
+                } else if (hasLimited.length > 0) {
+                  const maxLimit = Math.max(...hasLimited)
+                  if (numValue > maxLimit) {
+                    isAvailabilityValid = false
+                    availabilityError = `Превышен максимальный лимит поставки (${maxLimit})`
+                  }
+                }
+              }
               
               // Default background color for cells with value 0 (soft green)
               const defaultBgColor = '#f0f9f4'
               // Slightly darker green for valid cells with non-zero values
               const validNonZeroBgColor = '#d4edda'
-              // Warning color for invalid cells
-              const warningBgColor = '#fff7e6'
+              // Warning color for box count errors (orange)
+              const boxCountWarningColor = '#fff7e6'
+              // Error color for availability errors (red)
+              const availabilityErrorColor = '#fff1f0'
               
               // Determine background color based on value and validity
               let backgroundColor = defaultBgColor
-              if (!isValid && numValue > 0) {
-                backgroundColor = warningBgColor
-              } else if (isValid && numValue > 0) {
-                backgroundColor = validNonZeroBgColor
+              let errorReason = ''
+
+              if (numValue > 0) {
+                if (!isAvailabilityValid) {
+                  backgroundColor = availabilityErrorColor
+                  errorReason = availabilityError
+                } else if (!isBoxCountValid) {
+                  backgroundColor = boxCountWarningColor
+                  errorReason = boxCountError
+                } else {
+                  backgroundColor = validNonZeroBgColor
+                }
               }
-              
-              return (
+
+              const content = (
                 <div style={{ 
                   backgroundColor,
                   padding: '4px',
@@ -909,6 +1021,16 @@ const SupplyDraftPage: React.FC = () => {
                   {numValue}
                 </div>
               )
+
+              if (errorReason) {
+                return (
+                  <Tooltip title={errorReason}>
+                    {content}
+                  </Tooltip>
+                )
+              }
+              
+              return content
             },
           },
         ],
@@ -951,6 +1073,21 @@ const SupplyDraftPage: React.FC = () => {
           valueGetter: (params) => params.data?.totals?.to_supply ?? 0,
           valueFormatter: (params) => String(params.value ?? 0),
           cellStyle: { fontWeight: 'bold' }
+        },
+        {
+          field: 'totals_deficit',
+          headerName: 'Дефицит',
+          width: 150,
+          type: 'numericColumn',
+          valueGetter: (params) => params.data?.totals?.deficit ?? 0,
+          valueFormatter: (params) => String(params.value ?? 0),
+          cellStyle: (params) => {
+            const value = params.value || 0
+            return { 
+              fontWeight: 'bold', 
+              color: value > 0 ? '#ff4d4f' : 'inherit' 
+            }
+          }
         },
       ]
     } as ColGroupDef)
@@ -1045,6 +1182,23 @@ const SupplyDraftPage: React.FC = () => {
           <Title level={2} style={{ margin: 0 }}>
             Формирование поставки - {company?.name || ''}
           </Title>
+
+          <Space>
+            <Button
+              icon={<DownloadOutlined />}
+              loading={updating}
+              onClick={handleDownloadDeficit}
+            >
+              Скачать дефициты товаров
+            </Button>
+            <Button
+              icon={<DownloadOutlined />}
+              loading={updating}
+              onClick={handleDownloadAvailability}
+            >
+              Скачать ограничения складов по товарам
+            </Button>
+          </Space>
 
           {!snapshot ? (
             <Alert
@@ -1517,10 +1671,10 @@ const SupplyDraftPage: React.FC = () => {
               dataIndex: 'limit',
               key: 'limit',
               render: (limit: any) => {
-                if (limit === 'Без ограничений') {
-                  return <Tag color="green">{limit}</Tag>
+                if (limit === 'NO_LIMITS') {
+                  return <Tag color="green">Без ограничений</Tag>
                 }
-                if (limit === '-' || limit === 0) {
+                if (limit === 'UNAVAILABLE' || limit === 0) {
                   return <Tag color="red">Недоступно</Tag>
                 }
                 return <Tag color="warning">{limit}</Tag>
