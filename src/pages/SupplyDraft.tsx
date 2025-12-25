@@ -23,6 +23,7 @@ import {
   ReloadOutlined,
   UploadOutlined,
   DownloadOutlined,
+  FileExcelOutlined,
 } from '@ant-design/icons'
 import { AgGridReact } from 'ag-grid-react'
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community'
@@ -427,6 +428,30 @@ const SupplyDraftPage: React.FC = () => {
     } catch (error: any) {
       message.error(
         error.response?.data?.detail || 'Ошибка при скачивании отчета'
+      )
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleDownloadFullXlsx = async () => {
+    if (!connectionId) return
+
+    setUpdating(true)
+    try {
+      const blob = await suppliesApi.downloadFullSnapshotXlsx(parseInt(connectionId))
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `Поставки_${company?.name}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode?.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      message.success('Полные данные выгружены')
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка при выгрузке данных'
       )
     } finally {
       setUpdating(false)
@@ -1197,6 +1222,13 @@ const SupplyDraftPage: React.FC = () => {
               onClick={handleDownloadAvailability}
             >
               Скачать ограничения складов по товарам
+            </Button>
+            <Button
+              icon={<FileExcelOutlined />}
+              loading={updating}
+              onClick={handleDownloadFullXlsx}
+            >
+              Скачать полные данные (XLSX)
             </Button>
           </Space>
 

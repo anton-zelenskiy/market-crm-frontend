@@ -329,6 +329,16 @@ export const suppliesApi = {
     )
     return response.data
   },
+
+  downloadFullSnapshotXlsx: async (connectionId: number): Promise<Blob> => {
+    const response = await api.get(
+      `/supplies/connection/${connectionId}/snapshot/xlsx`,
+      {
+        responseType: 'blob',
+      }
+    )
+    return response.data
+  },
 }
 
 export async function saveSupplySnapshot(
