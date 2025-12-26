@@ -198,12 +198,6 @@ const OzonProducts: React.FC = () => {
       fixed: 'left' as const,
     },
     {
-      title: 'Product ID',
-      dataIndex: 'product_id',
-      key: 'product_id',
-      width: 120,
-    },
-    {
       title: 'SKU',
       dataIndex: 'sku',
       key: 'sku',
@@ -324,7 +318,7 @@ const OzonProducts: React.FC = () => {
             rowKey="id"
             loading={loading}
             scroll={{ x: 1400 }}
-            pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `Всего ${total} товаров` }}
+            pagination={{ pageSize: 100, showSizeChanger: true, showTotal: (total) => `Всего ${total} товаров` }}
           />
         </Space>
       </Card>
