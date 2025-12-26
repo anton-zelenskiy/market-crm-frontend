@@ -3,6 +3,7 @@ import api from './axios'
 export interface SupplyOrder {
   order_id: number
   order_number: string
+  supply_id: string
   state: string
   created_date: string
   storage_warehouse_name: string | null

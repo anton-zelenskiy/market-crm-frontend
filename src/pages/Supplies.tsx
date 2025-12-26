@@ -217,7 +217,7 @@ const Supplies: React.FC = () => {
   const handleCreateCargoes = async (supply: SupplyOrder, deleteCurrentVersion: boolean) => {
     if (!connection) return
 
-    const supplyId = supply.order_number
+    const supplyId = supply.supply_id
     setCreatingCargoes((prev) => ({ ...prev, [supplyId]: true }))
 
     try {
@@ -241,7 +241,7 @@ const Supplies: React.FC = () => {
   const handleDownloadDocuments = async (supply: SupplyOrder, externalOrderId: string) => {
     if (!connection) return
 
-    const supplyId = supply.order_number
+    const supplyId = supply.supply_id
     setDownloadingDocs((prev) => ({ ...prev, [supplyId]: true }))
 
     try {
@@ -284,9 +284,16 @@ const Supplies: React.FC = () => {
       width: 120,
     },
     {
-      title: 'ID поставки',
+      title: 'Номер заявки',
       dataIndex: 'order_number',
       key: 'order_number',
+      width: 150,
+    },
+    {
+      title: 'ID поставки',
+      dataIndex: 'supply_id',
+      key: 'supply_id',
+      width: 150,
     },
     {
       title: 'Склад хранения',
@@ -327,7 +334,7 @@ const Supplies: React.FC = () => {
       width: 100,
       render: (_: any, record: SupplyOrder) => {
         if (!connection) return null
-        const supplyId = record.order_number
+        const supplyId = record.supply_id
         const isCreating = creatingCargoes[supplyId] || false
         const isDownloading = downloadingDocs[supplyId] || false
 
@@ -423,7 +430,7 @@ const Supplies: React.FC = () => {
             <Table
               columns={columns}
               dataSource={supplies}
-              rowKey="order_id"
+              rowKey="supply_id"
               loading={loading}
               pagination={{
                 pageSize: 50,
