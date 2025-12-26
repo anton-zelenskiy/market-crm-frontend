@@ -208,7 +208,7 @@ const Companies: React.FC = () => {
             <Input placeholder="например: kazakova, mecherikov" />
           </Form.Item>
 
-          <Divider orientation="left">Информация для накладных Ozon</Divider>
+          <Divider orientation="horizontal">Информация для накладных Ozon</Divider>
           
           <Typography.Paragraph type="secondary">
             Данные отправителя (Shipper)
