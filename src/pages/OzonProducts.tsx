@@ -17,6 +17,7 @@ import {
   Select,
   Tooltip,
 } from 'antd'
+
 import {
   ArrowLeftOutlined,
   PlusOutlined,
@@ -24,6 +25,7 @@ import {
   DeleteOutlined,
   UploadOutlined,
   SyncOutlined,
+  SearchOutlined,
 } from '@ant-design/icons'
 import {
   ozonProductsApi,
@@ -49,6 +51,7 @@ const OzonProducts: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<OzonProduct | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
   const [form] = Form.useForm()
+  const [searchText, setSearchText] = useState('')
 
   useEffect(() => {
     if (connectionId) {
@@ -269,6 +272,15 @@ const OzonProducts: React.FC = () => {
     },
   ]
 
+  const filteredProducts = products.filter((product) => {
+    const searchLower = searchText.toLowerCase()
+    return (
+      product.offer_id.toLowerCase().includes(searchLower) ||
+      product.sku.toString().toLowerCase().includes(searchLower) ||
+      product.name.toLowerCase().includes(searchLower)
+    )
+  })
+
   return (
     <div>
       <Card>
@@ -281,7 +293,6 @@ const OzonProducts: React.FC = () => {
               >
                 Назад к компании
               </Button>
-              
             </Space>
             <Space>
               <Button
@@ -312,9 +323,18 @@ const OzonProducts: React.FC = () => {
             Товары Ozon{company && ': ' + company.name}
           </Title>
 
+          <Input
+              placeholder="Поиск по артикулу, SKU или названию"
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              allowClear
+              style={{ width: 350 }}
+            />
+
           <Table
             columns={columns}
-            dataSource={products}
+            dataSource={filteredProducts}
             rowKey="id"
             loading={loading}
             scroll={{ x: 1400 }}
