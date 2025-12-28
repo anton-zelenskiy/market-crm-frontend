@@ -802,13 +802,7 @@ const SupplyDraftPage: React.FC = () => {
       {
         field: 'offer_id',
         headerName: 'Артикул',
-        width: 120,
-        pinned: 'left',
-      },
-      {
-        field: 'sku',
-        headerName: 'SKU',
-        width: 100,
+        width: 180,
         pinned: 'left',
       },
       {
@@ -819,14 +813,14 @@ const SupplyDraftPage: React.FC = () => {
       },
       {
         field: 'box_count',
-        headerName: 'Кратность короба',
-        width: 120,
+        headerName: 'Кратность',
+        width: 100,
         pinned: 'left',
       },
       {
         field: 'vendor_stocks_count',
-        headerName: 'Остатки на складе поставщика',
-        width: 150,
+        headerName: 'Остатки на заводе',
+        width: 120,
         type: 'numericColumn',
         pinned: 'left',
       },
@@ -996,12 +990,12 @@ const SupplyDraftPage: React.FC = () => {
                   // Valid
                 } else if (allUnavailable) {
                   isAvailabilityValid = false
-                  availabilityError = 'Все склады в кластере недоступны для данного товара'
+                  availabilityError = 'Нет доступных складов'
                 } else if (hasLimited.length > 0) {
                   const maxLimit = Math.max(...hasLimited)
                   if (numValue > maxLimit) {
                     isAvailabilityValid = false
-                    availabilityError = `Превышен максимальный лимит поставки (${maxLimit})`
+                    availabilityError = `Превышен лимит поставки (${maxLimit})`
                   }
                 }
               }
@@ -1228,7 +1222,7 @@ const SupplyDraftPage: React.FC = () => {
               loading={updating}
               onClick={handleDownloadFullXlsx}
             >
-              Скачать полные данные (XLSX)
+              Скачать всю таблицу (XLSX)
             </Button>
           </Space>
 
