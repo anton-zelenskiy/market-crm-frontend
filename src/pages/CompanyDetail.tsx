@@ -214,7 +214,7 @@ const CompanyDetail: React.FC = () => {
             </Title>
             {connections.length === 0 ? (
               <Alert
-                message="Нет подключений"
+                title="Нет подключений"
                 description="Создайте подключение для этой компании на странице Подключения."
                 type="info"
                 showIcon
@@ -297,7 +297,7 @@ const CompanyDetail: React.FC = () => {
             </div>
             {!selectedConnectionId && connections.length > 0 ? (
               <Alert
-                message="Выберите подключение"
+                title="Выберите подключение"
                 description="Пожалуйста, выберите подключение для просмотра доступных отчетов."
                 type="info"
                 showIcon

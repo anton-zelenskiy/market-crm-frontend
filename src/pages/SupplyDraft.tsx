@@ -176,6 +176,67 @@ const SupplyDraftPage: React.FC = () => {
   const [creatingSupply, setCreatingSupply] = useState<Record<number, boolean>>({})
   const [supplyCreateStatus, setSupplyCreateStatus] = useState<Record<number, SupplyCreateStatusResponse>>({})
 
+  const limitationStrategy = Form.useWatch('limitation_strategy', form)
+
+  const previewItems = useMemo(() => {
+    if (!selectedCluster || !tableData.length) return []
+
+    const items: Array<{
+      offer_id: string
+      sku: number
+      quantity: number
+      original_quantity: number
+      limit: any
+    }> = []
+
+    for (const item of tableData) {
+      const clusterData = item[selectedCluster]
+      if (!clusterData || clusterData.to_supply <= 0) continue
+
+      const toSupply = clusterData.to_supply
+      const boxCount = item.box_count || 1
+      const availability = clusterData.warehouse_availability || {}
+      
+      const values = Object.values(availability)
+      const hasNoLimits = values.some((v) => v === 'NO_LIMITS')
+      const hasLimited = values.filter((v) => typeof v === 'number' && v > 0) as number[]
+      const allUnavailable = values.length > 0 && values.every((v) => v === 'UNAVAILABLE')
+
+      let finalQuantity = toSupply
+      let maxLimit: number | string | null = null
+
+      if (hasNoLimits || values.length === 0) {
+        // No restriction or no availability data
+      } else if (allUnavailable) {
+        finalQuantity = 0
+      } else if (hasLimited.length > 0) {
+        const numericMaxLimit = Math.max(...hasLimited)
+        maxLimit = numericMaxLimit
+        if (toSupply > numericMaxLimit) {
+          if (limitationStrategy === 'skip') {
+            finalQuantity = 0
+          // If the limit is less than the box count, set the quantity 0 because we can't ship less than one box
+          } else if (numericMaxLimit < boxCount) {
+            finalQuantity = 0
+          } else {
+            finalQuantity = Math.floor(numericMaxLimit / boxCount) * boxCount
+          }
+        }
+      }
+
+      if (finalQuantity > 0) {
+        items.push({
+          offer_id: item.offer_id,
+          sku: item.sku,
+          quantity: finalQuantity,
+          original_quantity: toSupply,
+          limit: maxLimit,
+        })
+      }
+    }
+    return items
+  }, [selectedCluster, limitationStrategy, tableData])
+
   // Check if there are any invalid values in tableData
   const hasInvalidValues = useMemo(() => {
     if (!tableData || tableData.length === 0) return false
@@ -461,6 +522,7 @@ const SupplyDraftPage: React.FC = () => {
   const handleCreateDraft = useCallback((clusterName: string) => {
     setSelectedCluster(clusterName)
     setWarehouseModalVisible(true)
+    form.setFieldsValue({ limitation_strategy: 'reduce' })
     // Clear warehouses when opening modal
     setWarehouses([])
     // Clear any pending search timeout
@@ -513,7 +575,8 @@ const SupplyDraftPage: React.FC = () => {
     if (!connectionId || !selectedCluster) return
 
     try {
-      const values = await form.validateFields()
+      await form.validateFields()
+      const values = form.getFieldsValue()
       const warehouseId = values.warehouse_id
       const selectedWarehouse = warehouses.find((w) => w.warehouse_id === warehouseId)
 
@@ -522,41 +585,26 @@ const SupplyDraftPage: React.FC = () => {
         return
       }
 
-      // Get items for this cluster from table data
-      const items: Array<{ sku: number; quantity: number }> = []
-      for (const item of tableData) {
-        const clusterData = item[selectedCluster]
-        if (clusterData && clusterData.to_supply > 0) {
-          // Validate box_count
-          if (item.box_count > 0 && clusterData.to_supply % item.box_count !== 0) {
-            message.error(
-              `Количество для артикула ${item.offer_id} должно быть кратно ${item.box_count}`
-            )
-            return
-          }
-          items.push({
-            sku: item.sku,
-            quantity: clusterData.to_supply,
-          })
-        }
-      }
-
-      if (items.length === 0) {
-        message.warning('Не выбрано ни одного товара для поставки')
+      if (previewItems.length === 0) {
+        message.warning('Не выбрано ни одного товара для поставки с учетом ограничений')
         return
       }
 
       const request: CreateSupplyDraftRequest = {
         connection_id: parseInt(connectionId),
+        // TODO: remove drop_off_warehouse_name, drop_off_warehouse_id
         drop_off_warehouse_id: warehouseId,
-        drop_off_warehouse_name: selectedWarehouse.name,  // Keep for backward compatibility
+        drop_off_warehouse_name: selectedWarehouse.name, // Keep for backward compatibility
         drop_off_warehouse: {
           warehouse_id: warehouseId,
           name: selectedWarehouse.name,
           address: selectedWarehouse.address || null,
         },
         cluster_name: selectedCluster,
-        items,
+        items: previewItems.map((item) => ({
+          sku: item.sku,
+          quantity: item.quantity,
+        })),
       }
 
       await suppliesApi.createSupplyDraft(request)
@@ -1228,7 +1276,7 @@ const SupplyDraftPage: React.FC = () => {
 
           {!snapshot ? (
             <Alert
-              message="Нет данных"
+              title="Нет данных"
               description="Нажмите 'Обновить данные' для создания снапшота"
               type="info"
               showIcon
@@ -1282,7 +1330,7 @@ const SupplyDraftPage: React.FC = () => {
 
                     return (
                       <div style={{ padding: '16px' }}>
-                        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                           {/* Warehouse selection */}
                           <div>
                             <Text strong>Выберите склад размещения:</Text>
@@ -1656,6 +1704,62 @@ const SupplyDraftPage: React.FC = () => {
               ))}
             </Select>
           </Form.Item>
+
+          <Form.Item
+            name="limitation_strategy"
+            label="При наличии ограничений на складе"
+          >
+            <Radio.Group>
+              <Space orientation="vertical">
+                <Radio value="skip">Не поставлять товары с ограничениями</Radio>
+                <Radio value="reduce">Уменьшить количество до лимита склада</Radio>
+              </Space>
+            </Radio.Group>
+          </Form.Item>
+
+          {previewItems.length > 0 && (
+            <div style={{ marginTop: '16px' }}>
+              <Text strong>Товары в поставке ({previewItems.length}):</Text>
+              <Table
+                dataSource={previewItems}
+                rowKey="offer_id"
+                size="small"
+                pagination={{ pageSize: 10 }}
+                style={{ marginTop: '8px' }}
+                columns={[
+                  {
+                    title: 'Артикул',
+                    dataIndex: 'offer_id',
+                    key: 'offer_id',
+                  },
+                  {
+                    title: 'Кол-во',
+                    dataIndex: 'quantity',
+                    key: 'quantity',
+                    render: (val, record) => (
+                      <span>
+                        {val}
+                        {record.original_quantity !== val && (
+                          <Tag color="orange" style={{ marginLeft: '8px' }}>
+                            было {record.original_quantity}
+                          </Tag>
+                        )}
+                      </span>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          )}
+          {previewItems.length === 0 && selectedCluster && !warehouseLoading && (
+            <Alert
+              title="Нет товаров для поставки"
+              description="С учетом текущих ограничений кластера и выбранной стратегии, ни один товар не может быть добавлен в поставку."
+              type="warning"
+              showIcon
+              style={{ marginTop: '16px' }}
+            />
+          )}
         </Form>
       </Modal>
 

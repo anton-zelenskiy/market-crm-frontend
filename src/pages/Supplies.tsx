@@ -447,11 +447,11 @@ const Supplies: React.FC = () => {
                       <Typography.Title level={5} style={{ marginBottom: '12px' }}>
                         Ошибки при создании грузомест:
                       </Typography.Title>
-                      <Space direction="vertical" style={{ width: '100%' }}>
+                      <Space orientation="vertical" style={{ width: '100%' }}>
                         {record.errors.map((error, index) => (
                           <Alert
                             key={index}
-                            message={formatErrorReason(error)}
+                            title={formatErrorReason(error)}
                             type="error"
                             showIcon
                           />
