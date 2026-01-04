@@ -59,7 +59,7 @@ const DashboardLayout: React.FC = () => {
     {
       key: '/connections',
       icon: <LinkOutlined />,
-      label: 'Подключения',
+      label: 'API Подключения',
     },
     {
       key: '/data-sources',

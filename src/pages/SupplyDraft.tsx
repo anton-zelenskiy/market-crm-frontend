@@ -24,6 +24,7 @@ import {
   UploadOutlined,
   DownloadOutlined,
   FileExcelOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons'
 import { AgGridReact } from 'ag-grid-react'
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community'
@@ -517,6 +518,27 @@ const SupplyDraftPage: React.FC = () => {
     }
   }
 
+  const handleDeleteDraft = async (draftId: number) => {
+    Modal.confirm({
+      title: 'Вы уверены, что хотите удалить этот черновик?',
+      content: 'Это действие нельзя отменить.',
+      okText: 'Удалить',
+      okType: 'danger',
+      cancelText: 'Отмена',
+      onOk: async () => {
+        try {
+          await suppliesApi.deleteSupplyDraft(draftId)
+          message.success('Черновик удален')
+          loadDrafts()
+        } catch (error: any) {
+          message.error(
+            error.response?.data?.detail || 'Ошибка при удалении черновика'
+          )
+        }
+      },
+    })
+  }
+
   const handleCreateDraft = useCallback((clusterName: string) => {
     setSelectedCluster(clusterName)
     setWarehouseModalVisible(true)
@@ -590,9 +612,7 @@ const SupplyDraftPage: React.FC = () => {
 
       const request: CreateSupplyDraftRequest = {
         connection_id: parseInt(connectionId),
-        // TODO: remove drop_off_warehouse_name, drop_off_warehouse_id
-        drop_off_warehouse_id: warehouseId,
-        drop_off_warehouse_name: selectedWarehouse.name, // Keep for backward compatibility
+        supply_data_snapshot_id: parseInt(snapshotId!),
         drop_off_warehouse: {
           warehouse_id: warehouseId,
           name: selectedWarehouse.name,
@@ -1640,6 +1660,21 @@ const SupplyDraftPage: React.FC = () => {
                     key: 'created_at',
                     render: (date: string) =>
                       new Date(date).toLocaleString('ru-RU'),
+                  },
+                  {
+                    title: 'Действия',
+                    key: 'actions',
+                    render: (_: any, record: SupplyDraft) => (
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteDraft(record.id)
+                        }}
+                      />
+                    ),
                   },
                 ]}
                 pagination={{ pageSize: 10 }}

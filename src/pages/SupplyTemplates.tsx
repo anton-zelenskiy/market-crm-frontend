@@ -78,36 +78,32 @@ const SupplyTemplates: React.FC = () => {
 
   const columns = [
     {
-      title: 'ID',
+      title: '№',
       dataIndex: 'id',
       key: 'id',
-      width: 80,
-    },
-    {
-      title: 'Дата обновления',
-      dataIndex: 'updated_at',
-      key: 'updated_at',
-      render: (date: string) => new Date(date).toLocaleString('ru-RU'),
+      width: 240,
+      render: (_: string, record: SupplySnapshotResponse) => (
+        <Button
+          type="link"
+          onClick={() => navigate(`/connections/${connectionId}/supply-templates/${record.id}`)}
+        >
+          <Space>Поставка №{record.id} от {new Date(record.updated_at).toLocaleDateString('ru-RU')}</Space>
+        </Button>        
+      ),
     },
     {
       title: 'Кол-во товаров',
       dataIndex: 'data',
       key: 'items_count',
+      width: 120,
       render: (data: any[]) => data.length,
     },
     {
       title: 'Действия',
       key: 'actions',
-      width: 200,
+      width: 150,
       render: (_: any, record: SupplySnapshotResponse) => (
         <Space>
-          <Button
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => navigate(`/connections/${connectionId}/supply-templates/${record.id}`)}
-          >
-            Просмотр
-          </Button>
           <Popconfirm
             title="Вы уверены, что хотите удалить этот шаблон?"
             onConfirm={() => handleDelete(record.id)}

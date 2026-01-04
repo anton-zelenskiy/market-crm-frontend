@@ -81,8 +81,7 @@ export interface DropOffWarehouse {
 
 export interface CreateSupplyDraftRequest {
   connection_id: number
-  drop_off_warehouse_id: number
-  drop_off_warehouse_name: string  // Deprecated, kept for backward compatibility
+  supply_data_snapshot_id: number
   drop_off_warehouse: DropOffWarehouse
   cluster_name: string
   items: Array<{ sku: number; quantity: number }>
@@ -289,6 +288,10 @@ export const suppliesApi = {
   ): Promise<SupplyDraft> => {
     const response = await api.post('/supplies/supply-draft', request)
     return response.data
+  },
+
+  deleteSupplyDraft: async (draftId: number): Promise<void> => {
+    await api.delete(`/supplies/supply-draft/${draftId}`)
   },
 
   getConnectionDrafts: async (
