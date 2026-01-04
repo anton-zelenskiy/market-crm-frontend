@@ -257,12 +257,24 @@ const CompanyDetail: React.FC = () => {
                             Товары
                           </Button>
                         )}
+
+                        {record.data_source?.name === 'ozon' && (
+                          <Button
+                            type="primary"
+                            onClick={() => {
+                              navigate(`/connections/${record.id}/supply-templates`)
+                            }}
+                          >
+                            Поставки
+                          </Button>
+                        )}
+
                         {record.data_source?.name === 'ozon' && (
                           <Button
                             type="primary"
                             onClick={() => navigate(`/connections/${record.id}/supplies`)}
                           >
-                            Поставки
+                            Поставки {record.data_source.title}
                           </Button>
                         )}
                       </Space>

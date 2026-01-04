@@ -45,6 +45,8 @@ export interface DownloadDocumentsRequest {
 }
 
 export interface SupplySnapshotResponse {
+  id: number
+  connection_id: number
   data: Array<{
     offer_id: string
     sku: number
@@ -216,30 +218,48 @@ export const suppliesApi = {
     return response.data
   },
 
-  getSupplySnapshot: async (
+  getSnapshots: async (
     connectionId: number
-  ): Promise<SupplySnapshotResponse | null> => {
-    const response = await api.get(`/supplies/connection/${connectionId}/snapshot`)
+  ): Promise<SupplySnapshotResponse[]> => {
+    const response = await api.get(`/supplies/connection/${connectionId}/snapshots`)
     return response.data
   },
 
-  updateSupplySnapshot: async (
+  getSnapshot: async (
+    snapshotId: number
+  ): Promise<SupplySnapshotResponse> => {
+    const response = await api.get(`/supplies/snapshot/${snapshotId}`)
+    return response.data
+  },
+
+  createSnapshot: async (
     connectionId: number
   ): Promise<SupplySnapshotResponse> => {
     const response = await api.post(
-      `/supplies/connection/${connectionId}/snapshot/update`
+      `/supplies/connection/${connectionId}/snapshot/create`
     )
     return response.data
   },
 
+  refreshSnapshot: async (
+    snapshotId: number
+  ): Promise<SupplySnapshotResponse> => {
+    const response = await api.post(`/supplies/snapshot/${snapshotId}/refresh`)
+    return response.data
+  },
+
+  deleteSnapshot: async (snapshotId: number): Promise<void> => {
+    await api.delete(`/supplies/snapshot/${snapshotId}`)
+  },
+
   uploadWarehouseAvailability: async (
-    connectionId: number,
+    snapshotId: number,
     file: File
   ): Promise<SupplySnapshotResponse> => {
     const formData = new FormData()
     formData.append('file', file)
     const response = await api.post(
-      `/supplies/connection/${connectionId}/snapshot/warehouse-availability`,
+      `/supplies/snapshot/${snapshotId}/warehouse-availability`,
       formData,
       {
         headers: {
@@ -311,9 +331,9 @@ export const suppliesApi = {
     return response.data
   },
 
-  downloadDeficitCsv: async (connectionId: number): Promise<Blob> => {
+  downloadDeficitCsv: async (snapshotId: number): Promise<Blob> => {
     const response = await api.get(
-      `/supplies/connection/${connectionId}/snapshot/deficit-csv`,
+      `/supplies/snapshot/${snapshotId}/deficit-csv`,
       {
         responseType: 'blob',
       }
@@ -321,9 +341,9 @@ export const suppliesApi = {
     return response.data
   },
 
-  downloadAvailabilityCsv: async (connectionId: number): Promise<Blob> => {
+  downloadAvailabilityCsv: async (snapshotId: number): Promise<Blob> => {
     const response = await api.get(
-      `/supplies/connection/${connectionId}/snapshot/availability-csv`,
+      `/supplies/snapshot/${snapshotId}/availability-csv`,
       {
         responseType: 'blob',
       }
@@ -331,9 +351,9 @@ export const suppliesApi = {
     return response.data
   },
 
-  downloadFullSnapshotXlsx: async (connectionId: number): Promise<Blob> => {
+  downloadFullSnapshotXlsx: async (snapshotId: number): Promise<Blob> => {
     const response = await api.get(
-      `/supplies/connection/${connectionId}/snapshot/xlsx`,
+      `/supplies/snapshot/${snapshotId}/xlsx`,
       {
         responseType: 'blob',
       }
@@ -343,11 +363,11 @@ export const suppliesApi = {
 }
 
 export async function saveSupplySnapshot(
-  connectionId: number,
+  snapshotId: number,
   data: SupplySnapshotResponse['data']
 ): Promise<SupplySnapshotResponse> {
   const response = await api.put<SupplySnapshotResponse>(
-    `/supplies/connection/${connectionId}/snapshot`,
+    `/supplies/snapshot/${snapshotId}`,
     { data }
   )
   return response.data

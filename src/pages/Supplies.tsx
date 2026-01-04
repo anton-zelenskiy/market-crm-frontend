@@ -400,16 +400,6 @@ const Supplies: React.FC = () => {
                 Поставки - {company?.name || ''}
               </Title>
             </Space>
-            {connection && connection.data_source?.name === 'ozon' && (
-              <Button
-                type="primary"
-                onClick={() => {
-                  navigate(`/connections/${connectionId}/supply-draft`)
-                }}
-              >
-                Сформировать поставку
-              </Button>
-            )}
           </div>
 
           {!connection ? (

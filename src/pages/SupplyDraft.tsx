@@ -44,7 +44,7 @@ import {
   type SupplyCreateStatusResponse,
   saveSupplySnapshot,
 } from '../api/supplies'
-import { connectionsApi, type Connection } from '../api/connections'
+import { connectionsApi } from '../api/connections'
 import { companiesApi, type Company } from '../api/companies'
 
 const { Title, Text } = Typography
@@ -145,14 +145,13 @@ interface SupplyDataItem {
 }
 
 const SupplyDraftPage: React.FC = () => {
-  const { connectionId } = useParams<{ connectionId: string }>()
+  const { connectionId, snapshotId } = useParams<{ connectionId: string, snapshotId: string }>()
   const navigate = useNavigate()
   const [snapshot, setSnapshot] = useState<SupplySnapshotResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [company, setCompany] = useState<Company | null>(null)
-  const [_, setConnection] = useState<Connection | null>(null) // connection
   const [drafts, setDrafts] = useState<SupplyDraft[]>([])
   const [warehouseModalVisible, setWarehouseModalVisible] = useState(false)
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null)
@@ -287,7 +286,7 @@ const SupplyDraftPage: React.FC = () => {
   const [isDirty, setIsDirty] = useState(false)
 
   const handleSaveSnapshot = useCallback(async () => {
-    if (!connectionId || !tableData.length || saving) {
+    if (!snapshotId || !tableData.length || saving) {
       if (saving) setIsDirty(true)
       return
     }
@@ -301,7 +300,7 @@ const SupplyDraftPage: React.FC = () => {
     setSaving(true)
     try {
       const savedSnapshot = await saveSupplySnapshot(
-        parseInt(connectionId),
+        parseInt(snapshotId),
         tableData
       )
       setSnapshot(savedSnapshot)
@@ -312,7 +311,7 @@ const SupplyDraftPage: React.FC = () => {
     } finally {
       setSaving(false)
     }
-  }, [connectionId, tableData, hasInvalidValues, saving])
+  }, [snapshotId, tableData, hasInvalidValues, saving])
 
   // Use a ref to always call the latest version of handleSaveSnapshot
   // This ensures that debouncedSave uses the most up-to-date tableData
@@ -336,12 +335,12 @@ const SupplyDraftPage: React.FC = () => {
   }, [saving, isDirty, debouncedSave])
 
   useEffect(() => {
-    if (connectionId) {
+    if (connectionId && snapshotId) {
       loadConnectionData()
       loadSnapshot()
       loadDrafts()
     }
-  }, [connectionId])
+  }, [connectionId, snapshotId])
 
   // Update timer every second
   useEffect(() => {
@@ -356,7 +355,6 @@ const SupplyDraftPage: React.FC = () => {
 
     try {
       const connectionData = await connectionsApi.getById(parseInt(connectionId))
-      setConnection(connectionData)
 
       if (connectionData.company_id) {
         const companyData = await companiesApi.getById(connectionData.company_id)
@@ -370,12 +368,12 @@ const SupplyDraftPage: React.FC = () => {
   }
 
   const loadSnapshot = async () => {
-    if (!connectionId) return
+    if (!snapshotId) return
 
     setLoading(true)
     try {
-      const snapshotData = await suppliesApi.getSupplySnapshot(
-        parseInt(connectionId)
+      const snapshotData = await suppliesApi.getSnapshot(
+        parseInt(snapshotId)
       )
       setSnapshot(snapshotData)
       if (snapshotData) {
@@ -406,12 +404,12 @@ const SupplyDraftPage: React.FC = () => {
   }
 
   const handleUpdateSnapshot = async () => {
-    if (!connectionId) return
+    if (!snapshotId) return
 
     setUpdating(true)
     try {
-      const updatedSnapshot = await suppliesApi.updateSupplySnapshot(
-        parseInt(connectionId)
+      const updatedSnapshot = await suppliesApi.refreshSnapshot(
+        parseInt(snapshotId)
       )
       setSnapshot(updatedSnapshot)
       setTableData(updatedSnapshot.data)
@@ -426,12 +424,12 @@ const SupplyDraftPage: React.FC = () => {
   }
 
   const handleUploadAvailability = async (file: File) => {
-    if (!connectionId) return
+    if (!snapshotId) return
 
     setUpdating(true)
     try {
       const updatedSnapshot = await suppliesApi.uploadWarehouseAvailability(
-        parseInt(connectionId),
+        parseInt(snapshotId),
         file
       )
       setSnapshot(updatedSnapshot)
@@ -448,11 +446,11 @@ const SupplyDraftPage: React.FC = () => {
   }
 
   const handleDownloadDeficit = async () => {
-    if (!connectionId) return
+    if (!snapshotId) return
 
     setUpdating(true)
     try {
-      const blob = await suppliesApi.downloadDeficitCsv(parseInt(connectionId))
+      const blob = await suppliesApi.downloadDeficitCsv(parseInt(snapshotId))
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -472,11 +470,11 @@ const SupplyDraftPage: React.FC = () => {
   }
 
   const handleDownloadAvailability = async () => {
-    if (!connectionId) return
+    if (!snapshotId) return
 
     setUpdating(true)
     try {
-      const blob = await suppliesApi.downloadAvailabilityCsv(parseInt(connectionId))
+      const blob = await suppliesApi.downloadAvailabilityCsv(parseInt(snapshotId))
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -496,11 +494,11 @@ const SupplyDraftPage: React.FC = () => {
   }
 
   const handleDownloadFullXlsx = async () => {
-    if (!connectionId) return
+    if (!snapshotId) return
 
     setUpdating(true)
     try {
-      const blob = await suppliesApi.downloadFullSnapshotXlsx(parseInt(connectionId))
+      const blob = await suppliesApi.downloadFullSnapshotXlsx(parseInt(snapshotId))
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -1213,7 +1211,7 @@ const SupplyDraftPage: React.FC = () => {
                 icon={<ArrowLeftOutlined />}
                 onClick={() => {
                   if (connectionId) {
-                    navigate(`/connections/${connectionId}/supplies`)
+                    navigate(`/connections/${connectionId}/supply-templates`)
                   } else {
                     navigate('/connections')
                   }
