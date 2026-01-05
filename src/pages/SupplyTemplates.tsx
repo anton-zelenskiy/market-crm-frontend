@@ -17,6 +17,7 @@ import {
 } from '@ant-design/icons'
 import { suppliesApi, type SupplySnapshotResponse } from '../api/supplies'
 import { connectionsApi, type Connection } from '../api/connections'
+import { companiesApi, type Company } from '../api/companies'
 
 const { Title } = Typography
 
@@ -25,6 +26,7 @@ const SupplyTemplates: React.FC = () => {
   const navigate = useNavigate()
   const [snapshots, setSnapshots] = useState<SupplySnapshotResponse[]>([])
   const [connection, setConnection] = useState<Connection | null>(null)
+  const [company, setCompany] = useState<Company | null>(null)
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
 
@@ -44,6 +46,9 @@ const SupplyTemplates: React.FC = () => {
       ])
       setSnapshots(snapshotsData)
       setConnection(connectionData)
+      
+      const companyData = await companiesApi.getById(connectionData.company_id)
+      setCompany(companyData)
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка загрузки данных')
     } finally {
@@ -135,7 +140,7 @@ const SupplyTemplates: React.FC = () => {
                 Назад
               </Button>
               <Title level={2} style={{ margin: 0 }}>
-                <FileTextOutlined /> Шаблоны поставок - {connection?.company_name || connection?.data_source?.title || ''}
+                <FileTextOutlined /> Шаблоны поставок - {company?.name} ({connection?.data_source?.title})
               </Title>
             </Space>
             <Button
