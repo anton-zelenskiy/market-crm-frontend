@@ -22,11 +22,15 @@ import {
   Col,
   Empty,
   Input,
+  Checkbox,
+  Popover,
 } from 'antd'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import 'dayjs/locale/ru'
+import localeData from 'dayjs/plugin/localeData'
 
+dayjs.extend(localeData)
 dayjs.locale('ru')
 import {
   ArrowLeftOutlined,
@@ -36,6 +40,7 @@ import {
   FileExcelOutlined,
   DeleteOutlined,
   SearchOutlined,
+  SettingOutlined,
 } from '@ant-design/icons'
 import { AgGridReact } from 'ag-grid-react'
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community'
@@ -178,6 +183,14 @@ const SupplyDraftPage: React.FC = () => {
   const [form] = Form.useForm()
   const [tableData, setTableData] = useState<SupplyDataItem[]>([])
   const [clusterFilter, setClusterFilter] = useState('')
+  const [visibleBaseColumns, setVisibleBaseColumns] = useState<string[]>(['offer_id', 'name', 'box_count', 'vendor_stocks_count'])
+  const [visibleSubColumns, setVisibleSubColumns] = useState<string[]>([
+    'marketplace_stocks_count',
+    'orders_count',
+    'avg_orders_leverage',
+    'warehouse_availability',
+    'to_supply'
+  ])
   const searchTimeoutRef = useRef<number | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [expandedDraftId, setExpandedDraftId] = useState<number | null>(null)
@@ -190,6 +203,44 @@ const SupplyDraftPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Record<number, string>>({})
 
   const limitationStrategy = Form.useWatch('limitation_strategy', form)
+
+  const columnSettingsContent = (
+    <div style={{ padding: '8px', minWidth: '250px' }}>
+      <div style={{ marginBottom: '16px' }}>
+        <Text strong>Базовые столбцы</Text>
+        <div style={{ marginTop: '8px' }}>
+          <Checkbox.Group
+            options={[
+              { label: 'Артикул', value: 'offer_id' },
+              { label: 'Наименование', value: 'name' },
+              { label: 'Кратность', value: 'box_count' },
+              { label: 'Остатки на заводе', value: 'vendor_stocks_count' },
+            ]}
+            value={visibleBaseColumns}
+            onChange={(values) => setVisibleBaseColumns(values as string[])}
+            style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+          />
+        </div>
+      </div>
+      <div>
+        <Text strong>Данные кластеров</Text>
+        <div style={{ marginTop: '8px' }}>
+          <Checkbox.Group
+            options={[
+              { label: 'Остатки на маркетплейсе', value: 'marketplace_stocks_count' },
+              { label: 'Заказы (мес.)', value: 'orders_count' },
+              { label: 'Сред. кол-во за 45 дн.', value: 'avg_orders_leverage' },
+              { label: 'Ограничения складов', value: 'warehouse_availability' },
+              { label: 'Отгрузить на маркетплейс', value: 'to_supply' },
+            ]}
+            value={visibleSubColumns}
+            onChange={(values) => setVisibleSubColumns(values as string[])}
+            style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+          />
+        </div>
+      </div>
+    </div>
+  )
 
   const previewItems = useMemo(() => {
     if (!selectedCluster || !tableData.length) return []
@@ -896,28 +947,28 @@ const SupplyDraftPage: React.FC = () => {
         field: 'offer_id',
         headerName: 'Артикул',
         width: 180,
-        pinned: 'left',
+        pinned: 'left' as const,
       },
       {
         field: 'name',
         headerName: 'Наименование',
         width: 200,
-        pinned: 'left',
+        pinned: 'left' as const,
       },
       {
         field: 'box_count',
         headerName: 'Кратность',
         width: 100,
-        pinned: 'left',
+        pinned: 'left' as const,
       },
       {
         field: 'vendor_stocks_count',
         headerName: 'Остатки на заводе',
         width: 120,
         type: 'numericColumn',
-        pinned: 'left',
+        pinned: 'left' as const,
       },
-    ]
+    ].filter(h => 'field' in h && visibleBaseColumns.includes(h.field as string))
 
     // Get cluster names from first item (excluding totals and base fields)
     const firstItem = snapshot.data[0]
@@ -935,286 +986,322 @@ const SupplyDraftPage: React.FC = () => {
 
     // Add cluster columns with nested headers
     clusterNames.forEach((clusterName) => {
-      baseHeaders.push({
-        headerName: clusterName,
-        headerGroupComponent: ClusterHeaderComponent,
-        headerGroupComponentParams: {
-          clusterName,
-          onCreateDraft: handleCreateDraft,
-        },
-        children: [
-          {
-            field: `${clusterName}_marketplace_stocks_count`,
-            headerName: 'Остатки на маркетплейсе',
-            width: 150,
-            type: 'numericColumn',
-            valueGetter: (params) => {
-              const clusterData = params.data?.[clusterName]
-              if (clusterData && typeof clusterData === 'object') {
-                return clusterData.marketplace_stocks_count ?? 0
-              }
-              return 0
-            },
-            valueFormatter: (params) => {
-              const value = params.value !== undefined && params.value !== null ? params.value : 0
-              return String(value)
-            },
+      const children: ColDef[] = []
+      
+      if (visibleSubColumns.includes('marketplace_stocks_count')) {
+        children.push({
+          field: `${clusterName}_marketplace_stocks_count`,
+          headerName: 'Остатки на маркетплейсе',
+          width: 150,
+          type: 'numericColumn',
+          valueGetter: (params) => {
+            const clusterData = params.data?.[clusterName]
+            if (clusterData && typeof clusterData === 'object') {
+              return clusterData.marketplace_stocks_count ?? 0
+            }
+            return 0
           },
-          {
-            field: `${clusterName}_orders_count`,
-            headerName: 'Кол-во заказов (мес.)',
-            width: 150,
-            type: 'numericColumn',
-            valueGetter: (params) => {
-              const clusterData = params.data?.[clusterName]
-              if (clusterData && typeof clusterData === 'object') {
-                return clusterData.orders_count ?? 0
-              }
-              return 0
-            },
-            valueFormatter: (params) => {
-              const value = params.value !== undefined && params.value !== null ? params.value : 0
-              return String(value)
-            },
+          valueFormatter: (params) => {
+            const value = params.value !== undefined && params.value !== null ? params.value : 0
+            return String(value)
           },
-          {
-            field: `${clusterName}_avg_orders_leverage`,
-            headerName: 'Сред. кол-во за 45 дн.',
-            width: 150,
-            type: 'numericColumn',
-            valueGetter: (params) => {
-              const clusterData = params.data?.[clusterName]
-              if (clusterData && typeof clusterData === 'object') {
-                return clusterData.avg_orders_leverage ?? 0
-              }
-              return 0
-            },
-            valueFormatter: (params) => {
-              const value = params.value !== undefined && params.value !== null ? params.value : 0
-              return String(value)
-            },
-          },
-          {
-            field: `${clusterName}_warehouse_availability`,
-            headerName: 'Максимальный размер поставки',
-            width: 180,
-            valueGetter: (params) => {
-              const clusterData = params.data?.[clusterName]
-              if (clusterData && typeof clusterData === 'object') {
-                return clusterData.warehouse_availability ?? null
-              }
-              return null
-            },
-            onCellClicked: (params) => {
-              if (params.value) {
-                setSelectedAvailability({
-                  clusterName: clusterName,
-                  offerId: params.data.offer_id,
-                  availability: params.value,
-                })
-                setAvailabilityModalVisible(true)
-              }
-            },
-            cellRenderer: (params: any) => {
-              const availability = params.value
-              if (!availability) {
-                return <Tag color="default">Неизвестно</Tag>
-              }
+        })
+      }
 
+      if (visibleSubColumns.includes('orders_count')) {
+        children.push({
+          field: `${clusterName}_orders_count`,
+          headerName: 'Кол-во заказов (мес.)',
+          width: 150,
+          type: 'numericColumn',
+          valueGetter: (params) => {
+            const clusterData = params.data?.[clusterName]
+            if (clusterData && typeof clusterData === 'object') {
+              return clusterData.orders_count ?? 0
+            }
+            return 0
+          },
+          valueFormatter: (params) => {
+            const value = params.value !== undefined && params.value !== null ? params.value : 0
+            return String(value)
+          },
+        })
+      }
+
+      if (visibleSubColumns.includes('avg_orders_leverage')) {
+        children.push({
+          field: `${clusterName}_avg_orders_leverage`,
+          headerName: 'Сред. кол-во за 45 дн.',
+          width: 150,
+          type: 'numericColumn',
+          valueGetter: (params) => {
+            const clusterData = params.data?.[clusterName]
+            if (clusterData && typeof clusterData === 'object') {
+              return clusterData.avg_orders_leverage ?? 0
+            }
+            return 0
+          },
+          valueFormatter: (params) => {
+            const value = params.value !== undefined && params.value !== null ? params.value : 0
+            return String(value)
+          },
+        })
+      }
+
+      if (visibleSubColumns.includes('warehouse_availability')) {
+        children.push({
+          field: `${clusterName}_warehouse_availability`,
+          headerName: 'Максимальный размер поставки',
+          width: 180,
+          valueGetter: (params) => {
+            const clusterData = params.data?.[clusterName]
+            if (clusterData && typeof clusterData === 'object') {
+              return clusterData.warehouse_availability ?? null
+            }
+            return null
+          },
+          onCellClicked: (params) => {
+            if (params.value) {
+              setSelectedAvailability({
+                clusterName: clusterName,
+                offerId: params.data.offer_id,
+                availability: params.value,
+              })
+              setAvailabilityModalVisible(true)
+            }
+          },
+          cellRenderer: (params: any) => {
+            const availability = params.value
+            if (!availability) {
+              return <Tag color="default">Неизвестно</Tag>
+            }
+
+            const values = Object.values(availability)
+            const hasNoLimits = values.some((v) => v === 'NO_LIMITS')
+            const hasLimited = values.some((v) => typeof v === 'number' && v > 0)
+            const allUnavailable = values.every((v) => v === 'UNAVAILABLE')
+
+            if (hasNoLimits) {
+              return <Tag color="green">Без ограничений</Tag>
+            }
+            if (hasLimited) {
+              const maxLimit = Math.max(...values.filter((v) => typeof v === 'number') as number[])
+              return <Tag color="warning">Ограничено ({maxLimit})</Tag>
+            }
+            if (allUnavailable) {
+              return <Tag color="red">Недоступно</Tag>
+            }
+            return <Tag color="default">Неизвестно</Tag>
+          },
+        })
+      }
+
+      if (visibleSubColumns.includes('to_supply')) {
+        children.push({
+          field: `${clusterName}_to_supply`,
+          headerName: 'Отгрузить на маркетплейс',
+          width: 150,
+          type: 'numericColumn',
+          editable: true,
+          cellEditor: 'agNumberCellEditor',
+          cellEditorParams: {
+            min: 0,
+            precision: 0,
+          },
+          valueGetter: (params) => {
+            const clusterData = params.data?.[clusterName]
+            if (clusterData && typeof clusterData === 'object') {
+              return clusterData.to_supply ?? 0
+            }
+            return 0
+          },
+          valueFormatter: (params) => {
+            const value = params.value !== undefined && params.value !== null ? params.value : 0
+            return String(value)
+          },
+          cellRenderer: (params: any) => {
+            const boxCount = params.data?.box_count || 1
+            const clusterData = params.data?.[clusterName]
+            const actualValue = params.value !== undefined && params.value !== null 
+              ? params.value 
+              : (clusterData && typeof clusterData === 'object' ? (clusterData.to_supply ?? 0) : 0)
+            const numValue = Number(actualValue) || 0
+            
+            // 1. Check box count validity
+            const isBoxCountValid = boxCount <= 0 || numValue === 0 || numValue % boxCount === 0
+            let boxCountError = ''
+            if (!isBoxCountValid) {
+              boxCountError = `Количество должно быть кратно ${boxCount}`
+            }
+
+            // 2. Check warehouse availability validity if numValue > 0
+            let isAvailabilityValid = true
+            let availabilityError = ''
+            if (numValue > 0 && clusterData?.warehouse_availability) {
+              const availability = clusterData.warehouse_availability
               const values = Object.values(availability)
               const hasNoLimits = values.some((v) => v === 'NO_LIMITS')
-              const hasLimited = values.some((v) => typeof v === 'number' && v > 0)
+              const hasLimited = values.filter((v) => typeof v === 'number' && v > 0) as number[]
               const allUnavailable = values.every((v) => v === 'UNAVAILABLE')
 
               if (hasNoLimits) {
-                return <Tag color="green">Без ограничений</Tag>
-              }
-              if (hasLimited) {
-                const maxLimit = Math.max(...values.filter((v) => typeof v === 'number') as number[])
-                return <Tag color="warning">Ограничено ({maxLimit})</Tag>
-              }
-              if (allUnavailable) {
-                return <Tag color="red">Недоступно</Tag>
-              }
-              return <Tag color="default">Неизвестно</Tag>
-            },
-          },
-          {
-            field: `${clusterName}_to_supply`,
-            headerName: 'Отгрузить на маркетплейс',
-            width: 150,
-            type: 'numericColumn',
-            editable: true,
-            cellEditor: 'agNumberCellEditor',
-            cellEditorParams: {
-              min: 0,
-              precision: 0,
-            },
-            valueGetter: (params) => {
-              const clusterData = params.data?.[clusterName]
-              if (clusterData && typeof clusterData === 'object') {
-                return clusterData.to_supply ?? 0
-              }
-              return 0
-            },
-            valueFormatter: (params) => {
-              const value = params.value !== undefined && params.value !== null ? params.value : 0
-              return String(value)
-            },
-            cellRenderer: (params: any) => {
-              const boxCount = params.data?.box_count || 1
-              const clusterData = params.data?.[clusterName]
-              const actualValue = params.value !== undefined && params.value !== null 
-                ? params.value 
-                : (clusterData && typeof clusterData === 'object' ? (clusterData.to_supply ?? 0) : 0)
-              const numValue = Number(actualValue) || 0
-              
-              // 1. Check box count validity
-              const isBoxCountValid = boxCount <= 0 || numValue === 0 || numValue % boxCount === 0
-              let boxCountError = ''
-              if (!isBoxCountValid) {
-                boxCountError = `Количество должно быть кратно ${boxCount}`
-              }
-
-              // 2. Check warehouse availability validity if numValue > 0
-              let isAvailabilityValid = true
-              let availabilityError = ''
-              if (numValue > 0 && clusterData?.warehouse_availability) {
-                const availability = clusterData.warehouse_availability
-                const values = Object.values(availability)
-                const hasNoLimits = values.some((v) => v === 'NO_LIMITS')
-                const hasLimited = values.filter((v) => typeof v === 'number' && v > 0) as number[]
-                const allUnavailable = values.every((v) => v === 'UNAVAILABLE')
-
-                if (hasNoLimits) {
-                  // Valid
-                } else if (allUnavailable) {
+                // Valid
+              } else if (allUnavailable) {
+                isAvailabilityValid = false
+                availabilityError = 'Нет доступных складов'
+              } else if (hasLimited.length > 0) {
+                const maxLimit = Math.max(...hasLimited)
+                if (numValue > maxLimit) {
                   isAvailabilityValid = false
-                  availabilityError = 'Нет доступных складов'
-                } else if (hasLimited.length > 0) {
-                  const maxLimit = Math.max(...hasLimited)
-                  if (numValue > maxLimit) {
-                    isAvailabilityValid = false
-                    availabilityError = `Превышен лимит поставки (${maxLimit})`
-                  }
+                  availabilityError = `Превышен лимит поставки (${maxLimit})`
                 }
               }
-              
-              // Default background color for cells with value 0 (soft green)
-              const defaultBgColor = '#f0f9f4'
-              // Slightly darker green for valid cells with non-zero values
-              const validNonZeroBgColor = '#d4edda'
-              // Warning color for box count errors (orange)
-              const boxCountWarningColor = '#fff7e6'
-              // Error color for availability errors (red)
-              const availabilityErrorColor = '#fff1f0'
-              
-              // Determine background color based on value and validity
-              let backgroundColor = defaultBgColor
-              let errorReason = ''
+            }
+            
+            // Default background color for cells with value 0 (soft green)
+            const defaultBgColor = '#f0f9f4'
+            // Slightly darker green for valid cells with non-zero values
+            const validNonZeroBgColor = '#d4edda'
+            // Warning color for box count errors (orange)
+            const boxCountWarningColor = '#fff7e6'
+            // Error color for availability errors (red)
+            const availabilityErrorColor = '#fff1f0'
+            
+            // Determine background color based on value and validity
+            let backgroundColor = defaultBgColor
+            let errorReason = ''
 
-              if (numValue > 0) {
-                if (!isAvailabilityValid) {
-                  backgroundColor = availabilityErrorColor
-                  errorReason = availabilityError
-                } else if (!isBoxCountValid) {
-                  backgroundColor = boxCountWarningColor
-                  errorReason = boxCountError
-                } else {
-                  backgroundColor = validNonZeroBgColor
-                }
+            if (numValue > 0) {
+              if (!isAvailabilityValid) {
+                backgroundColor = availabilityErrorColor
+                errorReason = availabilityError
+              } else if (!isBoxCountValid) {
+                backgroundColor = boxCountWarningColor
+                errorReason = boxCountError
+              } else {
+                backgroundColor = validNonZeroBgColor
               }
+            }
 
-              const content = (
-                <div style={{ 
-                  backgroundColor,
-                  padding: '4px',
-                  borderRadius: '2px',
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: '32px'
-                }}>
-                  {numValue}
-                </div>
+            const content = (
+              <div style={{ 
+                backgroundColor,
+                padding: '4px',
+                borderRadius: '2px',
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '32px'
+              }}>
+                {numValue}
+              </div>
+            )
+
+            if (errorReason) {
+              return (
+                <Tooltip title={errorReason}>
+                  {content}
+                </Tooltip>
               )
-
-              if (errorReason) {
-                return (
-                  <Tooltip title={errorReason}>
-                    {content}
-                  </Tooltip>
-                )
-              }
-              
-              return content
-            },
+            }
+            
+            return content
           },
-        ],
-      } as ColGroupDef)
+        })
+      }
+
+      if (children.length > 0) {
+        baseHeaders.push({
+          headerName: clusterName,
+          headerGroupComponent: ClusterHeaderComponent,
+          headerGroupComponentParams: {
+            clusterName,
+            onCreateDraft: handleCreateDraft,
+          },
+          children,
+        } as ColGroupDef)
+      }
     })
 
     // Add Totals column group only if cluster filter is not applied
     if (!clusterFilter) {
-      baseHeaders.push({
-        headerName: 'Итого',
-        children: [
-          {
-            field: 'totals_marketplace_stocks_count',
-            headerName: 'Остатки на МП (всего)',
-            width: 150,
-            type: 'numericColumn',
-            valueGetter: (params) => params.data?.totals?.marketplace_stocks_count ?? 0,
-            valueFormatter: (params) => String(params.value ?? 0),
-          },
-          {
-            field: 'totals_orders_count',
-            headerName: 'Заказы (всего)',
-            width: 150,
-            type: 'numericColumn',
-            valueGetter: (params) => params.data?.totals?.orders_count ?? 0,
-            valueFormatter: (params) => String(params.value ?? 0),
-          },
-          {
-            field: 'totals_avg_orders_leverage',
-            headerName: 'Сред. кол-во (всего)',
-            width: 150,
-            type: 'numericColumn',
-            valueGetter: (params) => params.data?.totals?.avg_orders_leverage ?? 0,
-            valueFormatter: (params) => String(params.value ?? 0),
-          },
-          {
-            field: 'totals_to_supply',
-            headerName: 'К поставке (всего)',
-            width: 150,
-            type: 'numericColumn',
-            valueGetter: (params) => params.data?.totals?.to_supply ?? 0,
-            valueFormatter: (params) => String(params.value ?? 0),
-            cellStyle: { fontWeight: 'bold' }
-          },
-          {
-            field: 'totals_deficit',
-            headerName: 'Дефицит',
-            width: 150,
-            type: 'numericColumn',
-            valueGetter: (params) => params.data?.totals?.deficit ?? 0,
-            valueFormatter: (params) => String(params.value ?? 0),
-            cellStyle: (params) => {
-              const value = params.value || 0
-              return { 
-                fontWeight: 'bold', 
-                color: value > 0 ? '#ff4d4f' : 'inherit' 
-              }
-            }
-          },
-        ]
-      } as ColGroupDef)
+      const children: ColDef[] = []
+      
+      if (visibleSubColumns.includes('marketplace_stocks_count')) {
+        children.push({
+          field: 'totals_marketplace_stocks_count',
+          headerName: 'Остатки на МП (всего)',
+          width: 150,
+          type: 'numericColumn',
+          valueGetter: (params) => params.data?.totals?.marketplace_stocks_count ?? 0,
+          valueFormatter: (params) => String(params.value ?? 0),
+        })
+      }
+
+      if (visibleSubColumns.includes('orders_count')) {
+        children.push({
+          field: 'totals_orders_count',
+          headerName: 'Заказы (всего)',
+          width: 150,
+          type: 'numericColumn',
+          valueGetter: (params) => params.data?.totals?.orders_count ?? 0,
+          valueFormatter: (params) => String(params.value ?? 0),
+        })
+      }
+
+      if (visibleSubColumns.includes('avg_orders_leverage')) {
+        children.push({
+          field: 'totals_avg_orders_leverage',
+          headerName: 'Сред. кол-во (всего)',
+          width: 150,
+          type: 'numericColumn',
+          valueGetter: (params) => params.data?.totals?.avg_orders_leverage ?? 0,
+          valueFormatter: (params) => String(params.value ?? 0),
+        })
+      }
+
+      if (visibleSubColumns.includes('to_supply')) {
+        children.push({
+          field: 'totals_to_supply',
+          headerName: 'К поставке (всего)',
+          width: 150,
+          type: 'numericColumn',
+          valueGetter: (params) => params.data?.totals?.to_supply ?? 0,
+          valueFormatter: (params) => String(params.value ?? 0),
+          cellStyle: { fontWeight: 'bold' }
+        })
+      }
+
+      // Deficit is always shown if any of sub-columns are visible in totals, or maybe just always?
+      // Let's assume it's part of the totals.
+      children.push({
+        field: 'totals_deficit',
+        headerName: 'Дефицит',
+        width: 150,
+        type: 'numericColumn',
+        valueGetter: (params) => params.data?.totals?.deficit ?? 0,
+        valueFormatter: (params) => String(params.value ?? 0),
+        cellStyle: (params) => {
+          const value = params.value || 0
+          return { 
+            fontWeight: 'bold', 
+            color: value > 0 ? '#ff4d4f' : 'inherit' 
+          }
+        }
+      })
+
+      if (children.length > 0) {
+        baseHeaders.push({
+          headerName: 'Итого',
+          children
+        } as ColGroupDef)
+      }
     }
 
     return baseHeaders
-  }, [snapshot, handleCreateDraft, clusterFilter])
+  }, [snapshot, handleCreateDraft, clusterFilter, visibleBaseColumns, visibleSubColumns])
 
   // Transform data for AG Grid - keep nested structure, no flat keys with dots
   const tableRows = useMemo(() => {
@@ -1326,7 +1413,9 @@ const SupplyDraftPage: React.FC = () => {
             >
               Скачать всю таблицу (XLSX)
             </Button>
-            <Input
+          </Space>
+          <Space>
+          <Input
               placeholder="Введите имя кластера..."
               allowClear
               size="large"
@@ -1335,6 +1424,19 @@ const SupplyDraftPage: React.FC = () => {
               onChange={(e) => setClusterFilter(e.target.value)}
               style={{ maxWidth: 400 }}
             />
+            <Popover
+              content={columnSettingsContent}
+              title="Настройка столбцов"
+              trigger="click"
+              placement="bottomRight"
+            >
+              <Button
+                icon={<SettingOutlined />}
+                size="large"
+              >
+                Настроить столбцы
+              </Button>
+            </Popover>
           </Space>
 
           {!snapshot ? (
@@ -1520,7 +1622,6 @@ const SupplyDraftPage: React.FC = () => {
                                         fullscreen={false} 
                                         headerRender={({ value, onChange }) => {
                                           const localeData = value.localeData();
-                                          const month = value.month();
                                           const year = value.year();
                                           return (
                                             <div style={{ padding: '8px 0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
