@@ -17,7 +17,16 @@ import {
   Radio,
   Upload,
   Tooltip,
+  Calendar,
+  Row,
+  Col,
+  Empty,
 } from 'antd'
+import type { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
+import 'dayjs/locale/ru'
+
+dayjs.locale('ru')
 import {
   ArrowLeftOutlined,
   ReloadOutlined,
@@ -175,6 +184,7 @@ const SupplyDraftPage: React.FC = () => {
   const [selectedTimeslot, setSelectedTimeslot] = useState<Record<number, Timeslot>>({})
   const [creatingSupply, setCreatingSupply] = useState<Record<number, boolean>>({})
   const [supplyCreateStatus, setSupplyCreateStatus] = useState<Record<number, SupplyCreateStatusResponse>>({})
+  const [selectedDate, setSelectedDate] = useState<Record<number, string>>({})
 
   const limitationStrategy = Form.useWatch('limitation_strategy', form)
 
@@ -860,6 +870,20 @@ const SupplyDraftPage: React.FC = () => {
     }
   }
 
+  const getTimeslotCategory = (timeStr: string) => {
+    const hour = parseInt(timeStr.split(':')[0])
+    if (hour >= 6 && hour < 12) return 'Утро'
+    if (hour >= 12 && hour < 18) return 'День'
+    if (hour >= 18 && hour < 24) return 'Вечер'
+    return 'Ночь'
+  }
+
+  const formatTime = (isoStr: string) => {
+    if (!isoStr) return ''
+    const timePart = isoStr.includes('T') ? isoStr.split('T')[1]?.split(/[.Z+]/)[0] : isoStr
+    return timePart?.substring(0, 5) || ''
+  }
+
   // Build table column definitions dynamically based on clusters
   const columnDefs = useMemo(() => {
     if (!snapshot || snapshot.data.length === 0) return []
@@ -1345,215 +1369,319 @@ const SupplyDraftPage: React.FC = () => {
                     const currentSupplyStatus = supplyCreateStatus[record.id]
                     const isLoadingTimeslots = loadingTimeslots[record.id] || false
                     const isCreating = creatingSupply[record.id] || false
+                    const currentSelectedDate = selectedDate[record.id]
+
+                    // Get all available dates for the calendar dots
+                    const availableDates = new Set<string>()
+                    if (currentTimeslots) {
+                      currentTimeslots.drop_off_warehouse_timeslots.forEach(wt => {
+                        // The backend returns timeslots for drop_off_warehouse, but we filter by its ID
+                        if (wt.drop_off_warehouse_id === record.drop_off_warehouse?.warehouse_id) {
+                          wt.days.forEach(day => {
+                            if (day.timeslots && day.timeslots.length > 0) {
+                              availableDates.add(dayjs(day.date_in_timezone).format('YYYY-MM-DD'))
+                            }
+                          })
+                        }
+                      })
+                    }
+
+                    const dateCellRender = (value: Dayjs) => {
+                      const dateStr = value.format('YYYY-MM-DD')
+                      if (availableDates.has(dateStr)) {
+                        return (
+                          <div style={{ textAlign: 'center', paddingTop: '4px' }}>
+                            <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#1890ff', margin: '0 auto' }} />
+                          </div>
+                        )
+                      }
+                      return null
+                    }
+
+                    const onDateSelect = (date: Dayjs) => {
+                      const dateStr = date.format('YYYY-MM-DD')
+                      setSelectedDate(prev => ({ ...prev, [record.id]: dateStr }))
+                      // Clear timeslot when date changes
+                      setSelectedTimeslot(prev => {
+                        const newState = { ...prev }
+                        delete newState[record.id]
+                        return newState
+                      })
+                    }
+
+                    // Find timeslots for the selected date
+                    const selectedDayData = currentTimeslots?.drop_off_warehouse_timeslots
+                      .find(wt => wt.drop_off_warehouse_id === record.drop_off_warehouse?.warehouse_id)
+                      ?.days.find(day => dayjs(day.date_in_timezone).format('YYYY-MM-DD') === currentSelectedDate)
+
+                    const groupedTimeslots = selectedDayData?.timeslots.reduce((acc, slot) => {
+                      const fromTime = formatTime(slot.from_in_timezone)
+                      const category = getTimeslotCategory(fromTime)
+                      if (!acc[category]) acc[category] = []
+                      acc[category].push(slot)
+                      return acc
+                    }, {} as Record<string, Timeslot[]>) || {}
 
                     return (
-                      <div style={{ padding: '16px' }}>
-                        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+                      <div style={{ padding: '24px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
+                        <Space direction="vertical" size="large" style={{ width: '100%' }}>
                           {/* Warehouse selection */}
                           <div>
-                            <Text strong>Выберите склад размещения:</Text>
+                            <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '16px' }}>
+                              1. Выберите склад размещения:
+                            </Text>
                             <Radio.Group
                               value={currentSelectedWarehouse}
                               onChange={async (e) => {
                                 const warehouseId = e.target.value
                                 setSelectedWarehouseId((prev) => ({ ...prev, [record.id]: warehouseId }))
-                                // Clear timeslot when warehouse changes (timeslots are for drop_off_warehouse, not supply_warehouse)
+                                // Clear timeslot and date when warehouse changes
                                 setSelectedTimeslot((prev) => {
                                   const newState = { ...prev }
                                   delete newState[record.id]
                                   return newState
                                 })
-                                if (expandedDraftId !== record.id) {
-                                  setExpandedDraftId(record.id)
-                                }
+                                setSelectedDate((prev) => {
+                                  const newState = { ...prev }
+                                  delete newState[record.id]
+                                  return newState
+                                })
                                 // Auto-load timeslots when warehouse is selected
                                 await handleLoadTimeslots(record)
                               }}
-                              style={{ marginTop: '8px', display: 'block' }}
+                              style={{ width: '100%' }}
                             >
-                              {record.supply_warehouses.map((warehouse) => (
-                                <Radio
-                                  key={warehouse.supply_warehouse.warehouse_id}
-                                  value={warehouse.supply_warehouse.warehouse_id}
-                                  style={{ display: 'block', marginBottom: '8px' }}
-                                >
-                                  {warehouse.supply_warehouse.name}
-                                  {warehouse.supply_warehouse.address && (
-                                    <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>
-                                      {warehouse.supply_warehouse.address}
-                                    </Text>
-                                  )}
-                                </Radio>
-                              ))}
+                              <Row gutter={[16, 16]}>
+                                {record.supply_warehouses.map((warehouse) => (
+                                  <Col span={8} key={warehouse.supply_warehouse.warehouse_id}>
+                                    <Radio.Button 
+                                      value={warehouse.supply_warehouse.warehouse_id}
+                                      style={{ 
+                                        width: '100%', 
+                                        height: 'auto', 
+                                        padding: '12px', 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        alignItems: 'flex-start',
+                                        borderRadius: '8px',
+                                        border: currentSelectedWarehouse === warehouse.supply_warehouse.warehouse_id ? '2px solid #1890ff' : '1px solid #d9d9d9'
+                                      }}
+                                    >
+                                      <Text strong>{warehouse.supply_warehouse.name}</Text>
+                                      {warehouse.supply_warehouse.address && (
+                                        <Text type="secondary" style={{ fontSize: '12px', display: 'block', whiteSpace: 'normal', textAlign: 'left', marginTop: '4px' }}>
+                                          {warehouse.supply_warehouse.address}
+                                        </Text>
+                                      )}
+                                    </Radio.Button>
+                                  </Col>
+                                ))}
+                              </Row>
                             </Radio.Group>
                           </div>
 
-                          {/* Loading indicator */}
-                          {isLoadingTimeslots && (
+                          {/* Date and Time selection */}
+                          {currentSelectedWarehouse && (
                             <div>
-                              <Spin size="small" /> <Text type="secondary">Загрузка таймслотов...</Text>
-                            </div>
-                          )}
-
-                          {/* Timeslots display */}
-                          {/* Timeslots are always for drop_off_warehouse, not for selected supply_warehouse */}
-                          {currentTimeslots && !isLoadingTimeslots && (
-                            <div>
-                              <Text strong>Доступные таймслоты (склад отгрузки):</Text>
-                              <div style={{ marginTop: '8px' }}>
-                                {currentTimeslots.drop_off_warehouse_timeslots
-                                  .filter((wt) => {
-                                    // Note: API requires supply_warehouse_ids but returns timeslots for drop_off_warehouse
-                                    // So we filter by drop_off_warehouse_id from draft
-                                    const dropOffWarehouseId = record.drop_off_warehouse?.warehouse_id
-                                    return wt.drop_off_warehouse_id === dropOffWarehouseId
-                                  })
-                                  .map((warehouseTimeslot) => (
-                                    <div key={warehouseTimeslot.drop_off_warehouse_id} style={{ marginTop: '16px' }}>
-                                      {warehouseTimeslot.days.length > 0 ? (
-                                        warehouseTimeslot.days.map((day, dayIdx) => (
-                                          <div key={dayIdx} style={{ marginBottom: '12px' }}>
-                                            <Text strong>
-                                              {new Date(day.date_in_timezone).toLocaleDateString('ru-RU')}
-                                            </Text>
-                                            {day.timeslots && day.timeslots.length > 0 ? (
-                                              <Radio.Group
-                                                value={
-                                                  currentSelectedTimeslot
-                                                    ? (() => {
-                                                        const matchingSlotIdx = day.timeslots.findIndex(
-                                                          (t) => t.from_in_timezone === currentSelectedTimeslot.from_in_timezone &&
-                                                                 t.to_in_timezone === currentSelectedTimeslot.to_in_timezone
-                                                        )
-                                                        return matchingSlotIdx !== -1 ? `${dayIdx}-${matchingSlotIdx}` : undefined
-                                                      })()
-                                                    : undefined
-                                                }
-                                                onChange={(e) => {
-                                                  const [dayIndex, slotIndex] = e.target.value.split('-').map(Number)
-                                                  const selectedDay = warehouseTimeslot.days[dayIndex]
-                                                  if (selectedDay && selectedDay.timeslots[slotIndex]) {
-                                                    setSelectedTimeslot((prev) => ({
-                                                      ...prev,
-                                                      [record.id]: selectedDay.timeslots[slotIndex],
-                                                    }))
-                                                  }
-                                                }}
-                                                style={{ marginTop: '8px', display: 'block' }}
-                                              >
-                                                {day.timeslots.map((slot, slotIdx) => {
-                                                  // Extract time from ISO string without timezone conversion
-                                                  // Format: "2024-01-01T14:00:00Z" -> "14:00"
-                                                  const fromTime = slot.from_in_timezone.includes('T') 
-                                                    ? slot.from_in_timezone.split('T')[1]?.split(/[.Z+]/)[0] || slot.from_in_timezone
-                                                    : slot.from_in_timezone
-                                                  const toTime = slot.to_in_timezone.includes('T')
-                                                    ? slot.to_in_timezone.split('T')[1]?.split(/[.Z+]/)[0] || slot.to_in_timezone
-                                                    : slot.to_in_timezone
-                                                  const fromTimeDisplay = fromTime.substring(0, 5) // HH:MM
-                                                  const toTimeDisplay = toTime.substring(0, 5) // HH:MM
-                                                  
-                                                  return (
-                                                    <Radio
-                                                      key={slotIdx}
-                                                      value={`${dayIdx}-${slotIdx}`}
-                                                      style={{ display: 'block', marginBottom: '4px' }}
-                                                    >
-                                                      {fromTimeDisplay} - {toTimeDisplay}
-                                                    </Radio>
-                                                  )
-                                                })}
-                                              </Radio.Group>
-                                            ) : (
-                                              <div style={{ marginTop: '8px' }}>
-                                                <Text type="secondary">Нет доступных таймслотов на эту дату</Text>
-                                              </div>
-                                            )}
-                                          </div>
-                                        ))
-                                      ) : (
-                                        <div style={{ marginTop: '8px' }}>
-                                          <Text type="secondary">Нет доступных таймслотов для этого склада</Text>
-                                        </div>
-                                      )}
+                              <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '16px' }}>
+                                2. Выберите дату и время отгрузки:
+                              </Text>
+                              {isLoadingTimeslots ? (
+                                <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '8px' }}>
+                                  <Spin /> <Text type="secondary" style={{ marginLeft: '12px' }}>Загрузка доступных интервалов...</Text>
+                                </div>
+                              ) : (
+                                <Row gutter={32}>
+                                  {/* Left side: Calendar */}
+                                  <Col span={10}>
+                                    <div style={{ border: '1px solid #f0f0f0', borderRadius: '12px', padding: '16px', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                                      <Calendar 
+                                        fullscreen={false} 
+                                        headerRender={({ value, onChange }) => {
+                                          const localeData = value.localeData();
+                                          const month = value.month();
+                                          const year = value.year();
+                                          return (
+                                            <div style={{ padding: '8px 0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                              <Text strong style={{ fontSize: '16px' }}>{localeData.months(value)} {year}</Text>
+                                              <Space>
+                                                <Button 
+                                                  size="small" 
+                                                  icon={<span style={{ fontSize: '12px' }}>&lt;</span>}
+                                                  onClick={() => onChange(value.clone().subtract(1, 'month'))} 
+                                                />
+                                                <Button 
+                                                  size="small" 
+                                                  icon={<span style={{ fontSize: '12px' }}>&gt;</span>}
+                                                  onClick={() => onChange(value.clone().add(1, 'month'))} 
+                                                />
+                                              </Space>
+                                            </div>
+                                          );
+                                        }}
+                                        value={currentSelectedDate ? dayjs(currentSelectedDate) : undefined}
+                                        onSelect={onDateSelect}
+                                        cellRender={dateCellRender}
+                                      />
                                     </div>
-                                  ))}
-                                {currentTimeslots.drop_off_warehouse_timeslots.filter(
-                                  (wt) => wt.drop_off_warehouse_id === currentSelectedWarehouse
-                                ).length === 0 && (
-                                  <div style={{ marginTop: '8px' }}>
-                                    <Text type="secondary">Нет доступных таймслотов для выбранного склада</Text>
-                                  </div>
-                                )}
-                              </div>
+                                  </Col>
+
+                                  {/* Right side: Timeslots */}
+                                  <Col span={14}>
+                                    {currentSelectedDate ? (
+                                      <div style={{ height: '100%' }}>
+                                        <Text strong style={{ fontSize: '18px', display: 'block', marginBottom: '24px' }}>
+                                          {dayjs(currentSelectedDate).format('D MMMM, HH:mm') === dayjs(currentSelectedDate).format('D MMMM, 00:00') 
+                                            ? dayjs(currentSelectedDate).format('D MMMM, dddd')
+                                            : dayjs(currentSelectedDate).format('D MMMM, dddd')}
+                                        </Text>
+                                        
+                                        {Object.keys(groupedTimeslots).length > 0 ? (
+                                          <div style={{ maxHeight: '450px', overflowY: 'auto', paddingRight: '8px' }}>
+                                            {['Утро', 'День', 'Вечер', 'Ночь'].map((category) => {
+                                              const slots = groupedTimeslots[category]
+                                              if (!slots || slots.length === 0) return null
+                                              
+                                              return (
+                                                <div key={category} style={{ marginBottom: '24px' }}>
+                                                  <Text type="secondary" style={{ display: 'block', marginBottom: '12px', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '0.5px' }}>
+                                                    {category}
+                                                  </Text>
+                                                  <Row gutter={[12, 12]}>
+                                                    {slots.map((slot, idx) => {
+                                                      const fromTime = formatTime(slot.from_in_timezone)
+                                                      const toTime = formatTime(slot.to_in_timezone)
+                                                      const isSelected = currentSelectedTimeslot?.from_in_timezone === slot.from_in_timezone && 
+                                                                      currentSelectedTimeslot?.to_in_timezone === slot.to_in_timezone
+                                                      return (
+                                                        <Col key={idx} span={8}>
+                                                          <Button 
+                                                            type={isSelected ? 'primary' : 'default'}
+                                                            style={{ 
+                                                              width: '100%', 
+                                                              height: '40px',
+                                                              borderRadius: '6px',
+                                                              backgroundColor: isSelected ? undefined : '#f5f5f5',
+                                                              border: isSelected ? undefined : 'none',
+                                                              color: isSelected ? undefined : '#555',
+                                                              fontWeight: isSelected ? 600 : 400
+                                                            }}
+                                                            onClick={() => setSelectedTimeslot(prev => ({ ...prev, [record.id]: slot }))}
+                                                          >
+                                                            {fromTime} - {toTime}
+                                                          </Button>
+                                                        </Col>
+                                                      )
+                                                    })}
+                                                  </Row>
+                                                </div>
+                                              )
+                                            })}
+                                          </div>
+                                        ) : (
+                                          <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #f0f0f0' }}>
+                                            <Empty description="Нет доступных таймслотов на эту дату" />
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div style={{ 
+                                        height: '100%', 
+                                        minHeight: '350px',
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        justifyContent: 'center', 
+                                        border: '2px dashed #e8e8e8', 
+                                        borderRadius: '12px',
+                                        backgroundColor: '#fff'
+                                      }}>
+                                        <Space direction="vertical" align="center">
+                                          <Text type="secondary" style={{ fontSize: '16px' }}>Выберите дату в календаре</Text>
+                                          <Text type="secondary" style={{ fontSize: '12px' }}>Слева отображены доступные дни</Text>
+                                        </Space>
+                                      </div>
+                                    )}
+                                  </Col>
+                                </Row>
+                              )}
                             </div>
                           )}
 
-                          {/* Create supply button */}
-                          {/* warehouse_id is supply_warehouse_id, timeslot is for drop_off_warehouse */}
-                          {currentSelectedWarehouse && currentSelectedTimeslot && !isLoadingTimeslots && (
-                            <div>
+                          {/* Confirmation section */}
+                          {currentSelectedWarehouse && currentSelectedTimeslot && (
+                            <div style={{ 
+                              marginTop: '8px',
+                              padding: '24px', 
+                              backgroundColor: '#fff', 
+                              borderRadius: '12px', 
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              border: '1px solid #e6f7ff'
+                            }}>
+                              <Space direction="vertical" size={4}>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <Text type="secondary">Время:</Text>
+                                  <Text strong>
+                                    {dayjs(currentSelectedDate).format('dddd, D MMMM')}, {formatTime(currentSelectedTimeslot.from_in_timezone)} - {formatTime(currentSelectedTimeslot.to_in_timezone)}
+                                  </Text>
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <Text type="secondary">На складе отгрузки:</Text>
+                                  <Text strong>{record.drop_off_warehouse?.name}</Text>
+                                </div>
+                              </Space>
                               <Button
                                 type="primary"
-                                onClick={() => {
-                                  if (expandedDraftId !== record.id) {
-                                    setExpandedDraftId(record.id)
-                                  }
-                                  handleCreateSupply(record)
-                                }}
+                                size="large"
+                                onClick={() => handleCreateSupply(record)}
                                 loading={isCreating}
                                 disabled={isCreating}
+                                style={{ 
+                                  height: '48px', 
+                                  padding: '0 48px', 
+                                  fontSize: '16px', 
+                                  fontWeight: 600,
+                                  borderRadius: '8px',
+                                  boxShadow: '0 4px 10px rgba(24, 144, 255, 0.3)'
+                                }}
                               >
-                                Создать поставку
+                                Подтвердить
                               </Button>
                             </div>
                           )}
 
                           {/* Supply creation status */}
                           {currentSupplyStatus && (
-                            <div>
-                              <Text strong>Статус создания поставки:</Text>
-                              <div style={{ marginTop: '8px' }}>
-                                <Tag
-                                  color={
-                                    currentSupplyStatus.status === 'DraftSupplyCreateStatusSuccess'
-                                      ? 'green'
-                                      : currentSupplyStatus.status === 'DraftSupplyCreateStatusFailed'
-                                      ? 'red'
-                                      : 'blue'
-                                  }
-                                >
-                                  {currentSupplyStatus.status === 'DraftSupplyCreateStatusSuccess'
-                                    ? 'Успешно'
-                                    : currentSupplyStatus.status === 'DraftSupplyCreateStatusFailed'
-                                    ? 'Ошибка'
-                                    : currentSupplyStatus.status === 'DraftSupplyCreateStatusInProgress'
-                                    ? 'В процессе'
-                                    : 'Неизвестно'}
-                                </Tag>
-                                {currentSupplyStatus.result?.order_ids && (
-                                  <div style={{ marginTop: '8px' }}>
-                                    <Text>ID заказов: {currentSupplyStatus.result.order_ids.join(', ')}</Text>
-                                  </div>
-                                )}
-                                {currentSupplyStatus.error_messages && currentSupplyStatus.error_messages.length > 0 && (
-                                  <div style={{ marginTop: '8px' }}>
-                                    <Text type="danger">
-                                      Ошибки: {currentSupplyStatus.error_messages.join(', ')}
+                            <div style={{ marginTop: '16px' }}>
+                              <Alert
+                                message={
+                                  <Space direction="vertical" size={4}>
+                                    <Text strong>
+                                      {currentSupplyStatus.status === 'DraftSupplyCreateStatusSuccess' ? 'Поставка успешно создана' :
+                                       currentSupplyStatus.status === 'DraftSupplyCreateStatusFailed' ? 'Ошибка при создании поставки' : 
+                                       'Создание поставки...'}
                                     </Text>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Show order_ids from draft if available */}
-                          {record.order_ids && record.order_ids.length > 0 && (
-                            <div>
-                              <Text strong>ID заказов:</Text>
-                              <div style={{ marginTop: '4px' }}>
-                                {record.order_ids.join(', ')}
-                              </div>
+                                    {currentSupplyStatus.result?.order_ids && (
+                                      <Text>ID заказов: <Tag color="green">{currentSupplyStatus.result.order_ids.join(', ')}</Tag></Text>
+                                    )}
+                                    {currentSupplyStatus.error_messages && currentSupplyStatus.error_messages.length > 0 && (
+                                      <div style={{ marginTop: '4px' }}>
+                                        {currentSupplyStatus.error_messages.map((err, i) => (
+                                          <div key={i} style={{ color: '#ff4d4f' }}>• {err}</div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </Space>
+                                }
+                                type={
+                                  currentSupplyStatus.status === 'DraftSupplyCreateStatusSuccess' ? 'success' :
+                                  currentSupplyStatus.status === 'DraftSupplyCreateStatusFailed' ? 'error' : 'info'
+                                }
+                                showIcon
+                                style={{ borderRadius: '12px' }}
+                              />
                             </div>
                           )}
                         </Space>
@@ -1591,6 +1719,11 @@ const SupplyDraftPage: React.FC = () => {
                           return newState
                         })
                         setSupplyCreateStatus((prev) => {
+                          const newState = { ...prev }
+                          delete newState[record.id]
+                          return newState
+                        })
+                        setSelectedDate((prev) => {
                           const newState = { ...prev }
                           delete newState[record.id]
                           return newState
