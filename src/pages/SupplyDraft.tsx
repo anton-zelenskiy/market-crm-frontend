@@ -21,6 +21,7 @@ import {
   Row,
   Col,
   Empty,
+  Input,
 } from 'antd'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
@@ -34,6 +35,7 @@ import {
   DownloadOutlined,
   FileExcelOutlined,
   DeleteOutlined,
+  SearchOutlined,
 } from '@ant-design/icons'
 import { AgGridReact } from 'ag-grid-react'
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community'
@@ -175,6 +177,7 @@ const SupplyDraftPage: React.FC = () => {
   const [warehouseLoading, setWarehouseLoading] = useState(false)
   const [form] = Form.useForm()
   const [tableData, setTableData] = useState<SupplyDataItem[]>([])
+  const [clusterFilter, setClusterFilter] = useState('')
   const searchTimeoutRef = useRef<number | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [expandedDraftId, setExpandedDraftId] = useState<number | null>(null)
@@ -918,10 +921,17 @@ const SupplyDraftPage: React.FC = () => {
 
     // Get cluster names from first item (excluding totals and base fields)
     const firstItem = snapshot.data[0]
-    const clusterNames = Object.keys(firstItem).filter(
+    let clusterNames = Object.keys(firstItem).filter(
       (key) =>
         !['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals'].includes(key)
     )
+
+    // Filter clusters by name if search input is not empty
+    if (clusterFilter) {
+      clusterNames = clusterNames.filter(name => 
+        name.toLowerCase().includes(clusterFilter.toLowerCase())
+      )
+    }
 
     // Add cluster columns with nested headers
     clusterNames.forEach((clusterName) => {
@@ -1146,63 +1156,65 @@ const SupplyDraftPage: React.FC = () => {
       } as ColGroupDef)
     })
 
-    // Add Totals column group
-    baseHeaders.push({
-      headerName: 'Итого',
-      children: [
-        {
-          field: 'totals_marketplace_stocks_count',
-          headerName: 'Остатки на МП (всего)',
-          width: 150,
-          type: 'numericColumn',
-          valueGetter: (params) => params.data?.totals?.marketplace_stocks_count ?? 0,
-          valueFormatter: (params) => String(params.value ?? 0),
-        },
-        {
-          field: 'totals_orders_count',
-          headerName: 'Заказы (всего)',
-          width: 150,
-          type: 'numericColumn',
-          valueGetter: (params) => params.data?.totals?.orders_count ?? 0,
-          valueFormatter: (params) => String(params.value ?? 0),
-        },
-        {
-          field: 'totals_avg_orders_leverage',
-          headerName: 'Сред. кол-во (всего)',
-          width: 150,
-          type: 'numericColumn',
-          valueGetter: (params) => params.data?.totals?.avg_orders_leverage ?? 0,
-          valueFormatter: (params) => String(params.value ?? 0),
-        },
-        {
-          field: 'totals_to_supply',
-          headerName: 'К поставке (всего)',
-          width: 150,
-          type: 'numericColumn',
-          valueGetter: (params) => params.data?.totals?.to_supply ?? 0,
-          valueFormatter: (params) => String(params.value ?? 0),
-          cellStyle: { fontWeight: 'bold' }
-        },
-        {
-          field: 'totals_deficit',
-          headerName: 'Дефицит',
-          width: 150,
-          type: 'numericColumn',
-          valueGetter: (params) => params.data?.totals?.deficit ?? 0,
-          valueFormatter: (params) => String(params.value ?? 0),
-          cellStyle: (params) => {
-            const value = params.value || 0
-            return { 
-              fontWeight: 'bold', 
-              color: value > 0 ? '#ff4d4f' : 'inherit' 
+    // Add Totals column group only if cluster filter is not applied
+    if (!clusterFilter) {
+      baseHeaders.push({
+        headerName: 'Итого',
+        children: [
+          {
+            field: 'totals_marketplace_stocks_count',
+            headerName: 'Остатки на МП (всего)',
+            width: 150,
+            type: 'numericColumn',
+            valueGetter: (params) => params.data?.totals?.marketplace_stocks_count ?? 0,
+            valueFormatter: (params) => String(params.value ?? 0),
+          },
+          {
+            field: 'totals_orders_count',
+            headerName: 'Заказы (всего)',
+            width: 150,
+            type: 'numericColumn',
+            valueGetter: (params) => params.data?.totals?.orders_count ?? 0,
+            valueFormatter: (params) => String(params.value ?? 0),
+          },
+          {
+            field: 'totals_avg_orders_leverage',
+            headerName: 'Сред. кол-во (всего)',
+            width: 150,
+            type: 'numericColumn',
+            valueGetter: (params) => params.data?.totals?.avg_orders_leverage ?? 0,
+            valueFormatter: (params) => String(params.value ?? 0),
+          },
+          {
+            field: 'totals_to_supply',
+            headerName: 'К поставке (всего)',
+            width: 150,
+            type: 'numericColumn',
+            valueGetter: (params) => params.data?.totals?.to_supply ?? 0,
+            valueFormatter: (params) => String(params.value ?? 0),
+            cellStyle: { fontWeight: 'bold' }
+          },
+          {
+            field: 'totals_deficit',
+            headerName: 'Дефицит',
+            width: 150,
+            type: 'numericColumn',
+            valueGetter: (params) => params.data?.totals?.deficit ?? 0,
+            valueFormatter: (params) => String(params.value ?? 0),
+            cellStyle: (params) => {
+              const value = params.value || 0
+              return { 
+                fontWeight: 'bold', 
+                color: value > 0 ? '#ff4d4f' : 'inherit' 
+              }
             }
-          }
-        },
-      ]
-    } as ColGroupDef)
+          },
+        ]
+      } as ColGroupDef)
+    }
 
     return baseHeaders
-  }, [snapshot, handleCreateDraft])
+  }, [snapshot, handleCreateDraft, clusterFilter])
 
   // Transform data for AG Grid - keep nested structure, no flat keys with dots
   const tableRows = useMemo(() => {
@@ -1314,6 +1326,15 @@ const SupplyDraftPage: React.FC = () => {
             >
               Скачать всю таблицу (XLSX)
             </Button>
+            <Input
+              placeholder="Введите имя кластера..."
+              allowClear
+              size="large"
+              prefix={<SearchOutlined />}
+              value={clusterFilter}
+              onChange={(e) => setClusterFilter(e.target.value)}
+              style={{ maxWidth: 400 }}
+            />
           </Space>
 
           {!snapshot ? (
