@@ -386,13 +386,7 @@ const Supplies: React.FC = () => {
             <Space>
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => {
-                  if (company) {
-                    navigate(`/companies/${company.id}`)
-                  } else {
-                    navigate('/connections')
-                  }
-                }}
+                onClick={() => navigate(`/connections/${connectionId}`)}
               >
                 Назад
               </Button>

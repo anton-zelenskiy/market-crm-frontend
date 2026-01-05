@@ -13,6 +13,7 @@ import {
   Typography,
   Tag,
 } from 'antd'
+import { useNavigate } from 'react-router-dom'
 import {
   PlusOutlined,
   EditOutlined,
@@ -31,6 +32,7 @@ const { Option } = Select
 const { Password } = Input
 
 const Connections: React.FC = () => {
+  const navigate = useNavigate()
   const [connections, setConnections] = useState<Connection[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [dataSources, setDataSources] = useState<DataSource[]>([])
@@ -202,18 +204,16 @@ const Connections: React.FC = () => {
 
   const columns = [
     {
-      title: 'ID',
-      key: 'id',
-      dataIndex: 'id',
-      width: 100,
-      align: 'center' as const,
-    },
-    {
       title: 'Компания',
       key: 'company',
       render: (_: any, record: Connection) => {
         const company = companies.find((c) => c.id === record.company_id)
-        return company ? company.name : `ID: ${record.company_id}`
+        return <Button
+          type="link"
+          onClick={() => navigate(`/connections/${record.id}`)}
+        >
+          {company ? company.name : `ID: ${record.company_id}`}
+        </Button>
       },
     },
     {
@@ -229,21 +229,20 @@ const Connections: React.FC = () => {
       title: 'Создано',
       dataIndex: 'created_at',
       key: 'created_at',
-      render: (date: string) => new Date(date).toLocaleDateString(),
+      render: (date: string) => new Date(date).toLocaleDateString('ru-RU'),
     },
     {
       title: 'Действия',
       key: 'actions',
-      width: 250,
-      align: 'center' as const,
+      width: 300,
+      align: 'right' as const,
       render: (_: any, record: Connection) => (
-        <Space>
+        <div>
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            Редактировать
           </Button>
           <Popconfirm
             title="Вы уверены, что хотите удалить это подключение?"
@@ -252,10 +251,9 @@ const Connections: React.FC = () => {
             cancelText="Нет"
           >
             <Button type="link" danger icon={<DeleteOutlined />}>
-              Удалить
             </Button>
           </Popconfirm>
-        </Space>
+        </div>
       ),
     },
   ]

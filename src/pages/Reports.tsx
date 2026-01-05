@@ -176,21 +176,20 @@ const Reports: React.FC = () => {
       title: 'Создано',
       dataIndex: 'created_at',
       key: 'created_at',
-      render: (date: string) => new Date(date).toLocaleDateString(),
+      render: (date: string) => new Date(date).toLocaleDateString('ru-RU'),
     },
     {
       title: 'Действия',
       key: 'actions',
       width: 150,
-      align: 'center' as const,
+      align: 'right' as const,
       render: (_: any, record: Report) => (
-        <Space>
+        <div>
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            Редактировать
           </Button>
           <Popconfirm
             title="Вы уверены, что хотите удалить этот отчет?"
@@ -199,10 +198,9 @@ const Reports: React.FC = () => {
             cancelText="Нет"
           >
             <Button type="link" danger icon={<DeleteOutlined />}>
-              Удалить
             </Button>
           </Popconfirm>
-        </Space>
+        </div>
       ),
     },
   ]

@@ -17,6 +17,7 @@ import DataSources from './pages/DataSources'
 import Companies from './pages/Companies'
 import CompanyDetail from './pages/CompanyDetail'
 import Connections from './pages/Connections'
+import ConnectionDetail from './pages/ConnectionDetail'
 import Reports from './pages/Reports'
 import VendorProducts from './pages/VendorProducts'
 import OzonProducts from './pages/OzonProducts'
@@ -146,6 +147,7 @@ const DashboardLayout: React.FC = () => {
             <Route path="/companies/:id" element={<CompanyDetail />} />
             <Route path="/companies/:companyId/vendor-products" element={<VendorProducts />} />
             <Route path="/connections" element={<Connections />} />
+            <Route path="/connections/:connectionId" element={<ConnectionDetail />} />
             <Route path="/connections/:connectionId/ozon-products" element={<OzonProducts />} />
             <Route path="/connections/:connectionId/supplies" element={<Supplies />} />
             <Route path="/connections/:connectionId/supply-templates" element={<SupplyTemplates />} />

@@ -13,7 +13,6 @@ import {
   ArrowLeftOutlined,
   PlusOutlined,
   DeleteOutlined,
-  EyeOutlined,
   FileTextOutlined,
 } from '@ant-design/icons'
 import { suppliesApi, type SupplySnapshotResponse } from '../api/supplies'
@@ -102,19 +101,17 @@ const SupplyTemplates: React.FC = () => {
       title: 'Действия',
       key: 'actions',
       width: 150,
+      align: 'right' as const,
       render: (_: any, record: SupplySnapshotResponse) => (
-        <Space>
-          <Popconfirm
-            title="Вы уверены, что хотите удалить этот шаблон?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Да"
-            cancelText="Нет"
-          >
-            <Button type="link" danger icon={<DeleteOutlined />}>
-              Удалить
-            </Button>
-          </Popconfirm>
-        </Space>
+        <Popconfirm
+          title="Вы уверены, что хотите удалить этот шаблон?"
+          onConfirm={() => handleDelete(record.id)}
+          okText="Да"
+          cancelText="Нет"
+        >
+          <Button type="link" danger icon={<DeleteOutlined />}>
+          </Button>
+        </Popconfirm>
       ),
     },
   ]
@@ -133,7 +130,7 @@ const SupplyTemplates: React.FC = () => {
             <Space>
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(`/connections/${connectionId}/supplies`)}
+                onClick={() => navigate(`/connections/${connectionId}`)}
               >
                 Назад
               </Button>

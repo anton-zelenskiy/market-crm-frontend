@@ -130,30 +130,33 @@ const VendorProducts: React.FC = () => {
       title: 'Артикул',
       dataIndex: 'offer_id',
       key: 'offer_id',
+      width: 150,
     },
     {
       title: 'Наименование',
       dataIndex: 'name',
       key: 'name',
+      width: 400,
     },
     {
-      title: 'Количество на складе',
+      title: 'Кол-во на складе',
       dataIndex: 'quantity',
       key: 'quantity',
+      width: 120,
       render: (quantity: number) => quantity.toLocaleString(),
     },
     {
       title: 'Действия',
       key: 'actions',
       width: 150,
+      align: 'right' as const,
       render: (_: any, record: VendorProduct) => (
-        <Space>
+        <div>
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            Редактировать
           </Button>
           <Popconfirm
             title="Вы уверены, что хотите удалить этот товар?"
@@ -162,10 +165,9 @@ const VendorProducts: React.FC = () => {
             cancelText="Нет"
           >
             <Button type="link" danger icon={<DeleteOutlined />}>
-              Удалить
             </Button>
           </Popconfirm>
-        </Space>
+        </div>
       ),
     },
   ]
@@ -210,6 +212,7 @@ const VendorProducts: React.FC = () => {
             dataSource={products}
             rowKey="id"
             loading={loading}
+            size='small'
             pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `Всего ${total} товаров` }}
           />
         </Space>

@@ -197,7 +197,7 @@ const OzonProducts: React.FC = () => {
       title: 'Артикул Ozon',
       dataIndex: 'offer_id',
       key: 'offer_id',
-      width: 200,
+      width: 180,
       fixed: 'left' as const,
     },
     {
@@ -217,7 +217,7 @@ const OzonProducts: React.FC = () => {
       title: 'Штрихкоды',
       dataIndex: 'barcodes',
       key: 'barcodes',
-      width: 200,
+      width: 160,
       render: (barcodes: string[]) => (
         <Space wrap>
           {barcodes.slice(0, 2).map((barcode, idx) => (
@@ -228,10 +228,10 @@ const OzonProducts: React.FC = () => {
       ),
     },
     {
-      title: 'Количество в коробке',
+      title: 'Кол-во в коробке',
       dataIndex: 'box_quantity',
       key: 'box_quantity',
-      width: 150,
+      width: 120,
       render: (quantity: number | null) => quantity ?? <span style={{ color: '#999' }}>Не задано</span>,
     },
     {
@@ -246,7 +246,7 @@ const OzonProducts: React.FC = () => {
     {
       title: 'Действия',
       key: 'actions',
-      width: 180,
+      width: 120,
       fixed: 'right' as const,
       render: (_: any, record: OzonProduct) => (
         <Space>
@@ -255,7 +255,6 @@ const OzonProducts: React.FC = () => {
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            Редактировать
           </Button>
           <Popconfirm
             title="Вы уверены, что хотите удалить этот товар?"
@@ -264,7 +263,6 @@ const OzonProducts: React.FC = () => {
             cancelText="Нет"
           >
             <Button type="link" danger icon={<DeleteOutlined />}>
-              Удалить
             </Button>
           </Popconfirm>
         </Space>
@@ -289,9 +287,9 @@ const OzonProducts: React.FC = () => {
             <Space>
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(`/companies/${company?.id || ''}`)}
+                onClick={() => navigate(`/connections/${connectionId}`)}
               >
-                Назад к компании
+                Назад
               </Button>
             </Space>
             <Space>

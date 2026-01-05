@@ -138,15 +138,14 @@ const DataSources: React.FC = () => {
       title: 'Действия',
       key: 'actions',
       width: 150,
-      align: 'center' as const,
+      align: 'right' as const,
       render: (_: any, record: DataSource) => (
-        <Space>
+        <div>
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            Редактировать
           </Button>
           <Popconfirm
             title="Вы уверены, что хотите удалить этот источник данных?"
@@ -155,10 +154,9 @@ const DataSources: React.FC = () => {
             cancelText="Нет"
           >
             <Button type="link" danger icon={<DeleteOutlined />}>
-              Удалить
             </Button>
           </Popconfirm>
-        </Space>
+        </div>
       ),
     },
   ]
