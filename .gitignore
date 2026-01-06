@@ -28,3 +28,4 @@ market-crm-frontend.code-workspace
 docker-compose.override.yml
 
 .cursor
+.husky/_

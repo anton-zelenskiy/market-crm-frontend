@@ -165,7 +165,6 @@ interface SupplyDataItem {
 const SupplyDraftPage: React.FC = () => {
   const { connectionId, snapshotId } = useParams<{ connectionId: string, snapshotId: string }>()
   const navigate = useNavigate()
-  const [connection, setConnection] = useState<any>(null)
   const [settings, setSettings] = useState<any>(null)
   const [snapshot, setSnapshot] = useState<SupplySnapshotResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -444,7 +443,6 @@ const SupplyDraftPage: React.FC = () => {
         connectionSettingsApi.getByConnectionId(parseInt(connectionId)),
       ])
       
-      setConnection(connectionData)
       setSettings(settingsData)
 
       if (connectionData.company_id) {
