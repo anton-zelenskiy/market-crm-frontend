@@ -308,7 +308,7 @@ const SupplyDraftPage: React.FC = () => {
 
   // Check if there are any invalid values in tableData
   // TODO: check only edited cell (offer, cluster)
-  /* tslint:disable:no-unused-variable */
+  // @ts-expect-error - value is never read but kept for future use
   const hasInvalidValues = useMemo(() => {
     if (!tableData || tableData.length === 0) return false
 
