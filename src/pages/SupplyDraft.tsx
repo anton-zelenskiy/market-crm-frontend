@@ -183,7 +183,12 @@ const SupplyDraftPage: React.FC = () => {
   const [form] = Form.useForm()
   const [tableData, setTableData] = useState<SupplyDataItem[]>([])
   const [clusterFilter, setClusterFilter] = useState('')
-  const [visibleBaseColumns, setVisibleBaseColumns] = useState<string[]>(['offer_id', 'name', 'box_count', 'vendor_stocks_count'])
+  const [visibleBaseColumns, setVisibleBaseColumns] = useState<string[]>([
+    'offer_id',
+    'name',
+    'box_count',
+    'vendor_stocks_count',
+  ])
   const [visibleSubColumns, setVisibleSubColumns] = useState<string[]>([
     'marketplace_stocks_count',
     'orders_count',
@@ -302,6 +307,7 @@ const SupplyDraftPage: React.FC = () => {
   }, [selectedCluster, limitationStrategy, tableData])
 
   // Check if there are any invalid values in tableData
+  // TODO: check only edited cell (offer, cluster)
   const hasInvalidValues = useMemo(() => {
     if (!tableData || tableData.length === 0) return false
 
@@ -332,11 +338,13 @@ const SupplyDraftPage: React.FC = () => {
               const allUnavailable = values.every((v) => v === 'UNAVAILABLE')
 
               if (allUnavailable && !hasNoLimits) {
+                console.error('Invalid value: allUnavailable && !hasNoLimits', clusterName, toSupply)
                 return true
               }
               if (!hasNoLimits && hasLimited.length > 0) {
                 const maxLimit = Math.max(...hasLimited)
                 if (toSupply > maxLimit) {
+                  console.error('Invalid value: toSupply > maxLimit', clusterName, toSupply, maxLimit)
                   return true
                 }
               }
@@ -356,27 +364,31 @@ const SupplyDraftPage: React.FC = () => {
       return
     }
 
-    // Check for invalid values before saving
-    if (hasInvalidValues) {
-      return
-    }
+    // Check disabled
+    // if (hasInvalidValues) {
+    //   console.error('В данных есть некорректные значения. Пожалуйста, исправьте их перед сохранением.')
+    //   return
+    // }
 
     setIsDirty(false)
     setSaving(true)
     try {
+      console.log('Saving snapshot...', snapshotId, tableData.length)
       const savedSnapshot = await saveSupplySnapshot(
         parseInt(snapshotId),
         tableData
       )
       setSnapshot(savedSnapshot)
+      console.log('Изменения сохранены')
     } catch (error: any) {
+      console.error('Save failed:', error)
       message.error(
         error.response?.data?.detail || 'Ошибка сохранения изменений'
       )
     } finally {
       setSaving(false)
     }
-  }, [snapshotId, tableData, hasInvalidValues, saving])
+  }, [snapshotId, tableData, saving])
 
   // Use a ref to always call the latest version of handleSaveSnapshot
   // This ensures that debouncedSave uses the most up-to-date tableData
@@ -749,9 +761,14 @@ const SupplyDraftPage: React.FC = () => {
                 return sum + (updated[cn]?.to_supply || 0)
               }, 0)
               
+              // Recalculate deficit based on new total to_supply and vendor stocks
+              const vendorStocks = updated.vendor_stocks_count || 0
+              const newDeficit = Math.max(0, newToSupplyTotal - vendorStocks)
+
               updated.totals = {
                 ...updated.totals,
-                to_supply: newToSupplyTotal
+                to_supply: newToSupplyTotal,
+                deficit: newDeficit
               }
             }
           } else {
