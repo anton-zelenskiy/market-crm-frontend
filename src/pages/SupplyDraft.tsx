@@ -62,6 +62,7 @@ import {
   saveSupplySnapshot,
 } from '../api/supplies'
 import { connectionsApi } from '../api/connections'
+import { connectionSettingsApi } from '../api/connectionSettings'
 import { companiesApi, type Company } from '../api/companies'
 
 const { Title, Text } = Typography
@@ -164,6 +165,8 @@ interface SupplyDataItem {
 const SupplyDraftPage: React.FC = () => {
   const { connectionId, snapshotId } = useParams<{ connectionId: string, snapshotId: string }>()
   const navigate = useNavigate()
+  const [connection, setConnection] = useState<any>(null)
+  const [settings, setSettings] = useState<any>(null)
   const [snapshot, setSnapshot] = useState<SupplySnapshotResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [updating, setUpdating] = useState(false)
@@ -198,6 +201,10 @@ const SupplyDraftPage: React.FC = () => {
   ])
   const searchTimeoutRef = useRef<number | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
+
+  const logisticsDistance = settings?.logistics_distance || 45
+  const avgOrdersLabel = `Ср. кол-во заказов (${logisticsDistance}д)`
+
   const [expandedDraftId, setExpandedDraftId] = useState<number | null>(null)
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<Record<number, number>>({})
   const [timeslots, setTimeslots] = useState<Record<number, DraftTimeslotResponse>>({})
@@ -234,7 +241,7 @@ const SupplyDraftPage: React.FC = () => {
             options={[
               { label: 'Остатки на маркетплейсе', value: 'marketplace_stocks_count' },
               { label: 'Заказы (мес.)', value: 'orders_count' },
-              { label: 'Сред. кол-во за 45 дн.', value: 'avg_orders_leverage' },
+              { label: avgOrdersLabel, value: 'avg_orders_leverage' },
               { label: 'Ограничения складов', value: 'warehouse_availability' },
               { label: 'Отгрузить на маркетплейс', value: 'to_supply' },
             ]}
@@ -432,7 +439,13 @@ const SupplyDraftPage: React.FC = () => {
     if (!connectionId) return
 
     try {
-      const connectionData = await connectionsApi.getById(parseInt(connectionId))
+      const [connectionData, settingsData] = await Promise.all([
+        connectionsApi.getById(parseInt(connectionId)),
+        connectionSettingsApi.getByConnectionId(parseInt(connectionId)),
+      ])
+      
+      setConnection(connectionData)
+      setSettings(settingsData)
 
       if (connectionData.company_id) {
         const companyData = await companiesApi.getById(connectionData.company_id)
@@ -1049,7 +1062,7 @@ const SupplyDraftPage: React.FC = () => {
       if (visibleSubColumns.includes('avg_orders_leverage')) {
         children.push({
           field: `${clusterName}_avg_orders_leverage`,
-          headerName: 'Сред. кол-во за 45 дн.',
+          headerName: avgOrdersLabel,
           width: 150,
           type: 'numericColumn',
           valueGetter: (params) => {

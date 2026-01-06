@@ -11,14 +11,19 @@ import {
   Select,
   Spin,
   List,
+  InputNumber,
+  Form,
 } from 'antd'
 import {
   ArrowLeftOutlined,
   PlayCircleOutlined,
   LinkOutlined,
+  SaveOutlined,
 } from '@ant-design/icons'
 import { connectionsApi } from '../api/connections'
 import type { Connection } from '../api/connections'
+import { connectionSettingsApi } from '../api/connectionSettings'
+import type { ConnectionSettings } from '../api/connectionSettings'
 import { reportsApi } from '../api/reports'
 import type { Report } from '../api/reports'
 import { companiesApi } from '../api/companies'
@@ -31,11 +36,14 @@ const ConnectionDetail: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
   const navigate = useNavigate()
   const [connection, setConnection] = useState<Connection | null>(null)
+  const [settings, setSettings] = useState<ConnectionSettings | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(false)
+  const [savingSettings, setSavingSettings] = useState(false)
   const [runningReportId, setRunningReportId] = useState<number | null>(null)
   const [encoding, setEncoding] = useState<'cp1251' | 'utf-8' | 'utf-8-sig'>('utf-8-sig')
+  const [form] = Form.useForm()
 
   useEffect(() => {
     if (connectionId) {
@@ -48,8 +56,13 @@ const ConnectionDetail: React.FC = () => {
 
     setLoading(true)
     try {
-      const conn = await connectionsApi.getById(parseInt(connectionId))
+      const [conn, settingsData] = await Promise.all([
+        connectionsApi.getById(parseInt(connectionId)),
+        connectionSettingsApi.getByConnectionId(parseInt(connectionId)),
+      ])
+      
       setConnection(conn)
+      setSettings(settingsData)
       
       const companyData = await companiesApi.getById(conn.company_id)
       setCompany(companyData)
@@ -62,6 +75,23 @@ const ConnectionDetail: React.FC = () => {
       navigate('/connections')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleUpdateSettings = async (values: { logistics_distance: number }) => {
+    if (!connectionId || !connection) return
+
+    setSavingSettings(true)
+    try {
+      const updated = await connectionSettingsApi.update(parseInt(connectionId), {
+        logistics_distance: values.logistics_distance,
+      })
+      setSettings(updated)
+      message.success('Настройки успешно сохранены')
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка при сохранении настроек')
+    } finally {
+      setSavingSettings(false)
     }
   }
 
@@ -136,7 +166,7 @@ const ConnectionDetail: React.FC = () => {
     )
   }
 
-  if (!connection) {
+  if (!connection || !settings) {
     return null
   }
 
@@ -199,6 +229,34 @@ const ConnectionDetail: React.FC = () => {
               />
             </Card>
           )}
+
+          <Card title="Настройки поставки" size="small">
+            <Form
+              key={`${connection.id}-${settings.id}`}
+              form={form}
+              layout="inline"
+              onFinish={handleUpdateSettings}
+              initialValues={{ logistics_distance: settings.logistics_distance }}
+            >
+              <Form.Item
+                name="logistics_distance"
+                label="Плечо логистики (дней)"
+                rules={[{ required: true, message: 'Введите количество дней' }]}
+              >
+                <InputNumber min={1} max={365} />
+              </Form.Item>
+              <Form.Item>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  icon={<SaveOutlined />}
+                  loading={savingSettings}
+                >
+                  Сохранить
+                </Button>
+              </Form.Item>
+            </Form>
+          </Card>
 
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
