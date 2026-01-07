@@ -269,7 +269,13 @@ const SupplyDraftPage: React.FC = () => {
       if (!clusterData || clusterData.to_supply <= 0) continue
 
       const toSupply = clusterData.to_supply
-      const boxCount = item.box_count || 1
+      const boxCount = item.box_count || 0
+      
+      if (boxCount <= 0 && toSupply > 0) {
+        // Cannot supply if box count is not set
+        continue
+      }
+      
       const availability = clusterData.warehouse_availability || {}
       
       const values = Object.values(availability)
@@ -319,7 +325,7 @@ const SupplyDraftPage: React.FC = () => {
     if (!tableData || tableData.length === 0) return false
 
     for (const item of tableData) {
-      const boxCount = item.box_count || 1
+      const boxCount = item.box_count || 0
 
       // Check all cluster to_supply values
       const clusterNames = Object.keys(item).filter(
@@ -332,7 +338,7 @@ const SupplyDraftPage: React.FC = () => {
           const toSupply = clusterData.to_supply || 0
           if (toSupply > 0) {
             // 1. Check box count
-            if (boxCount > 0 && toSupply % boxCount !== 0) {
+            if (boxCount <= 0 || toSupply % boxCount !== 0) {
               return true
             }
 
@@ -989,6 +995,31 @@ const SupplyDraftPage: React.FC = () => {
         headerName: 'Кратность',
         width: 100,
         pinned: 'left' as const,
+        cellRenderer: (params: any) => {
+          const value = params.value;
+          const isInvalid = !value || value === 0;
+          
+          if (isInvalid) {
+            return (
+              <Tooltip title="Не задана кратность">
+                <div style={{ 
+                  backgroundColor: '#fff1f0', 
+                  color: '#cf1322',
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '2px',
+                  fontWeight: 'bold'
+                }}>
+                  {value || 0}
+                </div>
+              </Tooltip>
+            );
+          }
+          return value;
+        }
       },
       {
         field: 'vendor_stocks_count',
@@ -1149,7 +1180,7 @@ const SupplyDraftPage: React.FC = () => {
             return String(value)
           },
           cellRenderer: (params: any) => {
-            const boxCount = params.data?.box_count || 1
+            const boxCount = params.data?.box_count || 0
             const clusterData = params.data?.[clusterName]
             const actualValue = params.value !== undefined && params.value !== null 
               ? params.value 
@@ -1157,16 +1188,21 @@ const SupplyDraftPage: React.FC = () => {
             const numValue = Number(actualValue) || 0
             
             // 1. Check box count validity
-            const isBoxCountValid = boxCount <= 0 || numValue === 0 || numValue % boxCount === 0
+            let isBoxCountValid = true
             let boxCountError = ''
-            if (!isBoxCountValid) {
+            
+            if (boxCount <= 0) {
+              isBoxCountValid = false
+              boxCountError = 'Не задана кратность'
+            } else if (numValue > 0 && numValue % boxCount !== 0) {
+              isBoxCountValid = false
               boxCountError = `Количество должно быть кратно ${boxCount}`
             }
 
             // 2. Check warehouse availability validity if numValue > 0
             let isAvailabilityValid = true
             let availabilityError = ''
-            if (numValue > 0 && clusterData?.warehouse_availability) {
+            if (numValue > 0 && isBoxCountValid && clusterData?.warehouse_availability) {
               const availability = clusterData.warehouse_availability
               const values = Object.values(availability)
               const hasNoLimits = values.some((v) => v === 'NO_LIMITS')
@@ -1200,13 +1236,13 @@ const SupplyDraftPage: React.FC = () => {
             let backgroundColor = defaultBgColor
             let errorReason = ''
 
-            if (numValue > 0) {
+            if (!isBoxCountValid) {
+              backgroundColor = boxCountWarningColor
+              errorReason = boxCountError
+            } else if (numValue > 0) {
               if (!isAvailabilityValid) {
                 backgroundColor = availabilityErrorColor
                 errorReason = availabilityError
-              } else if (!isBoxCountValid) {
-                backgroundColor = boxCountWarningColor
-                errorReason = boxCountError
               } else {
                 backgroundColor = validNonZeroBgColor
               }
