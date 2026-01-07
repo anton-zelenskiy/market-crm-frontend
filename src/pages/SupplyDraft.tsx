@@ -998,27 +998,44 @@ const SupplyDraftPage: React.FC = () => {
         cellRenderer: (params: any) => {
           const value = params.value;
           const isInvalid = !value || value === 0;
+
+          const defaultBgColor = '!inherit'
+          const defaultColor = '!inherit'
+          const defaultFontWeight = 'normal'
+          const invalidBgColor = '#fff1f0'
+          const invalidColor = '#cf1322'
+          const invalidFontWeight = 'bold'
+
+          let backgroundColor = defaultBgColor
+          let color = defaultColor
+          let fontWeight = defaultFontWeight
           
           if (isInvalid) {
-            return (
-              <Tooltip title="Не задана кратность">
-                <div style={{ 
-                  backgroundColor: '#fff1f0', 
-                  color: '#cf1322',
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: '2px',
-                  fontWeight: 'bold'
-                }}>
-                  {value || 0}
-                </div>
-              </Tooltip>
-            );
+            backgroundColor = invalidBgColor
+            color = invalidColor
+            fontWeight = invalidFontWeight
           }
-          return value;
+
+          const content = (
+            <div style={{ 
+              backgroundColor,
+              color,
+              fontWeight,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '2px',
+            }}>
+              {value || 0}
+            </div>
+          )
+
+          if (isInvalid) {
+            return <Tooltip title="Не задана кратность">{content}</Tooltip>
+          }
+          return content
         }
       },
       {
