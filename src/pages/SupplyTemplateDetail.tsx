@@ -15,7 +15,6 @@ import {
   Alert,
   Divider,
   Radio,
-  Upload,
   Tooltip,
   Calendar,
   Row,
@@ -35,7 +34,6 @@ dayjs.locale('ru')
 import {
   ArrowLeftOutlined,
   ReloadOutlined,
-  UploadOutlined,
   DownloadOutlined,
   FileExcelOutlined,
   DeleteOutlined,
@@ -162,7 +160,7 @@ interface SupplyDataItem {
   }
 }
 
-const SupplyDraftPage: React.FC = () => {
+const SupplyTemplateDetail: React.FC = () => {
   const { connectionId, snapshotId } = useParams<{ connectionId: string, snapshotId: string }>()
   const navigate = useNavigate()
   const [settings, setSettings] = useState<any>(null)
@@ -516,28 +514,6 @@ const SupplyDraftPage: React.FC = () => {
     } finally {
       setUpdating(false)
     }
-  }
-
-  const handleUploadAvailability = async (file: File) => {
-    if (!snapshotId) return
-
-    setUpdating(true)
-    try {
-      const updatedSnapshot = await suppliesApi.uploadWarehouseAvailability(
-        parseInt(snapshotId),
-        file
-      )
-      setSnapshot(updatedSnapshot)
-      setTableData(updatedSnapshot.data)
-      message.success('Ограничения складов успешно загружены')
-    } catch (error: any) {
-      message.error(
-        error.response?.data?.detail || 'Ошибка загрузки ограничений'
-      )
-    } finally {
-      setUpdating(false)
-    }
-    return false // Prevent default upload behavior
   }
 
   const handleDownloadDeficit = async () => {
@@ -1459,13 +1435,6 @@ const SupplyDraftPage: React.FC = () => {
               >
                 Обновить данные
               </Button>
-              <Upload
-                accept=".xlsx"
-                showUploadList={false}
-                beforeUpload={handleUploadAvailability}
-              >
-                <Button icon={<UploadOutlined />}>Загрузить ограничения</Button>
-              </Upload>
             </Space>
           </div>
 
@@ -2189,5 +2158,5 @@ const SupplyDraftPage: React.FC = () => {
   )
 }
 
-export default SupplyDraftPage
+export default SupplyTemplateDetail
 

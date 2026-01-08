@@ -8,12 +8,15 @@ import {
   message,
   Card,
   Typography,
+  Modal,
+  Upload,
 } from 'antd'
 import {
   ArrowLeftOutlined,
   PlusOutlined,
   DeleteOutlined,
   FileTextOutlined,
+  UploadOutlined,
 } from '@ant-design/icons'
 import { suppliesApi, type SupplySnapshotResponse } from '../api/supplies'
 import { connectionsApi, type Connection } from '../api/connections'
@@ -29,6 +32,8 @@ const SupplyTemplates: React.FC = () => {
   const [company, setCompany] = useState<Company | null>(null)
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [modalVisible, setModalVisible] = useState(false)
+  const [fileList, setFileList] = useState<any[]>([])
 
   useEffect(() => {
     if (connectionId) {
@@ -58,10 +63,17 @@ const SupplyTemplates: React.FC = () => {
 
   const handleCreate = async () => {
     if (!connectionId) return
+    if (fileList.length === 0) {
+      message.error('Пожалуйста, выберите файл с ограничениями складов')
+      return
+    }
+
     setCreating(true)
     try {
-      const newSnapshot = await suppliesApi.createSnapshot(parseInt(connectionId))
+      const file = fileList[0].originFileObj
+      const newSnapshot = await suppliesApi.createSnapshot(parseInt(connectionId), file)
       message.success('Новый шаблон поставки создан')
+      setModalVisible(false)
       navigate(`/connections/${connectionId}/supply-templates/${newSnapshot.id}`)
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка создания шаблона')
@@ -140,18 +152,46 @@ const SupplyTemplates: React.FC = () => {
                 Назад
               </Button>
               <Title level={2} style={{ margin: 0 }}>
-                <FileTextOutlined /> Шаблоны поставок - {company?.name} ({connection?.data_source?.title})
+                <FileTextOutlined /> Поставки - {company?.name} ({connection?.data_source?.title})
               </Title>
             </Space>
             <Button
               type="primary"
               icon={<PlusOutlined />}
-              onClick={handleCreate}
+              onClick={() => setModalVisible(true)}
               loading={creating}
             >
               Сформировать поставку
             </Button>
           </div>
+
+          <Modal
+            title="Сформировать новую поставку"
+            open={modalVisible}
+            onOk={handleCreate}
+            onCancel={() => {
+              setModalVisible(false)
+              setFileList([])
+            }}
+            confirmLoading={creating}
+            okText="Создать"
+            cancelText="Отмена"
+          >
+            <div style={{ marginBottom: '16px' }}>
+              <Typography.Paragraph>
+                Для формирования новой поставки необходимо загрузить файл XLS с ограничениями складов в кластерах.
+                Перейдите в раздел <a href="https://seller.ozon.ru/app/analytics/goods-availability/index" target="_blank">Планирование поставок</a> в личном кабинете Ozon, выберите все кластера, скачайте XLS файл и прикрепите файл".
+              </Typography.Paragraph>
+              <Upload
+                accept=".xlsx"
+                fileList={fileList}
+                beforeUpload={() => false}
+                onChange={({ fileList }) => setFileList(fileList.slice(-1))}
+              >
+                <Button icon={<UploadOutlined />}>Загрузить ограничения складов</Button>
+              </Upload>
+            </div>
+          </Modal>
 
           <Table
             columns={columns}

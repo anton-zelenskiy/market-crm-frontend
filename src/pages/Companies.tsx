@@ -113,7 +113,7 @@ const Companies: React.FC = () => {
       render: (_: any, record: Company) => <Link to={`/companies/${record.id}`}>{record.name}</Link>,
     },
     {
-      title: 'Подключения',
+      title: 'API Подключения',
       key: 'connections',
       render: (_: any, record: Company) => (
         <Badge count={record.connections?.length || 0} showZero></Badge>
@@ -123,7 +123,7 @@ const Companies: React.FC = () => {
       title: 'Создано',
       dataIndex: 'created_at',
       key: 'created_at',
-      render: (date: string) => new Date(date).toLocaleDateString(),
+      render: (date: string) => new Date(date).toLocaleDateString('ru-RU'),
     },
     {
       title: 'Действия',

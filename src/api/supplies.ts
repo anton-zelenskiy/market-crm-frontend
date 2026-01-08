@@ -232,8 +232,24 @@ export const suppliesApi = {
   },
 
   createSnapshot: async (
-    connectionId: number
+    connectionId: number,
+    file?: File
   ): Promise<SupplySnapshotResponse> => {
+    if (file) {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await api.post(
+        `/supplies/connection/${connectionId}/snapshot/create`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      )
+      return response.data
+    }
+
     const response = await api.post(
       `/supplies/connection/${connectionId}/snapshot/create`
     )
@@ -249,24 +265,6 @@ export const suppliesApi = {
 
   deleteSnapshot: async (snapshotId: number): Promise<void> => {
     await api.delete(`/supplies/snapshot/${snapshotId}`)
-  },
-
-  uploadWarehouseAvailability: async (
-    snapshotId: number,
-    file: File
-  ): Promise<SupplySnapshotResponse> => {
-    const formData = new FormData()
-    formData.append('file', file)
-    const response = await api.post(
-      `/supplies/snapshot/${snapshotId}/warehouse-availability`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    )
-    return response.data
   },
 
   getWarehouses: async (
