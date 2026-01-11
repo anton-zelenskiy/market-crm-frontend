@@ -18,6 +18,7 @@ import Companies from './pages/Companies'
 import CompanyDetail from './pages/CompanyDetail'
 import Connections from './pages/Connections'
 import ConnectionDetail from './pages/ConnectionDetail'
+import Clusters from './pages/Clusters'
 import Reports from './pages/Reports'
 import VendorProducts from './pages/VendorProducts'
 import OzonProducts from './pages/OzonProducts'
@@ -73,6 +74,11 @@ const DashboardLayout: React.FC = () => {
       label: 'Отчеты',
     },
     {
+      key: '/clusters',
+      icon: <DatabaseOutlined />,
+      label: 'Кластеры',
+    },
+    {
       key: 'logout',
       icon: <LogoutOutlined />,
       label: 'Выйти',
@@ -102,6 +108,9 @@ const DashboardLayout: React.FC = () => {
     }
     if (path.startsWith('/reports')) {
       return '/reports'
+    }
+    if (path.startsWith('/clusters')) {
+      return '/clusters'
     }
     return path
   }
@@ -153,6 +162,7 @@ const DashboardLayout: React.FC = () => {
             <Route path="/connections/:connectionId/supply-templates" element={<SupplyTemplates />} />
             <Route path="/connections/:connectionId/supply-templates/:snapshotId" element={<SupplyTemplateDetail />} />
             <Route path="/data-sources" element={<DataSources />} />
+            <Route path="/clusters" element={<Clusters />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/" element={<Navigate to="/companies" replace />} />
           </Routes>
