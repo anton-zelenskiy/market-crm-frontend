@@ -391,6 +391,7 @@ const SupplyTemplateDetail: React.FC = () => {
       )
       setSnapshot(savedSnapshot)
       console.log('Изменения сохранены')
+      message.success('')
     } catch (error: any) {
       console.error('Save failed:', error)
       message.error(

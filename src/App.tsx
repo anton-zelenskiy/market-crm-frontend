@@ -53,14 +53,14 @@ const DashboardLayout: React.FC = () => {
 
   const menuItems = [
     {
-      key: '/companies',
-      icon: <ShopOutlined />,
-      label: 'Компании',
-    },
-    {
       key: '/connections',
       icon: <LinkOutlined />,
       label: 'API Подключения',
+    },
+    {
+      key: '/companies',
+      icon: <ShopOutlined />,
+      label: 'Компании',
     },
     {
       key: '/data-sources',
