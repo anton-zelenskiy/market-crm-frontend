@@ -21,6 +21,7 @@ import {
   EditOutlined,
   DeleteOutlined,
   UploadOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons'
 import { vendorProductsApi, type VendorProduct, type VendorProductCreate, type VendorProductUpdate } from '../api/products'
 import { companiesApi } from '../api/companies'
@@ -125,6 +126,17 @@ const VendorProducts: React.FC = () => {
     return false // Prevent default upload
   }
 
+  const handleDownloadTemplate = async () => {
+    if (!companyId) return
+
+    try {
+      await vendorProductsApi.downloadSyncCSVTemplate(parseInt(companyId))
+      message.success('Шаблон CSV успешно скачан')
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка скачивания шаблона')
+    }
+  }
+
   const columns = [
     {
       title: 'Артикул',
@@ -186,6 +198,11 @@ const VendorProducts: React.FC = () => {
               </Button>
             </Space>
             <Space>
+              <Tooltip title="Скачать CSV шаблон с артикулами для заполнения">
+                <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
+                  Скачать шаблон CSV
+                </Button>
+              </Tooltip>
               <Upload
                 accept=".csv"
                 beforeUpload={handleCSVUpload}
