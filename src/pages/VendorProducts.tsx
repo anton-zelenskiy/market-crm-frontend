@@ -213,7 +213,7 @@ const VendorProducts: React.FC = () => {
             rowKey="id"
             loading={loading}
             size='small'
-            pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `Всего ${total} товаров` }}
+            pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (total) => `Всего ${total} товаров` }}
           />
         </Space>
       </Card>
