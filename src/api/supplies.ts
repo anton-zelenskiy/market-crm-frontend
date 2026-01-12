@@ -44,6 +44,8 @@ export interface DownloadDocumentsRequest {
   external_order_id: string
 }
 
+export type SupplyCalculationStrategy = 'average_sales' | 'supply_plan'
+
 export interface SupplySnapshotResponse {
   id: number
   connection_id: number
@@ -64,6 +66,18 @@ export interface SupplySnapshotResponse {
     }
   }>
   updated_at: string
+  // Configuration fields
+  cluster_ids: string[] | null
+  offer_ids: string[] | null
+  supply_calculation_strategy: SupplyCalculationStrategy | null
+  supply_products_to_neighbor_cluster: boolean | null
+}
+
+export interface CreateSnapshotConfig {
+  cluster_ids?: string[]
+  offer_ids?: string[]
+  supply_calculation_strategy?: SupplyCalculationStrategy
+  supply_products_to_neighbor_cluster?: boolean
 }
 
 export interface Warehouse {
@@ -233,25 +247,24 @@ export const suppliesApi = {
 
   createSnapshot: async (
     connectionId: number,
+    config?: CreateSnapshotConfig,
     file?: File
   ): Promise<SupplySnapshotResponse> => {
+    const formData = new FormData()
     if (file) {
-      const formData = new FormData()
       formData.append('file', file)
-      const response = await api.post(
-        `/supplies/connection/${connectionId}/snapshot/create`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      )
-      return response.data
     }
-
+    if (config) {
+      formData.append('config', JSON.stringify(config))
+    }
     const response = await api.post(
-      `/supplies/connection/${connectionId}/snapshot/create`
+      `/supplies/connection/${connectionId}/snapshot/create`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
     )
     return response.data
   },
