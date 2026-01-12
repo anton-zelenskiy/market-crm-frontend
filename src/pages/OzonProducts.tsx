@@ -24,6 +24,7 @@ import {
   EditOutlined,
   DeleteOutlined,
   UploadOutlined,
+  DownloadOutlined,
   SyncOutlined,
   SearchOutlined,
 } from '@ant-design/icons'
@@ -183,13 +184,24 @@ const OzonProducts: React.FC = () => {
     if (!connectionId) return
 
     try {
-      const result = await ozonProductsApi.syncBoxQuantityFromCSV(parseInt(connectionId), file)
+      const result = await ozonProductsApi.syncFromCSV(parseInt(connectionId), file)
       message.success(result.message || `Обновлено ${result.products_updated} товаров`)
       loadData()
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка загрузки CSV файла')
     }
     return false // Prevent default upload
+  }
+
+  const handleDownloadTemplate = async () => {
+    if (!connectionId) return
+
+    try {
+      await ozonProductsApi.downloadSyncCSVTemplate(parseInt(connectionId))
+      message.success('Шаблон CSV успешно скачан')
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка скачивания шаблона')
+    }
   }
 
   const columns = [
@@ -300,6 +312,11 @@ const OzonProducts: React.FC = () => {
               >
                 Синхронизировать с Ozon
               </Button>
+              <Tooltip title="Скачать CSV шаблон с артикулами для заполнения">
+                <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
+                  Скачать шаблон CSV
+                </Button>
+              </Tooltip>
               <Upload
                 accept=".csv"
                 beforeUpload={handleCSVUpload}

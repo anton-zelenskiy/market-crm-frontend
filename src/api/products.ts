@@ -130,13 +130,13 @@ export const ozonProductsApi = {
     await api.delete(`/products/ozon/${connectionId}/${ozonProductId}`)
   },
 
-  syncBoxQuantityFromCSV: async (
+  syncFromCSV: async (
     connectionId: number,
     file: File
   ): Promise<{ message: string; products_updated: number }> => {
     const formData = new FormData()
     formData.append('file', file)
-    const response = await api.post(`/products/ozon/${connectionId}/sync-box-quantity-csv`, formData, {
+    const response = await api.post(`/products/ozon/${connectionId}/sync-csv`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -147,6 +147,22 @@ export const ozonProductsApi = {
   syncFromAPI: async (connectionId: number): Promise<{ message: string; result: any }> => {
     const response = await api.post(`/products/ozon/${connectionId}/sync`)
     return response.data
+  },
+
+  downloadSyncCSVTemplate: async (connectionId: number): Promise<void> => {
+    const response = await api.get(`/products/ozon/${connectionId}/sync-csv-template`, {
+      responseType: 'blob',
+    })
+    
+    // Create a download link and trigger download
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'box_quantity_template.csv')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
   },
 }
 
