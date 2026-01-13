@@ -50,6 +50,7 @@ import { debounce } from 'throttle-debounce'
 import {
   suppliesApi,
   type SupplySnapshotResponse,
+  type SupplyCalculationStrategy,
   type Warehouse,
   type CreateSupplyDraftRequest,
   type SupplyDraft,
@@ -65,6 +66,25 @@ import { companiesApi, type Company } from '../api/companies'
 
 const { Title, Text } = Typography
 const { Option } = Select
+
+// Strategy labels and column names
+const STRATEGY_LABELS: Record<SupplyCalculationStrategy, string> = {
+  average_sales: 'По средним продажам',
+  supply_plan: 'План поставок',
+}
+
+const VENDOR_STOCKS_COLUMN_LABELS: Record<SupplyCalculationStrategy, string> = {
+  average_sales: 'Остатки на заводе',
+  supply_plan: 'План поставок',
+}
+
+const getStrategyLabel = (strategy: SupplyCalculationStrategy | null | undefined): string => {
+  return strategy ? STRATEGY_LABELS[strategy] : STRATEGY_LABELS.average_sales
+}
+
+const getVendorStocksColumnLabel = (strategy: SupplyCalculationStrategy | null | undefined): string => {
+  return strategy ? VENDOR_STOCKS_COLUMN_LABELS[strategy] : VENDOR_STOCKS_COLUMN_LABELS.average_sales
+}
 
 // Map warehouse types to human-readable Russian text
 const getWarehouseTypeLabel = (warehouseType: string | undefined): string => {
@@ -213,6 +233,8 @@ const SupplyTemplateDetail: React.FC = () => {
 
   const limitationStrategy = Form.useWatch('limitation_strategy', form)
 
+  const vendorStocksLabel = getVendorStocksColumnLabel(snapshot?.supply_calculation_strategy)
+
   const columnSettingsContent = (
     <div style={{ padding: '8px', minWidth: '250px' }}>
       <div style={{ marginBottom: '16px' }}>
@@ -223,7 +245,7 @@ const SupplyTemplateDetail: React.FC = () => {
               { label: 'Артикул', value: 'offer_id' },
               { label: 'Наименование', value: 'name' },
               { label: 'Кратность', value: 'box_count' },
-              { label: 'Остатки на заводе', value: 'vendor_stocks_count' },
+              { label: vendorStocksLabel, value: 'vendor_stocks_count' },
             ]}
             value={visibleBaseColumns}
             onChange={(values) => setVisibleBaseColumns(values as string[])}
@@ -1017,19 +1039,25 @@ const SupplyTemplateDetail: React.FC = () => {
       },
       {
         field: 'vendor_stocks_count',
-        headerName: 'Остатки на заводе',
+        headerName: getVendorStocksColumnLabel(snapshot.supply_calculation_strategy),
         width: 120,
         type: 'numericColumn',
         pinned: 'left' as const,
       },
     ].filter(h => 'field' in h && visibleBaseColumns.includes(h.field as string))
 
-    // Get cluster names from first item (excluding totals and base fields)
-    const firstItem = snapshot.data[0]
-    let clusterNames = Object.keys(firstItem).filter(
-      (key) =>
-        !['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals'].includes(key)
-    )
+    // Get all unique cluster names from all items (excluding base fields and totals)
+    // This ensures neighbor clusters that only appear in some items are included
+    const baseFields = ['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals']
+    const allClusterNames = new Set<string>()
+    snapshot.data.forEach((item) => {
+      Object.keys(item).forEach((key) => {
+        if (!baseFields.includes(key)) {
+          allClusterNames.add(key)
+        }
+      })
+    })
+    let clusterNames = Array.from(allClusterNames)
 
     // Filter clusters by name if search input is not empty
     if (clusterFilter) {
@@ -1045,8 +1073,8 @@ const SupplyTemplateDetail: React.FC = () => {
       if (visibleSubColumns.includes('marketplace_stocks_count')) {
         children.push({
           field: `${clusterName}_marketplace_stocks_count`,
-          headerName: 'Остатки на маркетплейсе',
-          width: 150,
+          headerName: 'Остатки ozon',
+          width: 120,
           type: 'numericColumn',
           valueGetter: (params) => {
             const clusterData = params.data?.[clusterName]
@@ -1105,8 +1133,8 @@ const SupplyTemplateDetail: React.FC = () => {
       if (visibleSubColumns.includes('warehouse_availability')) {
         children.push({
           field: `${clusterName}_warehouse_availability`,
-          headerName: 'Максимальный размер поставки',
-          width: 180,
+          headerName: 'Ограничения',
+          width: 130,
           valueGetter: (params) => {
             const clusterData = params.data?.[clusterName]
             if (clusterData && typeof clusterData === 'object') {
@@ -1153,8 +1181,8 @@ const SupplyTemplateDetail: React.FC = () => {
       if (visibleSubColumns.includes('to_supply')) {
         children.push({
           field: `${clusterName}_to_supply`,
-          headerName: 'Отгрузить на маркетплейс',
-          width: 150,
+          headerName: 'К отгрузке',
+          width: 120,
           type: 'numericColumn',
           editable: true,
           cellEditor: 'agNumberCellEditor',
@@ -1439,9 +1467,16 @@ const SupplyTemplateDetail: React.FC = () => {
             </Space>
           </div>
 
-          <Title level={2} style={{ margin: 0 }}>
-            Формирование поставки - {company?.name || ''}
-          </Title>
+          <Space align="center">
+            <Title level={2} style={{ margin: 0 }}>
+              Формирование поставки - {company?.name || ''}
+            </Title>
+            {snapshot && (
+              <Tag color={snapshot.supply_calculation_strategy === 'supply_plan' ? 'blue' : 'green'}>
+                {getStrategyLabel(snapshot.supply_calculation_strategy)}
+              </Tag>
+            )}
+          </Space>
 
           <Space>
             <Button
@@ -1599,7 +1634,7 @@ const SupplyTemplateDetail: React.FC = () => {
 
                     return (
                       <div style={{ padding: '24px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
-                        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                           {/* Warehouse selection */}
                           <div>
                             <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '16px' }}>
@@ -1769,7 +1804,7 @@ const SupplyTemplateDetail: React.FC = () => {
                                         borderRadius: '12px',
                                         backgroundColor: '#fff'
                                       }}>
-                                        <Space direction="vertical" align="center">
+                                        <Space orientation="vertical" align="center">
                                           <Text type="secondary" style={{ fontSize: '16px' }}>Выберите дату в календаре</Text>
                                           <Text type="secondary" style={{ fontSize: '12px' }}>Слева отображены доступные дни</Text>
                                         </Space>
@@ -1794,7 +1829,7 @@ const SupplyTemplateDetail: React.FC = () => {
                               alignItems: 'center',
                               border: '1px solid #e6f7ff'
                             }}>
-                              <Space direction="vertical" size={4}>
+                              <Space orientation="vertical" size={4}>
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                   <Text type="secondary">Время:</Text>
                                   <Text strong>
@@ -1830,8 +1865,8 @@ const SupplyTemplateDetail: React.FC = () => {
                           {currentSupplyStatus && (
                             <div style={{ marginTop: '16px' }}>
                               <Alert
-                                message={
-                                  <Space direction="vertical" size={4}>
+                                title={
+                                  <Space orientation="vertical" size={4}>
                                     <Text strong>
                                       {currentSupplyStatus.status === 'DraftSupplyCreateStatusSuccess' ? 'Поставка успешно создана' :
                                        currentSupplyStatus.status === 'DraftSupplyCreateStatusFailed' ? 'Ошибка при создании поставки' : 

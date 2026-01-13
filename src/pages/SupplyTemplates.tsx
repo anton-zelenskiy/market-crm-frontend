@@ -215,7 +215,7 @@ const SupplyTemplates: React.FC = () => {
   return (
     <div>
       <Card>
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
+        <Space orientation="vertical" style={{ width: '100%' }} size="large">
           <div
             style={{
               display: 'flex',

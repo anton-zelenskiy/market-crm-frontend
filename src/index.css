@@ -85,13 +85,51 @@ button:focus-visible {
 
 @media (prefers-color-scheme: light) {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    color: #2d3748;
+    background-color: #f0eeeb;
   }
   a:hover {
     color: #747bff;
   }
   button {
-    background-color: #f9f9f9;
+    background-color: #f5f4f1;
   }
+}
+
+/* Soft color theme overrides */
+.ant-layout {
+  background-color: #e8e6e3 !important;
+}
+
+.ant-layout-header {
+  background-color: #f5f4f1 !important;
+}
+
+.ant-layout-content {
+  background-color: #faf9f7 !important;
+}
+
+.ant-card {
+  background-color: #faf9f7 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.ant-table {
+  background-color: #faf9f7 !important;
+}
+
+.ant-table-thead > tr > th {
+  background-color: #f0eeeb !important;
+}
+
+.ant-modal-content {
+  background-color: #faf9f7 !important;
+}
+
+.ant-select-dropdown {
+  background-color: #faf9f7 !important;
+}
+
+.ant-popover-inner {
+  background-color: #faf9f7 !important;
 }

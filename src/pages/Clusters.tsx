@@ -71,7 +71,7 @@ const Clusters: React.FC = () => {
       const values = await form.validateFields()
       if (editingCluster) {
         await ozonClustersApi.update(editingCluster.id, {
-          neighbor_cluster_id: values.neighbor_cluster_id,
+          neighbor_cluster_id: values.neighbor_cluster_id ?? null,
           priority: values.priority,
         })
         message.success('Кластер Ozon успешно обновлен')

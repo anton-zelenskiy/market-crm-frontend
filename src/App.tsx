@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Layout, Menu, Button, theme } from 'antd'
+import { Layout, Menu, Button, theme, ConfigProvider } from 'antd'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -172,24 +172,51 @@ const DashboardLayout: React.FC = () => {
   )
 }
 
+// Soft color theme configuration
+const softTheme = {
+  token: {
+    colorBgContainer: '#faf9f7',
+    colorBgLayout: '#e8e6e3',
+    colorBgBase: '#faf9f7',
+    colorBgElevated: '#faf9f7',
+    colorBorderSecondary: '#e0ddd8',
+    colorFillQuaternary: '#f0eeeb',
+  },
+  components: {
+    Layout: {
+      headerBg: '#f5f4f1',
+      bodyBg: '#e8e6e3',
+      siderBg: '#001529',
+    },
+    Table: {
+      headerBg: '#f0eeeb',
+    },
+    Card: {
+      colorBgContainer: '#faf9f7',
+    },
+  },
+}
+
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/*"
-            element={
-              <PrivateRoute>
-                <DashboardLayout />
-              </PrivateRoute>
-            }
-          />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <ConfigProvider theme={softTheme}>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route
+              path="/*"
+              element={
+                <PrivateRoute>
+                  <DashboardLayout />
+                </PrivateRoute>
+              }
+            />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ConfigProvider>
   )
 }
 
