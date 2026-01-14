@@ -32,6 +32,7 @@ import { connectionsApi, type Connection } from '../api/connections'
 import { companiesApi, type Company } from '../api/companies'
 import { ozonClustersApi, type OzonCluster } from '../api/clusters'
 import { ozonProductsApi, type OzonProduct } from '../api/products'
+import { SUPPLY_PLAN_STRATEGY_DESCRIPTION, FIXED_PERCENTAGES_STRATEGY_DESCRIPTION, AVERAGE_SALES_STRATEGY_DESCRIPTION } from '../constants'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -159,6 +160,8 @@ const SupplyTemplates: React.FC = () => {
         return 'По средним продажам'
       case 'supply_plan':
         return 'По плану поставок'
+      case 'fixed_percentages':
+        return 'Фиксированные проценты'
       default:
         return '-'
     }
@@ -266,10 +269,13 @@ const SupplyTemplates: React.FC = () => {
               >
                 <Select>
                   <Option value="average_sales">
-                    По средним продажам (текущая)
+                    По средним продажам
                   </Option>
                   <Option value="supply_plan">
                     По плану поставок
+                  </Option>
+                  <Option value="fixed_percentages">
+                    Фиксированные проценты
                   </Option>
                 </Select>
               </Form.Item>
@@ -280,22 +286,55 @@ const SupplyTemplates: React.FC = () => {
                   prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
                 }
               >
-                {({ getFieldValue }) =>
-                  getFieldValue('supply_calculation_strategy') === 'supply_plan' && (
+                {({ getFieldValue }) => {
+                  const strategy = getFieldValue('supply_calculation_strategy')
+
+                  let strategyDescription = ''
+
+                  switch (strategy) {
+                    case 'supply_plan':
+                      strategyDescription = SUPPLY_PLAN_STRATEGY_DESCRIPTION
+                      break
+                    case 'fixed_percentages':
+                      strategyDescription = FIXED_PERCENTAGES_STRATEGY_DESCRIPTION
+                      break
+                    case 'average_sales':
+                      strategyDescription = AVERAGE_SALES_STRATEGY_DESCRIPTION
+                      break
+                  }
+                  return (
                     <div style={{ 
                       background: '#f5f5f5', 
                       padding: '12px', 
                       borderRadius: '8px', 
                       marginBottom: '16px' 
                     }}>
-                      <Text type="secondary">
-                        В стратегии «План поставок» остатки товаров на складе поставщика рассматриваются 
-                        как план поставок. Товары распределяются по выбранным кластерам с учётом их приоритета 
-                        и ограничений складов.
-                      </Text>
+                      <Text type="secondary">{strategyDescription}</Text>
                     </div>
                   )
+                }}
+              </Form.Item>
+
+              <Form.Item
+                noStyle
+                shouldUpdate={(prevValues, currentValues) =>
+                  prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
                 }
+              >
+                {({ getFieldValue }) => {
+                  const strategy = getFieldValue('supply_calculation_strategy')
+                  const showNeighborOption = strategy === 'supply_plan' || strategy === 'fixed_percentages'
+                  return showNeighborOption && (
+                    <Form.Item
+                      name="supply_products_to_neighbor_cluster"
+                      valuePropName="checked"
+                    >
+                      <Checkbox>
+                        Поставить товар в соседний кластер (если есть ограничения)
+                      </Checkbox>
+                    </Form.Item>
+                  )
+                }}
               </Form.Item>
 
               <Form.Item
@@ -345,25 +384,6 @@ const SupplyTemplates: React.FC = () => {
                 </Select>
               </Form.Item>
 
-              <Form.Item
-                noStyle
-                shouldUpdate={(prevValues, currentValues) =>
-                  prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
-                }
-              >
-                {({ getFieldValue }) =>
-                  getFieldValue('supply_calculation_strategy') === 'supply_plan' && (
-                    <Form.Item
-                      name="supply_products_to_neighbor_cluster"
-                      valuePropName="checked"
-                    >
-                      <Checkbox>
-                        Поставить товар в соседний кластер (если есть ограничения)
-                      </Checkbox>
-                    </Form.Item>
-                  )
-                }
-              </Form.Item>
 
               <Divider />
 

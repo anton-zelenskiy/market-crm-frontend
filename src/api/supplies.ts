@@ -44,7 +44,7 @@ export interface DownloadDocumentsRequest {
   external_order_id: string
 }
 
-export type SupplyCalculationStrategy = 'average_sales' | 'supply_plan'
+export type SupplyCalculationStrategy = 'average_sales' | 'supply_plan' | 'fixed_percentages'
 
 export interface SupplySnapshotResponse {
   id: number
@@ -257,14 +257,14 @@ export const suppliesApi = {
     if (config) {
       formData.append('config', JSON.stringify(config))
     }
-    const response = await api.post(
-      `/supplies/connection/${connectionId}/snapshot/create`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+      const response = await api.post(
+        `/supplies/connection/${connectionId}/snapshot/create`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
     )
     return response.data
   },
