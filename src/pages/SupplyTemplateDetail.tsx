@@ -39,6 +39,7 @@ import {
   DeleteOutlined,
   SearchOutlined,
   SettingOutlined,
+  EditOutlined,
 } from '@ant-design/icons'
 import { AgGridReact } from 'ag-grid-react'
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community'
@@ -58,11 +59,19 @@ import {
   type Timeslot,
   type CreateSupplyFromDraftRequest,
   type SupplyCreateStatusResponse,
+  type RefreshSnapshotConfig,
   saveSupplySnapshot,
 } from '../api/supplies'
 import { connectionsApi } from '../api/connections'
 import { connectionSettingsApi } from '../api/connectionSettings'
 import { companiesApi, type Company } from '../api/companies'
+import { ozonClustersApi, type OzonCluster } from '../api/clusters'
+import { ozonProductsApi, type OzonProduct } from '../api/products'
+import {
+  SUPPLY_PLAN_STRATEGY_DESCRIPTION,
+  FIXED_PERCENTAGES_STRATEGY_DESCRIPTION,
+  AVERAGE_SALES_STRATEGY_DESCRIPTION,
+} from '../constants'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -234,6 +243,15 @@ const SupplyTemplateDetail: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Record<number, string>>({})
 
   const limitationStrategy = Form.useWatch('limitation_strategy', form)
+
+  // Settings modal state
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false)
+  const [settingsForm] = Form.useForm()
+  const [clusters, setClusters] = useState<OzonCluster[]>([])
+  const [products, setProducts] = useState<OzonProduct[]>([])
+  const [loadingClusters, setLoadingClusters] = useState(false)
+  const [loadingProducts, setLoadingProducts] = useState(false)
+  const [savingSettings, setSavingSettings] = useState(false)
 
   const vendorStocksLabel = getVendorStocksColumnLabel(snapshot?.supply_calculation_strategy)
 
@@ -538,6 +556,72 @@ const SupplyTemplateDetail: React.FC = () => {
       )
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const loadClustersAndProducts = async () => {
+    if (!connectionId) return
+
+    setLoadingClusters(true)
+    setLoadingProducts(true)
+
+    try {
+      const [clustersData, productsData] = await Promise.all([
+        ozonClustersApi.getAll(),
+        ozonProductsApi.getAll(parseInt(connectionId)),
+      ])
+      setClusters(clustersData)
+      setProducts(productsData)
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка загрузки данных')
+    } finally {
+      setLoadingClusters(false)
+      setLoadingProducts(false)
+    }
+  }
+
+  const handleOpenSettingsModal = () => {
+    setSettingsModalVisible(true)
+    loadClustersAndProducts()
+    
+    // Pre-fill form with current snapshot settings
+    if (snapshot) {
+      settingsForm.setFieldsValue({
+        supply_calculation_strategy: snapshot.supply_calculation_strategy || 'average_sales',
+        supply_products_to_neighbor_cluster: snapshot.supply_products_to_neighbor_cluster || false,
+        cluster_ids: snapshot.cluster_ids || [],
+        offer_ids: snapshot.offer_ids || [],
+      })
+    }
+  }
+
+  const handleSaveSettings = async () => {
+    if (!snapshotId) return
+
+    setSavingSettings(true)
+    try {
+      const values = settingsForm.getFieldsValue()
+      const config: RefreshSnapshotConfig = {
+        supply_calculation_strategy: values.supply_calculation_strategy as SupplyCalculationStrategy,
+        supply_products_to_neighbor_cluster: values.supply_products_to_neighbor_cluster || false,
+        cluster_ids: values.cluster_ids?.length > 0 ? values.cluster_ids : null,
+        offer_ids: values.offer_ids?.length > 0 ? values.offer_ids : null,
+      }
+
+      const updatedSnapshot = await suppliesApi.refreshSnapshot(
+        parseInt(snapshotId),
+        config
+      )
+      setSnapshot(updatedSnapshot)
+      setTableData(updatedSnapshot.data)
+      message.success('Настройки сохранены и данные обновлены')
+      setSettingsModalVisible(false)
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка сохранения настроек'
+      )
+    } finally {
+      setSavingSettings(false)
     }
   }
 
@@ -1460,6 +1544,12 @@ const SupplyTemplateDetail: React.FC = () => {
               )}
               
               <Button
+                icon={<EditOutlined />}
+                onClick={handleOpenSettingsModal}
+              >
+                Изменить настройки
+              </Button>
+              <Button
                 icon={<ReloadOutlined />}
                 loading={updating}
                 onClick={handleUpdateSnapshot}
@@ -2191,6 +2281,146 @@ const SupplyTemplateDetail: React.FC = () => {
           pagination={false}
           size="small"
         />
+      </Modal>
+
+      {/* Settings modal */}
+      <Modal
+        title="Настройки шаблона поставки"
+        open={settingsModalVisible}
+        onOk={handleSaveSettings}
+        onCancel={() => {
+          setSettingsModalVisible(false)
+          settingsForm.resetFields()
+        }}
+        confirmLoading={savingSettings}
+        okText="Сохранить и обновить"
+        cancelText="Отмена"
+        width={700}
+      >
+        <Form form={settingsForm} layout="vertical">
+          <Form.Item
+            name="supply_calculation_strategy"
+            label="Стратегия расчёта поставки"
+          >
+            <Select>
+              <Option value="average_sales">По средним продажам</Option>
+              <Option value="supply_plan">По плану поставок</Option>
+              <Option value="fixed_percentages">Фиксированные проценты</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, currentValues) =>
+              prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
+            }
+          >
+            {({ getFieldValue }) => {
+              const strategy = getFieldValue('supply_calculation_strategy')
+
+              let strategyDescription = ''
+
+              switch (strategy) {
+                case 'supply_plan':
+                  strategyDescription = SUPPLY_PLAN_STRATEGY_DESCRIPTION
+                  break
+                case 'fixed_percentages':
+                  strategyDescription = FIXED_PERCENTAGES_STRATEGY_DESCRIPTION
+                  break
+                case 'average_sales':
+                  strategyDescription = AVERAGE_SALES_STRATEGY_DESCRIPTION
+                  break
+              }
+              return (
+                <div style={{ 
+                  background: '#f5f5f5', 
+                  padding: '12px', 
+                  borderRadius: '8px', 
+                  marginBottom: '16px' 
+                }}>
+                  <Text type="secondary">{strategyDescription}</Text>
+                </div>
+              )
+            }}
+          </Form.Item>
+
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, currentValues) =>
+              prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
+            }
+          >
+            {({ getFieldValue }) => {
+              const strategy = getFieldValue('supply_calculation_strategy')
+              const showNeighborOption = strategy === 'supply_plan' || strategy === 'fixed_percentages'
+              return showNeighborOption && (
+                <Form.Item
+                  name="supply_products_to_neighbor_cluster"
+                  valuePropName="checked"
+                >
+                  <Checkbox>
+                    Поставить товар в соседний кластер (если есть ограничения)
+                  </Checkbox>
+                </Form.Item>
+              )
+            }}
+          </Form.Item>
+
+          <Form.Item
+            name="cluster_ids"
+            label="Кластеры (если не выбрано — все)"
+          >
+            <Select
+              mode="multiple"
+              allowClear
+              placeholder="Выберите кластеры"
+              loading={loadingClusters}
+              optionFilterProp="children"
+              showSearch
+            >
+              {clusters
+                .sort((a, b) => a.priority - b.priority)
+                .map((cluster) => (
+                  <Option key={cluster.cluster_id} value={cluster.cluster_id}>
+                    {cluster.name} (приоритет: {cluster.priority})
+                  </Option>
+                ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="offer_ids"
+            label="Товары (если не выбрано — все)"
+          >
+            <Select
+              mode="multiple"
+              allowClear
+              placeholder="Выберите товары"
+              loading={loadingProducts}
+              optionFilterProp="children"
+              showSearch
+              filterOption={(input, option) =>
+                (option?.children as unknown as string)
+                  ?.toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+            >
+              {products.map((product) => (
+                <Option key={product.offer_id} value={product.offer_id}>
+                  {product.offer_id} — {product.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Alert
+            message="Внимание"
+            description="При сохранении настроек данные поставки будут пересчитаны с новыми параметрами. Ручные изменения в таблице будут потеряны."
+            type="warning"
+            showIcon
+            style={{ marginTop: '16px' }}
+          />
+        </Form>
       </Modal>
     </div>
   )

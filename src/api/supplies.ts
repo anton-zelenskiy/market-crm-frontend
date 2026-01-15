@@ -80,6 +80,13 @@ export interface CreateSnapshotConfig {
   supply_products_to_neighbor_cluster?: boolean
 }
 
+export interface RefreshSnapshotConfig {
+  cluster_ids?: string[] | null
+  offer_ids?: string[] | null
+  supply_calculation_strategy?: SupplyCalculationStrategy | null
+  supply_products_to_neighbor_cluster?: boolean | null
+}
+
 export interface Warehouse {
   warehouse_id: number
   name: string
@@ -270,9 +277,13 @@ export const suppliesApi = {
   },
 
   refreshSnapshot: async (
-    snapshotId: number
+    snapshotId: number,
+    config?: RefreshSnapshotConfig
   ): Promise<SupplySnapshotResponse> => {
-    const response = await api.post(`/supplies/snapshot/${snapshotId}/refresh`)
+    const response = await api.post(
+      `/supplies/snapshot/${snapshotId}/refresh`,
+      config || null
+    )
     return response.data
   },
 
