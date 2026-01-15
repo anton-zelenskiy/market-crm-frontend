@@ -33,7 +33,6 @@ dayjs.extend(localeData)
 dayjs.locale('ru')
 import {
   ArrowLeftOutlined,
-  ReloadOutlined,
   DownloadOutlined,
   FileExcelOutlined,
   DeleteOutlined,
@@ -197,7 +196,7 @@ const SupplyTemplateDetail: React.FC = () => {
   const [settings, setSettings] = useState<any>(null)
   const [snapshot, setSnapshot] = useState<SupplySnapshotResponse | null>(null)
   const [loading, setLoading] = useState(false)
-  const [updating, setUpdating] = useState(false)
+  const [downloadLoading, setDownloadLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [company, setCompany] = useState<Company | null>(null)
   const [drafts, setDrafts] = useState<SupplyDraft[]>([])
@@ -539,26 +538,6 @@ const SupplyTemplateDetail: React.FC = () => {
     }
   }
 
-  const handleUpdateSnapshot = async () => {
-    if (!snapshotId) return
-
-    setUpdating(true)
-    try {
-      const updatedSnapshot = await suppliesApi.refreshSnapshot(
-        parseInt(snapshotId)
-      )
-      setSnapshot(updatedSnapshot)
-      setTableData(updatedSnapshot.data)
-      message.success('Данные успешно обновлены')
-    } catch (error: any) {
-      message.error(
-        error.response?.data?.detail || 'Ошибка обновления данных'
-      )
-    } finally {
-      setUpdating(false)
-    }
-  }
-
   const loadClustersAndProducts = async () => {
     if (!connectionId) return
 
@@ -628,7 +607,7 @@ const SupplyTemplateDetail: React.FC = () => {
   const handleDownloadDeficit = async () => {
     if (!snapshotId) return
 
-    setUpdating(true)
+    setDownloadLoading(true)
     try {
       const blob = await suppliesApi.downloadDeficitCsv(parseInt(snapshotId))
       const url = window.URL.createObjectURL(blob)
@@ -645,14 +624,14 @@ const SupplyTemplateDetail: React.FC = () => {
         error.response?.data?.detail || 'Ошибка при скачивании отчета'
       )
     } finally {
-      setUpdating(false)
+      setDownloadLoading(false)
     }
   }
 
   const handleDownloadAvailability = async () => {
     if (!snapshotId) return
 
-    setUpdating(true)
+    setDownloadLoading(true)
     try {
       const blob = await suppliesApi.downloadAvailabilityCsv(parseInt(snapshotId))
       const url = window.URL.createObjectURL(blob)
@@ -669,14 +648,14 @@ const SupplyTemplateDetail: React.FC = () => {
         error.response?.data?.detail || 'Ошибка при скачивании отчета'
       )
     } finally {
-      setUpdating(false)
+      setDownloadLoading(false)
     }
   }
 
   const handleDownloadFullXlsx = async () => {
     if (!snapshotId) return
 
-    setUpdating(true)
+    setDownloadLoading(true)
     try {
       const blob = await suppliesApi.downloadFullSnapshotXlsx(parseInt(snapshotId))
       const url = window.URL.createObjectURL(blob)
@@ -693,7 +672,7 @@ const SupplyTemplateDetail: React.FC = () => {
         error.response?.data?.detail || 'Ошибка при выгрузке данных'
       )
     } finally {
-      setUpdating(false)
+      setDownloadLoading(false)
     }
   }
 
@@ -1547,14 +1526,7 @@ const SupplyTemplateDetail: React.FC = () => {
                 icon={<EditOutlined />}
                 onClick={handleOpenSettingsModal}
               >
-                Изменить настройки
-              </Button>
-              <Button
-                icon={<ReloadOutlined />}
-                loading={updating}
-                onClick={handleUpdateSnapshot}
-              >
-                Обновить данные
+                Редактировать
               </Button>
             </Space>
           </div>
@@ -1573,21 +1545,21 @@ const SupplyTemplateDetail: React.FC = () => {
           <Space>
             <Button
               icon={<DownloadOutlined />}
-              loading={updating}
+              loading={downloadLoading}
               onClick={handleDownloadDeficit}
             >
               Скачать дефициты товаров
             </Button>
             <Button
               icon={<DownloadOutlined />}
-              loading={updating}
+              loading={downloadLoading}
               onClick={handleDownloadAvailability}
             >
               Скачать ограничения складов по товарам
             </Button>
             <Button
               icon={<FileExcelOutlined />}
-              loading={updating}
+              loading={downloadLoading}
               onClick={handleDownloadFullXlsx}
             >
               Скачать всю таблицу (XLSX)
@@ -1621,17 +1593,16 @@ const SupplyTemplateDetail: React.FC = () => {
           {!snapshot ? (
             <Alert
               title="Нет данных"
-              description="Нажмите 'Обновить данные' для создания снапшота"
+              description="Нажмите 'Редактировать' для настройки и загрузки данных"
               type="info"
               showIcon
               action={
                 <Button
                   size="small"
                   type="primary"
-                  onClick={handleUpdateSnapshot}
-                  loading={updating}
+                  onClick={handleOpenSettingsModal}
                 >
-                  Обновить данные
+                  Редактировать
                 </Button>
               }
             />
@@ -2293,7 +2264,7 @@ const SupplyTemplateDetail: React.FC = () => {
           settingsForm.resetFields()
         }}
         confirmLoading={savingSettings}
-        okText="Сохранить и обновить"
+        okText="Сохранить"
         cancelText="Отмена"
         width={700}
       >
@@ -2414,9 +2385,9 @@ const SupplyTemplateDetail: React.FC = () => {
           </Form.Item>
 
           <Alert
-            message="Внимание"
-            description="При сохранении настроек данные поставки будут пересчитаны с новыми параметрами. Ручные изменения в таблице будут потеряны."
-            type="warning"
+            title="Информация"
+            description="При сохранении данные будут обновлены с Ozon и пересчитаны с указанными параметрами."
+            type="info"
             showIcon
             style={{ marginTop: '16px' }}
           />
