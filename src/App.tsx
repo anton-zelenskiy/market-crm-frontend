@@ -97,11 +97,11 @@ const DashboardLayout: React.FC = () => {
   // Determine selected menu key based on current path
   const getSelectedKey = () => {
     const path = location.pathname
-    if (path === '/' || path.startsWith('/companies')) {
-      return '/companies'
-    }
-    if (path.startsWith('/connections')) {
+    if (path === '/' || path.startsWith('/connections')) {
       return '/connections'
+    }
+    if (path.startsWith('/companies')) {
+      return '/companies'
     }
     if (path.startsWith('/data-sources')) {
       return '/data-sources'
@@ -164,7 +164,7 @@ const DashboardLayout: React.FC = () => {
             <Route path="/data-sources" element={<DataSources />} />
             <Route path="/clusters" element={<Clusters />} />
             <Route path="/reports" element={<Reports />} />
-            <Route path="/" element={<Navigate to="/companies" replace />} />
+            <Route path="/" element={<Navigate to="/connections" replace />} />
           </Routes>
         </Content>
       </Layout>
