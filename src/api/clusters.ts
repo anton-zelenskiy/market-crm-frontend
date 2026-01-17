@@ -4,6 +4,7 @@ export interface OzonCluster {
   id: number
   cluster_id: string
   name: string
+  macrolocal_cluster_id: number | null
   neighbor_cluster_id: number | null
   priority: number
 }
