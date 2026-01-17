@@ -46,6 +46,17 @@ export interface DownloadDocumentsRequest {
 
 export type SupplyCalculationStrategy = 'average_sales' | 'supply_plan' | 'fixed_percentages'
 
+export interface ClusterData {
+  marketplace_stocks_count: number
+  orders_count: number
+  avg_orders_leverage: number
+  to_supply: number
+  cluster_id: number
+  macrolocal_cluster_id: number | null
+  warehouse_availability?: Record<string, any>
+  is_neighbor_redirect?: boolean
+}
+
 export interface SupplySnapshotResponse {
   id: number
   connection_id: number
@@ -55,7 +66,7 @@ export interface SupplySnapshotResponse {
     name: string
     box_count: number
     vendor_stocks_count: number
-    [clusterName: string]: any
+    [clusterName: string]: ClusterData | any
     totals: {
       marketplace_stocks_count: number
       orders_count: number
@@ -67,21 +78,21 @@ export interface SupplySnapshotResponse {
   }>
   updated_at: string
   // Configuration fields
-  cluster_ids: string[] | null
+  cluster_ids: number[] | null
   offer_ids: string[] | null
   supply_calculation_strategy: SupplyCalculationStrategy | null
   supply_products_to_neighbor_cluster: boolean | null
 }
 
 export interface CreateSnapshotConfig {
-  cluster_ids?: string[]
+  cluster_ids?: number[]
   offer_ids?: string[]
   supply_calculation_strategy?: SupplyCalculationStrategy
   supply_products_to_neighbor_cluster?: boolean
 }
 
 export interface RefreshSnapshotConfig {
-  cluster_ids?: string[] | null
+  cluster_ids?: number[] | null
   offer_ids?: string[] | null
   supply_calculation_strategy?: SupplyCalculationStrategy | null
   supply_products_to_neighbor_cluster?: boolean | null
