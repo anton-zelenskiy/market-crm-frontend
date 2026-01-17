@@ -98,6 +98,12 @@ const Clusters: React.FC = () => {
       key: 'name',
     },
     {
+      title: 'Macrolocal Cluster ID',
+      dataIndex: 'macrolocal_cluster_id',
+      key: 'macrolocal_cluster_id',
+      render: (id: number | null) => id ?? '-',
+    },
+    {
       title: 'Приоритет',
       dataIndex: 'priority',
       key: 'priority',
