@@ -1272,19 +1272,10 @@ const SupplyTemplateDetail: React.FC = () => {
                     },
                   },
                   {
-                    title: 'Склад размещения',
-                    key: 'storage_warehouse',
+                    title: 'Кластер размещения',
+                    key: 'cluster',
                     render: (_: any, record: SupplyDraft) => {
-                      // Try storage_warehouse_name from backend response first
-                      if ((record as any).storage_warehouse_name) {
-                        return (record as any).storage_warehouse_name
-                      }
-                      // Fallback: extract from storage_warehouses if available
-                      if (record.storage_warehouses && record.storage_warehouses.length > 0) {
-                        const firstWarehouse = record.storage_warehouses[0]
-                        return firstWarehouse.storage_warehouse?.name || '-'
-                      }
-                      return '-'
+                      return record.cluster?.cluster_name || '-'
                     },
                   },
                   {
