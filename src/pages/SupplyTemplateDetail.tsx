@@ -14,26 +14,14 @@ import {
   Spin,
   Alert,
   Divider,
-  Radio,
   Tooltip,
-  Calendar,
-  Row,
-  Col,
   Empty,
   Input,
   Checkbox,
   Popover,
 } from 'antd'
-import type { Dayjs } from 'dayjs'
-import dayjs from 'dayjs'
-import 'dayjs/locale/ru'
-import localeData from 'dayjs/plugin/localeData'
-
-dayjs.extend(localeData)
-dayjs.locale('ru')
 import {
   ArrowLeftOutlined,
-  DownloadOutlined,
   FileExcelOutlined,
   DeleteOutlined,
   SearchOutlined,
@@ -52,12 +40,10 @@ import {
   type SupplySnapshotResponse,
   type SupplyCalculationStrategy,
   type Warehouse,
-  type CreateSupplyDraftRequest,
+  type CreateCrossdockDraftRequest,
   type SupplyDraft,
-  type DraftTimeslotResponse,
-  type Timeslot,
-  type CreateSupplyFromDraftRequest,
-  type SupplyCreateStatusResponse,
+  // @ts-expect-error
+  type SelectedClusterWarehouse,
   type RefreshSnapshotConfig,
   saveSupplySnapshot,
 } from '../api/supplies'
@@ -71,6 +57,7 @@ import {
   FIXED_PERCENTAGES_STRATEGY_DESCRIPTION,
   AVERAGE_SALES_STRATEGY_DESCRIPTION,
 } from '../constants'
+import { ProgressModal } from '../components/ProgressModal'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -202,12 +189,8 @@ const SupplyTemplateDetail: React.FC = () => {
   const [drafts, setDrafts] = useState<SupplyDraft[]>([])
   const [warehouseModalVisible, setWarehouseModalVisible] = useState(false)
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null)
-  const [availabilityModalVisible, setAvailabilityModalVisible] = useState(false)
-  const [selectedAvailability, setSelectedAvailability] = useState<{
-    clusterName: string
-    offerId: string
-    availability: Record<string, any>
-  } | null>(null)
+  const [progressModalVisible, setProgressModalVisible] = useState(false)
+  const [progressTaskId, setProgressTaskId] = useState<string | null>(null)
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [warehouseLoading, setWarehouseLoading] = useState(false)
   const [form] = Form.useForm()
@@ -223,25 +206,14 @@ const SupplyTemplateDetail: React.FC = () => {
     'marketplace_stocks_count',
     'orders_count',
     'avg_orders_leverage',
-    'warehouse_availability',
     'to_supply'
   ])
   const searchTimeoutRef = useRef<number | null>(null)
-  const [currentTime, setCurrentTime] = useState(new Date())
 
   const logisticsDistance = settings?.logistics_distance || 45
   const avgOrdersLabel = `Ср. кол-во заказов (${logisticsDistance}д)`
 
-  const [expandedDraftId, setExpandedDraftId] = useState<number | null>(null)
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState<Record<number, number>>({})
-  const [timeslots, setTimeslots] = useState<Record<number, DraftTimeslotResponse>>({})
-  const [loadingTimeslots, setLoadingTimeslots] = useState<Record<number, boolean>>({})
-  const [selectedTimeslot, setSelectedTimeslot] = useState<Record<number, Timeslot>>({})
-  const [creatingSupply, setCreatingSupply] = useState<Record<number, boolean>>({})
-  const [supplyCreateStatus, setSupplyCreateStatus] = useState<Record<number, SupplyCreateStatusResponse>>({})
-  const [selectedDate, setSelectedDate] = useState<Record<number, string>>({})
 
-  const limitationStrategy = Form.useWatch('limitation_strategy', form)
 
   // Settings modal state
   const [settingsModalVisible, setSettingsModalVisible] = useState(false)
@@ -280,7 +252,6 @@ const SupplyTemplateDetail: React.FC = () => {
               { label: 'Остатки на маркетплейсе', value: 'marketplace_stocks_count' },
               { label: 'Заказы (мес.)', value: 'orders_count' },
               { label: avgOrdersLabel, value: 'avg_orders_leverage' },
-              { label: 'Ограничения складов', value: 'warehouse_availability' },
               { label: 'Отгрузить на маркетплейс', value: 'to_supply' },
             ]}
             value={visibleSubColumns}
@@ -299,8 +270,6 @@ const SupplyTemplateDetail: React.FC = () => {
       offer_id: string
       sku: number
       quantity: number
-      original_quantity: number
-      limit: any
     }> = []
 
     for (const item of tableData) {
@@ -311,102 +280,19 @@ const SupplyTemplateDetail: React.FC = () => {
       const boxCount = item.box_count || 0
       
       if (boxCount <= 0 && toSupply > 0) {
-        // Cannot supply if box count is not set
         continue
       }
-      
-      const availability = clusterData.warehouse_availability || {}
-      
-      const values = Object.values(availability)
-      const hasNoLimits = values.some((v) => v === 'NO_LIMITS')
-      const hasLimited = values.filter((v) => typeof v === 'number' && v > 0) as number[]
-      const allUnavailable = values.length > 0 && values.every((v) => v === 'UNAVAILABLE')
 
-      let finalQuantity = toSupply
-      let maxLimit: number | string | null = null
-
-      if (hasNoLimits || values.length === 0) {
-        // No restriction or no availability data
-      } else if (allUnavailable) {
-        finalQuantity = 0
-      } else if (hasLimited.length > 0) {
-        const numericMaxLimit = Math.max(...hasLimited)
-        maxLimit = numericMaxLimit
-        if (toSupply > numericMaxLimit) {
-          if (limitationStrategy === 'skip') {
-            finalQuantity = 0
-          // If the limit is less than the box count, set the quantity 0 because we can't ship less than one box
-          } else if (numericMaxLimit < boxCount) {
-            finalQuantity = 0
-          } else {
-            finalQuantity = Math.floor(numericMaxLimit / boxCount) * boxCount
-          }
-        }
-      }
-
-      if (finalQuantity > 0) {
+      if (toSupply > 0) {
         items.push({
           offer_id: item.offer_id,
           sku: item.sku,
-          quantity: finalQuantity,
-          original_quantity: toSupply,
-          limit: maxLimit,
+          quantity: toSupply,
         })
       }
     }
     return items
-  }, [selectedCluster, limitationStrategy, tableData])
-
-  // Check if there are any invalid values in tableData
-  // TODO: check only edited cell (offer, cluster)
-  // @ts-expect-error - value is never read but kept for future use
-  const hasInvalidValues = useMemo(() => {
-    if (!tableData || tableData.length === 0) return false
-
-    for (const item of tableData) {
-      const boxCount = item.box_count || 0
-
-      // Check all cluster to_supply values
-      const clusterNames = Object.keys(item).filter(
-        (key) => !['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals'].includes(key)
-      )
-
-      for (const clusterName of clusterNames) {
-        const clusterData = item[clusterName]
-        if (clusterData && typeof clusterData === 'object' && clusterData !== null) {
-          const toSupply = clusterData.to_supply || 0
-          if (toSupply > 0) {
-            // 1. Check box count
-            if (boxCount <= 0 || toSupply % boxCount !== 0) {
-              return true
-            }
-
-            // 2. Check warehouse availability
-            if (clusterData.warehouse_availability) {
-              const availability = clusterData.warehouse_availability
-              const values = Object.values(availability)
-              const hasNoLimits = values.some((v) => v === 'NO_LIMITS')
-              const hasLimited = values.filter((v) => typeof v === 'number' && v > 0) as number[]
-              const allUnavailable = values.every((v) => v === 'UNAVAILABLE')
-
-              if (allUnavailable && !hasNoLimits) {
-                console.error('Invalid value: allUnavailable && !hasNoLimits', clusterName, toSupply)
-                return true
-              }
-              if (!hasNoLimits && hasLimited.length > 0) {
-                const maxLimit = Math.max(...hasLimited)
-                if (toSupply > maxLimit) {
-                  console.error('Invalid value: toSupply > maxLimit', clusterName, toSupply, maxLimit)
-                  return true
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    return false
-  }, [tableData])
+  }, [selectedCluster, tableData])
 
   const [isDirty, setIsDirty] = useState(false)
 
@@ -415,12 +301,6 @@ const SupplyTemplateDetail: React.FC = () => {
       if (saving) setIsDirty(true)
       return
     }
-
-    // Check disabled
-    // if (hasInvalidValues) {
-    //   console.error('В данных есть некорректные значения. Пожалуйста, исправьте их перед сохранением.')
-    //   return
-    // }
 
     setIsDirty(false)
     setSaving(true)
@@ -473,12 +353,6 @@ const SupplyTemplateDetail: React.FC = () => {
   }, [connectionId, snapshotId])
 
   // Update timer every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [])
 
   const loadConnectionData = async () => {
     if (!connectionId) return
@@ -524,11 +398,11 @@ const SupplyTemplateDetail: React.FC = () => {
   }
 
   const loadDrafts = async () => {
-    if (!connectionId) return
+    if (!snapshotId) return
 
     try {
-      const draftsData = await suppliesApi.getConnectionDrafts(
-        parseInt(connectionId)
+      const draftsData = await suppliesApi.getSnapshotDrafts(
+        parseInt(snapshotId)
       )
       setDrafts(draftsData.drafts)
     } catch (error: any) {
@@ -537,6 +411,7 @@ const SupplyTemplateDetail: React.FC = () => {
       )
     }
   }
+
 
   const loadClustersAndProducts = async () => {
     if (!connectionId) return
@@ -585,72 +460,41 @@ const SupplyTemplateDetail: React.FC = () => {
         supply_products_to_neighbor_cluster: values.supply_products_to_neighbor_cluster || false,
         cluster_ids: values.cluster_ids?.length > 0 ? values.cluster_ids : null,
         offer_ids: values.offer_ids?.length > 0 ? values.offer_ids : null,
+        drop_off_warehouse_id: values.drop_off_warehouse_id,
       }
 
-      const updatedSnapshot = await suppliesApi.refreshSnapshot(
+      if (!config.drop_off_warehouse_id) {
+        message.error('Необходимо выбрать склад отгрузки')
+        setSavingSettings(false)
+        return
+      }
+
+      const response = await suppliesApi.refreshSnapshot(
         parseInt(snapshotId),
         config
       )
-      setSnapshot(updatedSnapshot)
-      setTableData(updatedSnapshot.data)
-      message.success('Настройки сохранены и данные обновлены')
+      
+      // Show progress modal
+      setProgressTaskId(response.task_id)
+      setProgressModalVisible(true)
       setSettingsModalVisible(false)
     } catch (error: any) {
       message.error(
         error.response?.data?.detail || 'Ошибка сохранения настроек'
       )
-    } finally {
       setSavingSettings(false)
     }
   }
 
-  const handleDownloadDeficit = async () => {
-    if (!snapshotId) return
-
-    setDownloadLoading(true)
-    try {
-      const blob = await suppliesApi.downloadDeficitCsv(parseInt(snapshotId))
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `Дефициты_${company?.name}.csv`)
-      document.body.appendChild(link)
-      link.click()
-      link.parentNode?.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      message.success('Отчет по дефициту скачан')
-    } catch (error: any) {
-      message.error(
-        error.response?.data?.detail || 'Ошибка при скачивании отчета'
-      )
-    } finally {
-      setDownloadLoading(false)
-    }
+  const handleProgressComplete = async () => {
+    setProgressModalVisible(false)
+    setProgressTaskId(null)
+    // Reload snapshot data
+    await loadSnapshot()
+    message.success('Настройки сохранены и данные обновлены')
   }
 
-  const handleDownloadAvailability = async () => {
-    if (!snapshotId) return
 
-    setDownloadLoading(true)
-    try {
-      const blob = await suppliesApi.downloadAvailabilityCsv(parseInt(snapshotId))
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `Ограничения_складов_${company?.name}.csv`)
-      document.body.appendChild(link)
-      link.click()
-      link.parentNode?.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      message.success('Отчет по ограничениям складов скачан')
-    } catch (error: any) {
-      message.error(
-        error.response?.data?.detail || 'Ошибка при скачивании отчета'
-      )
-    } finally {
-      setDownloadLoading(false)
-    }
-  }
 
   const handleDownloadFullXlsx = async () => {
     if (!snapshotId) return
@@ -700,7 +544,6 @@ const SupplyTemplateDetail: React.FC = () => {
   const handleCreateDraft = useCallback((clusterName: string) => {
     setSelectedCluster(clusterName)
     setWarehouseModalVisible(true)
-    form.setFieldsValue({ limitation_strategy: 'reduce' })
     // Clear warehouses when opening modal
     setWarehouses([])
     // Clear any pending search timeout
@@ -768,7 +611,7 @@ const SupplyTemplateDetail: React.FC = () => {
         return
       }
 
-      const request: CreateSupplyDraftRequest = {
+      const request: CreateCrossdockDraftRequest = {
         connection_id: parseInt(connectionId),
         supply_data_snapshot_id: parseInt(snapshotId!),
         drop_off_warehouse: {
@@ -781,9 +624,10 @@ const SupplyTemplateDetail: React.FC = () => {
           sku: item.sku,
           quantity: item.quantity,
         })),
+        deletion_sku_mode: 'PARTIAL',
       }
 
-      await suppliesApi.createSupplyDraft(request)
+      await suppliesApi.createCrossdockDraft(request)
       message.success('Черновик поставки создан')
       setWarehouseModalVisible(false)
       form.resetFields()
@@ -909,133 +753,6 @@ const SupplyTemplateDetail: React.FC = () => {
     }
   }, [handleCellChange, debouncedSave])
 
-  const handleLoadTimeslots = async (draft: SupplyDraft) => {
-    if (!draft.draft_id) {
-      message.error('Черновик не имеет draft_id')
-      return
-    }
-
-    setLoadingTimeslots((prev) => ({ ...prev, [draft.id]: true }))
-    try {
-      const today = new Date()
-      const dateTo = new Date(today)
-      dateTo.setDate(dateTo.getDate() + 28)
-
-      const timeslotResponse = await suppliesApi.getDraftTimeslots(draft.id, {
-        date_from: today.toISOString(),
-        date_to: dateTo.toISOString(),
-      })
-
-      setTimeslots((prev) => ({ ...prev, [draft.id]: timeslotResponse }))
-    } catch (error: any) {
-      message.error(
-        error.response?.data?.detail || 'Ошибка загрузки таймслотов'
-      )
-    } finally {
-      setLoadingTimeslots((prev) => ({ ...prev, [draft.id]: false }))
-    }
-  }
-
-  const handleCreateSupply = async (draft: SupplyDraft) => {
-    const draftWarehouseId = selectedWarehouseId[draft.id]  // This is supply_warehouse_id
-    const draftSelectedTimeslot = selectedTimeslot[draft.id]  // This is just the timeslot
-
-    if (!draftWarehouseId || !draftSelectedTimeslot) {
-      message.error('Выберите склад и таймслот')
-      return
-    }
-
-    setCreatingSupply((prev) => ({ ...prev, [draft.id]: true }))
-    try {
-      const createRequest: CreateSupplyFromDraftRequest = {
-        warehouse_id: draftWarehouseId,  // Supply warehouse ID (where products will be stored)
-        timeslot: draftSelectedTimeslot,  // Timeslot for drop-off warehouse
-      }
-
-      const createResponse = await suppliesApi.createSupplyFromDraft(
-        draft.id,
-        createRequest
-      )
-
-      // Poll status until completion
-      const pollStatus = async () => {
-        const maxAttempts = 60
-        let attempts = 0
-
-        const poll = async (): Promise<void> => {
-          if (attempts >= maxAttempts) {
-            message.error('Превышено время ожидания создания поставки')
-            setCreatingSupply((prev) => ({ ...prev, [draft.id]: false }))
-            return
-          }
-
-          try {
-            const statusResponse = await suppliesApi.getSupplyCreateStatus(
-              draft.id,
-              { operation_id: createResponse.operation_id }
-            )
-
-            setSupplyCreateStatus((prev) => ({ ...prev, [draft.id]: statusResponse }))
-
-            if (
-              statusResponse.status === 'DraftSupplyCreateStatusSuccess' ||
-              statusResponse.status === 'DraftSupplyCreateStatusFailed'
-            ) {
-              setCreatingSupply((prev) => ({ ...prev, [draft.id]: false }))
-              if (statusResponse.status === 'DraftSupplyCreateStatusSuccess') {
-                message.success('Поставка успешно создана')
-                if (statusResponse.result?.order_ids) {
-                  message.info(
-                    `ID заказов: ${statusResponse.result.order_ids.join(', ')}`
-                  )
-                }
-              } else {
-                message.error('Ошибка создания поставки')
-                if (statusResponse.error_messages) {
-                  message.error(statusResponse.error_messages.join(', '))
-                }
-              }
-              // Reload drafts to get updated data
-              loadDrafts()
-            } else {
-              attempts++
-              setTimeout(() => {
-                poll()
-              }, 5000)
-            }
-          } catch (error: any) {
-            message.error(
-              error.response?.data?.detail || 'Ошибка проверки статуса'
-            )
-            setCreatingSupply((prev) => ({ ...prev, [draft.id]: false }))
-          }
-        }
-
-        await poll()
-      }
-
-      await pollStatus()
-    } catch (error: any) {
-      message.error(
-        error.response?.data?.detail || 'Ошибка создания поставки'
-      )
-      setCreatingSupply((prev) => ({ ...prev, [draft.id]: false }))
-    }
-  }
-
-  const getTimeslotCategory = (timeStr: string) => {
-    const hour = parseInt(timeStr.split(':')[0])
-    if (hour >= 6 && hour < 12) return 'Утро'
-    if (hour >= 12 && hour < 18) return 'День'
-    if (hour >= 18 && hour < 24) return 'Вечер'
-    return 'Ночь'
-  }
-
-  const formatTime = (isoStr: string) => {
-    if (!isoStr) return ''
-    const timePart = isoStr.includes('T') ? isoStr.split('T')[1]?.split(/[.Z+]/)[0] : isoStr
-    return timePart?.substring(0, 5) || ''
-  }
 
   // Build table column definitions dynamically based on clusters
   const columnDefs = useMemo(() => {
@@ -1195,53 +912,6 @@ const SupplyTemplateDetail: React.FC = () => {
         })
       }
 
-      if (visibleSubColumns.includes('warehouse_availability')) {
-        children.push({
-          field: `${clusterName}_warehouse_availability`,
-          headerName: 'Ограничения',
-          width: 130,
-          valueGetter: (params) => {
-            const clusterData = params.data?.[clusterName]
-            if (clusterData && typeof clusterData === 'object') {
-              return clusterData.warehouse_availability ?? null
-            }
-            return null
-          },
-          onCellClicked: (params) => {
-            if (params.value) {
-              setSelectedAvailability({
-                clusterName: clusterName,
-                offerId: params.data.offer_id,
-                availability: params.value,
-              })
-              setAvailabilityModalVisible(true)
-            }
-          },
-          cellRenderer: (params: any) => {
-            const availability = params.value
-            if (!availability) {
-              return <Tag color="default">Неизвестно</Tag>
-            }
-
-            const values = Object.values(availability)
-            const hasNoLimits = values.some((v) => v === 'NO_LIMITS')
-            const hasLimited = values.some((v) => typeof v === 'number' && v > 0)
-            const allUnavailable = values.every((v) => v === 'UNAVAILABLE')
-
-            if (hasNoLimits) {
-              return <Tag color="green">Без ограничений</Tag>
-            }
-            if (hasLimited) {
-              const maxLimit = Math.max(...values.filter((v) => typeof v === 'number') as number[])
-              return <Tag color="warning">Ограничено ({maxLimit})</Tag>
-            }
-            if (allUnavailable) {
-              return <Tag color="red">Недоступно</Tag>
-            }
-            return <Tag color="default">Неизвестно</Tag>
-          },
-        })
-      }
 
       if (visibleSubColumns.includes('to_supply')) {
         children.push({
@@ -1274,7 +944,7 @@ const SupplyTemplateDetail: React.FC = () => {
               : (clusterData && typeof clusterData === 'object' ? (clusterData.to_supply ?? 0) : 0)
             const numValue = Number(actualValue) || 0
             
-            // 1. Check box count validity
+            // Check box count validity
             let isBoxCountValid = true
             let boxCountError = ''
             
@@ -1286,28 +956,19 @@ const SupplyTemplateDetail: React.FC = () => {
               boxCountError = `Количество должно быть кратно ${boxCount}`
             }
 
-            // 2. Check warehouse availability validity if numValue > 0
-            let isAvailabilityValid = true
-            let availabilityError = ''
-            if (numValue > 0 && isBoxCountValid && clusterData?.warehouse_availability) {
-              const availability = clusterData.warehouse_availability
-              const values = Object.values(availability)
-              const hasNoLimits = values.some((v) => v === 'NO_LIMITS')
-              const hasLimited = values.filter((v) => typeof v === 'number' && v > 0) as number[]
-              const allUnavailable = values.every((v) => v === 'UNAVAILABLE')
-
-              if (hasNoLimits) {
-                // Valid
-              } else if (allUnavailable) {
-                isAvailabilityValid = false
-                availabilityError = 'Нет доступных складов'
-              } else if (hasLimited.length > 0) {
-                const maxLimit = Math.max(...hasLimited)
-                if (numValue > maxLimit) {
-                  isAvailabilityValid = false
-                  availabilityError = `Превышен лимит поставки (${maxLimit})`
-                }
+            // Get restricted quantity and neighbor redirect info
+            const restrictedQuantity = clusterData?.restricted_quantity || 0
+            const isNeighborRedirect = clusterData?.is_neighbor_redirect || false
+            
+            // Build tooltip content
+            let tooltipContent: string | null = null
+            if (restrictedQuantity > 0) {
+              tooltipContent = `Не отгружено из-за ограничений: ${restrictedQuantity}`
+              if (isNeighborRedirect) {
+                tooltipContent += `\nЧасть товара перенаправлена в соседний кластер`
               }
+            } else if (isNeighborRedirect) {
+              tooltipContent = 'Часть товара перенаправлена в соседний кластер'
             }
             
             // Default background color for cells with value 0 (soft green)
@@ -1316,23 +977,14 @@ const SupplyTemplateDetail: React.FC = () => {
             const validNonZeroBgColor = '#d4edda'
             // Warning color for box count errors (orange)
             const boxCountWarningColor = '#fff7e6'
-            // Error color for availability errors (red)
-            const availabilityErrorColor = '#fff1f0'
             
             // Determine background color based on value and validity
             let backgroundColor = defaultBgColor
-            let errorReason = ''
 
             if (!isBoxCountValid) {
               backgroundColor = boxCountWarningColor
-              errorReason = boxCountError
             } else if (numValue > 0) {
-              if (!isAvailabilityValid) {
-                backgroundColor = availabilityErrorColor
-                errorReason = availabilityError
-              } else {
-                backgroundColor = validNonZeroBgColor
-              }
+              backgroundColor = validNonZeroBgColor
             }
 
             const content = (
@@ -1351,9 +1003,9 @@ const SupplyTemplateDetail: React.FC = () => {
               </div>
             )
 
-            if (errorReason) {
+            if (tooltipContent || boxCountError) {
               return (
-                <Tooltip title={errorReason}>
+                <Tooltip title={tooltipContent || boxCountError}>
                   {content}
                 </Tooltip>
               )
@@ -1544,25 +1196,11 @@ const SupplyTemplateDetail: React.FC = () => {
 
           <Space>
             <Button
-              icon={<DownloadOutlined />}
-              loading={downloadLoading}
-              onClick={handleDownloadDeficit}
-            >
-              Скачать дефициты товаров
-            </Button>
-            <Button
-              icon={<DownloadOutlined />}
-              loading={downloadLoading}
-              onClick={handleDownloadAvailability}
-            >
-              Скачать ограничения складов по товарам
-            </Button>
-            <Button
               icon={<FileExcelOutlined />}
               loading={downloadLoading}
               onClick={handleDownloadFullXlsx}
             >
-              Скачать всю таблицу (XLSX)
+              Скачать таблицу (XLSX)
             </Button>
           </Space>
           <Space>
@@ -1619,403 +1257,35 @@ const SupplyTemplateDetail: React.FC = () => {
               <Table
                 dataSource={drafts}
                 rowKey="id"
-                expandable={{
-                  expandedRowRender: (record: SupplyDraft) => {
-                    // Don't show expand block if supply is already created (has order_ids)
-                    if (record.order_ids && record.order_ids.length > 0) {
-                      return null
-                    }
-
-                    // Show "Нет доступных складов" if supply_warehouses is empty
-                    if (!record.supply_warehouses || record.supply_warehouses.length === 0) {
-                      return (
-                        <div style={{ padding: '16px' }}>
-                          <Text type="secondary">Нет доступных складов</Text>
-                        </div>
-                      )
-                    }
-
-                    // Show supply creation UI
-                    const currentTimeslots = timeslots[record.id]
-                    const currentSelectedWarehouse = selectedWarehouseId[record.id]
-                    const currentSelectedTimeslot = selectedTimeslot[record.id]
-                    const currentSupplyStatus = supplyCreateStatus[record.id]
-                    const isLoadingTimeslots = loadingTimeslots[record.id] || false
-                    const isCreating = creatingSupply[record.id] || false
-                    const currentSelectedDate = selectedDate[record.id]
-
-                    // Get all available dates for the calendar dots
-                    const availableDates = new Set<string>()
-                    if (currentTimeslots) {
-                      currentTimeslots.drop_off_warehouse_timeslots.forEach(wt => {
-                        // The backend returns timeslots for drop_off_warehouse, but we filter by its ID
-                        if (wt.drop_off_warehouse_id === record.drop_off_warehouse?.warehouse_id) {
-                          wt.days.forEach(day => {
-                            if (day.timeslots && day.timeslots.length > 0) {
-                              availableDates.add(dayjs(day.date_in_timezone).format('YYYY-MM-DD'))
-                            }
-                          })
-                        }
-                      })
-                    }
-
-                    const dateCellRender = (value: Dayjs) => {
-                      const dateStr = value.format('YYYY-MM-DD')
-                      if (availableDates.has(dateStr)) {
-                        return (
-                          <div style={{ textAlign: 'center', paddingTop: '4px' }}>
-                            <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#1890ff', margin: '0 auto' }} />
-                          </div>
-                        )
-                      }
-                      return null
-                    }
-
-                    const onDateSelect = (date: Dayjs) => {
-                      const dateStr = date.format('YYYY-MM-DD')
-                      setSelectedDate(prev => ({ ...prev, [record.id]: dateStr }))
-                      // Clear timeslot when date changes
-                      setSelectedTimeslot(prev => {
-                        const newState = { ...prev }
-                        delete newState[record.id]
-                        return newState
-                      })
-                    }
-
-                    // Find timeslots for the selected date
-                    const selectedDayData = currentTimeslots?.drop_off_warehouse_timeslots
-                      .find(wt => wt.drop_off_warehouse_id === record.drop_off_warehouse?.warehouse_id)
-                      ?.days.find(day => dayjs(day.date_in_timezone).format('YYYY-MM-DD') === currentSelectedDate)
-
-                    const groupedTimeslots = selectedDayData?.timeslots.reduce((acc, slot) => {
-                      const fromTime = formatTime(slot.from_in_timezone)
-                      const category = getTimeslotCategory(fromTime)
-                      if (!acc[category]) acc[category] = []
-                      acc[category].push(slot)
-                      return acc
-                    }, {} as Record<string, Timeslot[]>) || {}
-
-                    return (
-                      <div style={{ padding: '24px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
-                        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-                          {/* Warehouse selection */}
-                          <div>
-                            <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '16px' }}>
-                              1. Выберите склад размещения:
-                            </Text>
-                            <Radio.Group
-                              value={currentSelectedWarehouse}
-                              onChange={async (e) => {
-                                const warehouseId = e.target.value
-                                setSelectedWarehouseId((prev) => ({ ...prev, [record.id]: warehouseId }))
-                                // Clear timeslot and date when warehouse changes
-                                setSelectedTimeslot((prev) => {
-                                  const newState = { ...prev }
-                                  delete newState[record.id]
-                                  return newState
-                                })
-                                setSelectedDate((prev) => {
-                                  const newState = { ...prev }
-                                  delete newState[record.id]
-                                  return newState
-                                })
-                                // Auto-load timeslots when warehouse is selected
-                                await handleLoadTimeslots(record)
-                              }}
-                              style={{ width: '100%' }}
-                            >
-                              <Row gutter={[16, 16]}>
-                                {record.supply_warehouses.map((warehouse) => (
-                                  <Col span={8} key={warehouse.supply_warehouse.warehouse_id}>
-                                    <Radio.Button 
-                                      value={warehouse.supply_warehouse.warehouse_id}
-                                      style={{ 
-                                        width: '100%', 
-                                        height: 'auto', 
-                                        padding: '12px', 
-                                        display: 'flex', 
-                                        flexDirection: 'column', 
-                                        alignItems: 'flex-start',
-                                        borderRadius: '8px',
-                                        border: currentSelectedWarehouse === warehouse.supply_warehouse.warehouse_id ? '2px solid #1890ff' : '1px solid #d9d9d9'
-                                      }}
-                                    >
-                                      <Text strong>{warehouse.supply_warehouse.name}</Text>
-                                      {warehouse.supply_warehouse.address && (
-                                        <Text type="secondary" style={{ fontSize: '12px', display: 'block', whiteSpace: 'normal', textAlign: 'left', marginTop: '4px' }}>
-                                          {warehouse.supply_warehouse.address}
-                                        </Text>
-                                      )}
-                                    </Radio.Button>
-                                  </Col>
-                                ))}
-                              </Row>
-                            </Radio.Group>
-                          </div>
-
-                          {/* Date and Time selection */}
-                          {currentSelectedWarehouse && (
-                            <div>
-                              <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '16px' }}>
-                                2. Выберите дату и время отгрузки:
-                              </Text>
-                              {isLoadingTimeslots ? (
-                                <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '8px' }}>
-                                  <Spin /> <Text type="secondary" style={{ marginLeft: '12px' }}>Загрузка доступных интервалов...</Text>
-                                </div>
-                              ) : (
-                                <Row gutter={32}>
-                                  {/* Left side: Calendar */}
-                                  <Col span={10}>
-                                    <div style={{ border: '1px solid #f0f0f0', borderRadius: '12px', padding: '16px', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                                      <Calendar 
-                                        fullscreen={false} 
-                                        headerRender={({ value, onChange }) => {
-                                          const localeData = value.localeData();
-                                          const year = value.year();
-                                          return (
-                                            <div style={{ padding: '8px 0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                              <Text strong style={{ fontSize: '16px' }}>{localeData.months(value)} {year}</Text>
-                                              <Space>
-                                                <Button 
-                                                  size="small" 
-                                                  icon={<span style={{ fontSize: '12px' }}>&lt;</span>}
-                                                  onClick={() => onChange(value.clone().subtract(1, 'month'))} 
-                                                />
-                                                <Button 
-                                                  size="small" 
-                                                  icon={<span style={{ fontSize: '12px' }}>&gt;</span>}
-                                                  onClick={() => onChange(value.clone().add(1, 'month'))} 
-                                                />
-                                              </Space>
-                                            </div>
-                                          );
-                                        }}
-                                        value={currentSelectedDate ? dayjs(currentSelectedDate) : undefined}
-                                        onSelect={onDateSelect}
-                                        cellRender={dateCellRender}
-                                      />
-                                    </div>
-                                  </Col>
-
-                                  {/* Right side: Timeslots */}
-                                  <Col span={14}>
-                                    {currentSelectedDate ? (
-                                      <div style={{ height: '100%' }}>
-                                        <Text strong style={{ fontSize: '18px', display: 'block', marginBottom: '24px' }}>
-                                          {dayjs(currentSelectedDate).format('D MMMM, HH:mm') === dayjs(currentSelectedDate).format('D MMMM, 00:00') 
-                                            ? dayjs(currentSelectedDate).format('D MMMM, dddd')
-                                            : dayjs(currentSelectedDate).format('D MMMM, dddd')}
-                                        </Text>
-                                        
-                                        {Object.keys(groupedTimeslots).length > 0 ? (
-                                          <div style={{ maxHeight: '450px', overflowY: 'auto', paddingRight: '8px' }}>
-                                            {['Утро', 'День', 'Вечер', 'Ночь'].map((category) => {
-                                              const slots = groupedTimeslots[category]
-                                              if (!slots || slots.length === 0) return null
-                                              
-                                              return (
-                                                <div key={category} style={{ marginBottom: '24px' }}>
-                                                  <Text type="secondary" style={{ display: 'block', marginBottom: '12px', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '0.5px' }}>
-                                                    {category}
-                                                  </Text>
-                                                  <Row gutter={[12, 12]}>
-                                                    {slots.map((slot, idx) => {
-                                                      const fromTime = formatTime(slot.from_in_timezone)
-                                                      const toTime = formatTime(slot.to_in_timezone)
-                                                      const isSelected = currentSelectedTimeslot?.from_in_timezone === slot.from_in_timezone && 
-                                                                      currentSelectedTimeslot?.to_in_timezone === slot.to_in_timezone
-                                                      return (
-                                                        <Col key={idx} span={8}>
-                                                          <Button 
-                                                            type={isSelected ? 'primary' : 'default'}
-                                                            style={{ 
-                                                              width: '100%', 
-                                                              height: '40px',
-                                                              borderRadius: '6px',
-                                                              backgroundColor: isSelected ? undefined : '#f5f5f5',
-                                                              border: isSelected ? undefined : 'none',
-                                                              color: isSelected ? undefined : '#555',
-                                                              fontWeight: isSelected ? 600 : 400
-                                                            }}
-                                                            onClick={() => setSelectedTimeslot(prev => ({ ...prev, [record.id]: slot }))}
-                                                          >
-                                                            {fromTime} - {toTime}
-                                                          </Button>
-                                                        </Col>
-                                                      )
-                                                    })}
-                                                  </Row>
-                                                </div>
-                                              )
-                                            })}
-                                          </div>
-                                        ) : (
-                                          <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #f0f0f0' }}>
-                                            <Empty description="Нет доступных таймслотов на эту дату" />
-                                          </div>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <div style={{ 
-                                        height: '100%', 
-                                        minHeight: '350px',
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        justifyContent: 'center', 
-                                        border: '2px dashed #e8e8e8', 
-                                        borderRadius: '12px',
-                                        backgroundColor: '#fff'
-                                      }}>
-                                        <Space orientation="vertical" align="center">
-                                          <Text type="secondary" style={{ fontSize: '16px' }}>Выберите дату в календаре</Text>
-                                          <Text type="secondary" style={{ fontSize: '12px' }}>Слева отображены доступные дни</Text>
-                                        </Space>
-                                      </div>
-                                    )}
-                                  </Col>
-                                </Row>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Confirmation section */}
-                          {currentSelectedWarehouse && currentSelectedTimeslot && (
-                            <div style={{ 
-                              marginTop: '8px',
-                              padding: '24px', 
-                              backgroundColor: '#fff', 
-                              borderRadius: '12px', 
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
-                              alignItems: 'center',
-                              border: '1px solid #e6f7ff'
-                            }}>
-                              <Space orientation="vertical" size={4}>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                  <Text type="secondary">Время:</Text>
-                                  <Text strong>
-                                    {dayjs(currentSelectedDate).format('dddd, D MMMM')}, {formatTime(currentSelectedTimeslot.from_in_timezone)} - {formatTime(currentSelectedTimeslot.to_in_timezone)}
-                                  </Text>
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                  <Text type="secondary">На складе отгрузки:</Text>
-                                  <Text strong>{record.drop_off_warehouse?.name}</Text>
-                                </div>
-                              </Space>
-                              <Button
-                                type="primary"
-                                size="large"
-                                onClick={() => handleCreateSupply(record)}
-                                loading={isCreating}
-                                disabled={isCreating}
-                                style={{ 
-                                  height: '48px', 
-                                  padding: '0 48px', 
-                                  fontSize: '16px', 
-                                  fontWeight: 600,
-                                  borderRadius: '8px',
-                                  boxShadow: '0 4px 10px rgba(24, 144, 255, 0.3)'
-                                }}
-                              >
-                                Подтвердить
-                              </Button>
-                            </div>
-                          )}
-
-                          {/* Supply creation status */}
-                          {currentSupplyStatus && (
-                            <div style={{ marginTop: '16px' }}>
-                              <Alert
-                                title={
-                                  <Space orientation="vertical" size={4}>
-                                    <Text strong>
-                                      {currentSupplyStatus.status === 'DraftSupplyCreateStatusSuccess' ? 'Поставка успешно создана' :
-                                       currentSupplyStatus.status === 'DraftSupplyCreateStatusFailed' ? 'Ошибка при создании поставки' : 
-                                       'Создание поставки...'}
-                                    </Text>
-                                    {currentSupplyStatus.result?.order_ids && (
-                                      <Text>ID заказов: <Tag color="green">{currentSupplyStatus.result.order_ids.join(', ')}</Tag></Text>
-                                    )}
-                                    {currentSupplyStatus.error_messages && currentSupplyStatus.error_messages.length > 0 && (
-                                      <div style={{ marginTop: '4px' }}>
-                                        {currentSupplyStatus.error_messages.map((err, i) => (
-                                          <div key={i} style={{ color: '#ff4d4f' }}>• {err}</div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </Space>
-                                }
-                                type={
-                                  currentSupplyStatus.status === 'DraftSupplyCreateStatusSuccess' ? 'success' :
-                                  currentSupplyStatus.status === 'DraftSupplyCreateStatusFailed' ? 'error' : 'info'
-                                }
-                                showIcon
-                                style={{ borderRadius: '12px' }}
-                              />
-                            </div>
-                          )}
-                        </Space>
-                      </div>
-                    )
+                onRow={(record: SupplyDraft) => ({
+                  onClick: () => {
+                    navigate(`/connections/${connectionId}/supply-templates/${snapshotId}/drafts/${record.id}`)
                   },
-                  rowExpandable: (record: SupplyDraft) => {
-                    // Don't expand if supply is already created (has order_ids)
-                    if (record.order_ids && record.order_ids.length > 0) {
-                      return false
-                    }
-                    // Expandable if there are supply_warehouses to show creation UI
-                    return true
-                  },
-                  onExpand: (expanded, record) => {
-                    if (expanded) {
-                      setExpandedDraftId(record.id)
-                    } else {
-                      if (expandedDraftId === record.id) {
-                        setExpandedDraftId(null)
-                        // Clean up state for this draft
-                        setSelectedWarehouseId((prev) => {
-                          const newState = { ...prev }
-                          delete newState[record.id]
-                          return newState
-                        })
-                        setSelectedTimeslot((prev) => {
-                          const newState = { ...prev }
-                          delete newState[record.id]
-                          return newState
-                        })
-                        setTimeslots((prev) => {
-                          const newState = { ...prev }
-                          delete newState[record.id]
-                          return newState
-                        })
-                        setSupplyCreateStatus((prev) => {
-                          const newState = { ...prev }
-                          delete newState[record.id]
-                          return newState
-                        })
-                        setSelectedDate((prev) => {
-                          const newState = { ...prev }
-                          delete newState[record.id]
-                          return newState
-                        })
-                      }
-                    }
-                  },
-                }}
+                  style: { cursor: 'pointer' },
+                })}
                 columns={[
                   {
                     title: 'Склад отгрузки',
-                    key: 'warehouse_name',
+                    key: 'drop_off_warehouse',
                     render: (_: any, record: SupplyDraft) => {
-                      return record.drop_off_warehouse?.name || record.drop_off_warehouse_name || '-'
+                      return record.drop_off_warehouse?.name || '-'
                     },
                   },
                   {
-                    title: 'Кластер',
-                    dataIndex: 'cluster_name',
-                    key: 'cluster_name',
+                    title: 'Склад размещения',
+                    key: 'storage_warehouse',
+                    render: (_: any, record: SupplyDraft) => {
+                      // Try storage_warehouse_name from backend response first
+                      if ((record as any).storage_warehouse_name) {
+                        return (record as any).storage_warehouse_name
+                      }
+                      // Fallback: extract from storage_warehouses if available
+                      if (record.storage_warehouses && record.storage_warehouses.length > 0) {
+                        const firstWarehouse = record.storage_warehouses[0]
+                        return firstWarehouse.storage_warehouse?.name || '-'
+                      }
+                      return '-'
+                    },
                   },
                   {
                     title: 'Статус',
@@ -2028,43 +1298,16 @@ const SupplyTemplateDetail: React.FC = () => {
                     ),
                   },
                   {
-                    title: 'Время жизни',
-                    key: 'time_remaining',
+                    title: 'ID Заявки',
+                    key: 'order_id',
                     render: (_: any, record: SupplyDraft) => {
-                      const createdAt = new Date(record.created_at)
-                      const expiresAt = new Date(createdAt.getTime() + 30 * 60 * 1000)
-                      const remaining = Math.max(0, expiresAt.getTime() - currentTime.getTime())
-                      const minutes = Math.floor(remaining / 60000)
-                      const seconds = Math.floor((remaining % 60000) / 1000)
-                      
-                      if (remaining === 0) {
-                        return <Text type="danger">Истек</Text>
-                      }
-                      
-                      return (
-                        <Text type={minutes < 5 ? 'warning' : undefined}>
-                          {String(minutes).padStart(2, '0')}:
-                          {String(seconds).padStart(2, '0')}
-                        </Text>
+                      const orderId = record.supply_create_info?.order_id
+                      return orderId ? (
+                        <Tag color="green">{orderId}</Tag>
+                      ) : (
+                        <Text type="secondary">-</Text>
                       )
                     },
-                  },
-                  {
-                    title: 'Заявка',
-                    key: 'order_ids',
-                    render: (_: any, record: SupplyDraft) => {
-                      if (record.order_ids && record.order_ids.length > 0) {
-                        return <Tag color="green">Заявка создана: {record.order_ids.join(', ')}</Tag>
-                      }
-                      return <Text type="secondary">-</Text>
-                    },
-                  },
-                  {
-                    title: 'Создан',
-                    dataIndex: 'created_at',
-                    key: 'created_at',
-                    render: (date: string) =>
-                      new Date(date).toLocaleString('ru-RU'),
                   },
                   {
                     title: 'Действия',
@@ -2143,18 +1386,6 @@ const SupplyTemplateDetail: React.FC = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item
-            name="limitation_strategy"
-            label="При наличии ограничений на складе"
-          >
-            <Radio.Group>
-              <Space orientation="vertical">
-                <Radio value="skip">Не поставлять товары с ограничениями</Radio>
-                <Radio value="reduce">Уменьшить количество до лимита склада</Radio>
-              </Space>
-            </Radio.Group>
-          </Form.Item>
-
           {previewItems.length > 0 && (
             <div style={{ marginTop: '16px' }}>
               <Text strong>Товары в поставке ({previewItems.length}):</Text>
@@ -2174,16 +1405,6 @@ const SupplyTemplateDetail: React.FC = () => {
                     title: 'Кол-во',
                     dataIndex: 'quantity',
                     key: 'quantity',
-                    render: (val, record) => (
-                      <span>
-                        {val}
-                        {record.original_quantity !== val && (
-                          <Tag color="orange" style={{ marginLeft: '8px' }}>
-                            было {record.original_quantity}
-                          </Tag>
-                        )}
-                      </span>
-                    ),
                   },
                 ]}
               />
@@ -2192,7 +1413,7 @@ const SupplyTemplateDetail: React.FC = () => {
           {previewItems.length === 0 && selectedCluster && !warehouseLoading && (
             <Alert
               title="Нет товаров для поставки"
-              description="С учетом текущих ограничений кластера и выбранной стратегии, ни один товар не может быть добавлен в поставку."
+              description="В выбранном кластере нет товаров для поставки."
               type="warning"
               showIcon
               style={{ marginTop: '16px' }}
@@ -2201,58 +1422,6 @@ const SupplyTemplateDetail: React.FC = () => {
         </Form>
       </Modal>
 
-      {/* Warehouse availability details modal */}
-      <Modal
-        title={`Ограничения складов: ${selectedAvailability?.clusterName} - ${selectedAvailability?.offerId}`}
-        open={availabilityModalVisible}
-        onCancel={() => {
-          setAvailabilityModalVisible(false)
-          setSelectedAvailability(null)
-        }}
-        footer={[
-          <Button key="close" onClick={() => setAvailabilityModalVisible(false)}>
-            Закрыть
-          </Button>,
-        ]}
-        width={600}
-      >
-        <Table
-          dataSource={
-            selectedAvailability
-              ? Object.entries(selectedAvailability.availability).map(
-                  ([warehouse, limit]) => ({
-                    warehouse,
-                    limit,
-                  })
-                )
-              : []
-          }
-          rowKey="warehouse"
-          columns={[
-            {
-              title: 'Склад',
-              dataIndex: 'warehouse',
-              key: 'warehouse',
-            },
-            {
-              title: 'Максимальный размер поставки',
-              dataIndex: 'limit',
-              key: 'limit',
-              render: (limit: any) => {
-                if (limit === 'NO_LIMITS') {
-                  return <Tag color="green">Без ограничений</Tag>
-                }
-                if (limit === 'UNAVAILABLE' || limit === 0) {
-                  return <Tag color="red">Недоступно</Tag>
-                }
-                return <Tag color="warning">{limit}</Tag>
-              },
-            },
-          ]}
-          pagination={false}
-          size="small"
-        />
-      </Modal>
 
       {/* Settings modal */}
       <Modal
@@ -2384,6 +1553,42 @@ const SupplyTemplateDetail: React.FC = () => {
             </Select>
           </Form.Item>
 
+          <Form.Item
+            name="drop_off_warehouse_id"
+            label="Склад отгрузки"
+            rules={[{ required: true, message: 'Необходимо выбрать склад отгрузки' }]}
+          >
+            <Select
+              placeholder="Введите название склада (минимум 4 символа)"
+              showSearch
+              allowClear
+              filterOption={false}
+              onSearch={handleWarehouseSearch}
+              loading={warehouseLoading}
+              notFoundContent={
+                warehouseLoading ? <Spin size="small" /> : <Empty description="Введите название склада" />
+              }
+            >
+              {warehouses.map((warehouse) => (
+                <Option key={warehouse.warehouse_id} value={warehouse.warehouse_id}>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{warehouse.name}</div>
+                    {warehouse.address && (
+                      <div style={{ fontSize: '12px', color: '#999' }}>
+                        {warehouse.address}
+                      </div>
+                    )}
+                    {warehouse.warehouse_type && (
+                      <div style={{ fontSize: '12px', color: '#999' }}>
+                        Тип: {getWarehouseTypeLabel(warehouse.warehouse_type)}
+                      </div>
+                    )}
+                  </div>
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
           <Alert
             title="Информация"
             description="При сохранении данные будут обновлены с Ozon и пересчитаны с указанными параметрами."
@@ -2393,6 +1598,20 @@ const SupplyTemplateDetail: React.FC = () => {
           />
         </Form>
       </Modal>
+
+      {/* Progress modal */}
+      {progressTaskId && snapshotId && (
+        <ProgressModal
+          visible={progressModalVisible}
+          snapshotId={parseInt(snapshotId)}
+          taskId={progressTaskId}
+          onComplete={handleProgressComplete}
+          onCancel={() => {
+            setProgressModalVisible(false)
+            setProgressTaskId(null)
+          }}
+        />
+      )}
     </div>
   )
 }

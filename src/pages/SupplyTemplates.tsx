@@ -9,25 +9,26 @@ import {
   Card,
   Typography,
   Modal,
-  Upload,
   Form,
   Select,
   Checkbox,
-  Divider,
+  Spin,
+  Empty,
 } from 'antd'
 import {
   ArrowLeftOutlined,
   PlusOutlined,
   DeleteOutlined,
   FileTextOutlined,
-  UploadOutlined,
 } from '@ant-design/icons'
 import {
   suppliesApi,
   type SupplySnapshotResponse,
   type SupplyCalculationStrategy,
   type CreateSnapshotConfig,
+  type Warehouse,
 } from '../api/supplies'
+import { ProgressModal } from '../components/ProgressModal'
 import { connectionsApi, type Connection } from '../api/connections'
 import { companiesApi, type Company } from '../api/companies'
 import { ozonClustersApi, type OzonCluster } from '../api/clusters'
@@ -36,6 +37,17 @@ import { SUPPLY_PLAN_STRATEGY_DESCRIPTION, FIXED_PERCENTAGES_STRATEGY_DESCRIPTIO
 
 const { Title, Text } = Typography
 const { Option } = Select
+
+const getWarehouseTypeLabel = (warehouseType: string | undefined): string => {
+  const typeMap: Record<string, string> = {
+    'WAREHOUSE_TYPE_DELIVERY_POINT': 'Пункт выдачи заказов',
+    'WAREHOUSE_TYPE_ORDERS_RECEIVING_POINT': 'Пункт приёма заказов',
+    'WAREHOUSE_TYPE_SORTING_CENTER': 'Сортировочный центр',
+    'WAREHOUSE_TYPE_FULL_FILLMENT': 'Фулфилмент',
+    'WAREHOUSE_TYPE_CROSS_DOCK': 'Кросс-докинг',
+  }
+  return warehouseType ? typeMap[warehouseType] || warehouseType : ''
+}
 
 const SupplyTemplates: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
@@ -46,14 +58,19 @@ const SupplyTemplates: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
-  const [fileList, setFileList] = useState<any[]>([])
+  const [progressModalVisible, setProgressModalVisible] = useState(false)
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
+  const [currentSnapshotId, setCurrentSnapshotId] = useState<number | null>(null)
 
   // Configuration state
   const [clusters, setClusters] = useState<OzonCluster[]>([])
   const [products, setProducts] = useState<OzonProduct[]>([])
   const [loadingClusters, setLoadingClusters] = useState(false)
   const [loadingProducts, setLoadingProducts] = useState(false)
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
+  const [warehouseLoading, setWarehouseLoading] = useState(false)
   const [form] = Form.useForm()
+  const searchTimeoutRef = React.useRef<number | null>(null)
 
   useEffect(() => {
     if (connectionId) {
@@ -102,6 +119,37 @@ const SupplyTemplates: React.FC = () => {
     }
   }
 
+  const loadWarehouses = async (search: string) => {
+    if (!connectionId || search.length < 4) return
+    
+    setWarehouseLoading(true)
+    try {
+      const warehousesData = await suppliesApi.getWarehouses(parseInt(connectionId), search)
+      setWarehouses(warehousesData)
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка загрузки складов')
+    } finally {
+      setWarehouseLoading(false)
+    }
+  }
+
+  const handleWarehouseSearch = (value: string) => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    const trimmedValue = value.trim()
+
+    if (trimmedValue.length >= 4) {
+      searchTimeoutRef.current = window.setTimeout(() => {
+        loadWarehouses(trimmedValue)
+      }, 400)
+    } else {
+      setWarehouses([])
+      setWarehouseLoading(false)
+    }
+  }
+
   const handleOpenModal = () => {
     setModalVisible(true)
     loadClustersAndProducts()
@@ -110,33 +158,39 @@ const SupplyTemplates: React.FC = () => {
       supply_products_to_neighbor_cluster: false,
       cluster_ids: [],
       offer_ids: [],
+      drop_off_warehouse_id: undefined,
     })
+    setWarehouses([])
   }
 
   const handleCreate = async () => {
     if (!connectionId) return
-    if (fileList.length === 0) {
-      message.error('Пожалуйста, выберите файл с ограничениями складов')
-      return
-    }
 
     setCreating(true)
     try {
       const values = form.getFieldsValue()
+      
+      if (!values.drop_off_warehouse_id) {
+        message.error('Необходимо выбрать склад отгрузки')
+        return
+      }
+      
       const config: CreateSnapshotConfig = {
+        drop_off_warehouse_id: values.drop_off_warehouse_id,
         supply_calculation_strategy: values.supply_calculation_strategy as SupplyCalculationStrategy,
         supply_products_to_neighbor_cluster: values.supply_products_to_neighbor_cluster || false,
         cluster_ids: values.cluster_ids?.length > 0 ? values.cluster_ids : undefined,
         offer_ids: values.offer_ids?.length > 0 ? values.offer_ids : undefined,
       }
 
-      const file = fileList[0].originFileObj
-      const newSnapshot = await suppliesApi.createSnapshot(parseInt(connectionId), config, file)
-      message.success('Новый шаблон поставки создан')
+      const newSnapshot = await suppliesApi.createSnapshot(parseInt(connectionId), config)
       setModalVisible(false)
-      setFileList([])
       form.resetFields()
-      navigate(`/connections/${connectionId}/supply-templates/${newSnapshot.id}`)
+      
+      // Show progress modal and track task
+      setCurrentSnapshotId(newSnapshot.snapshot_id)
+      setCurrentTaskId(newSnapshot.task_id)
+      setProgressModalVisible(true)
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка создания шаблона')
     } finally {
@@ -253,7 +307,6 @@ const SupplyTemplates: React.FC = () => {
             onOk={handleCreate}
             onCancel={() => {
               setModalVisible(false)
-              setFileList([])
               form.resetFields()
             }}
             confirmLoading={creating}
@@ -384,25 +437,62 @@ const SupplyTemplates: React.FC = () => {
                 </Select>
               </Form.Item>
 
-
-              <Divider />
-
-              <div style={{ marginBottom: '16px' }}>
-                <Typography.Paragraph>
-                  Для формирования новой поставки необходимо загрузить файл XLS с ограничениями складов в кластерах.
-                  Перейдите в раздел <a href="https://seller.ozon.ru/app/analytics/goods-availability/index" target="_blank" rel="noreferrer">Планирование поставок</a> в личном кабинете Ozon, выберите все кластера, скачайте XLS файл и прикрепите файл.
-                </Typography.Paragraph>
-                <Upload
-                  accept=".xlsx"
-                  fileList={fileList}
-                  beforeUpload={() => false}
-                  onChange={({ fileList }) => setFileList(fileList.slice(-1))}
+              <Form.Item
+                name="drop_off_warehouse_id"
+                label="Склад отгрузки"
+                rules={[{ required: true, message: 'Необходимо выбрать склад отгрузки' }]}
+              >
+                <Select
+                  placeholder="Введите название склада (минимум 4 символа)"
+                  showSearch
+                  allowClear
+                  filterOption={false}
+                  onSearch={handleWarehouseSearch}
+                  loading={warehouseLoading}
+                  notFoundContent={
+                    warehouseLoading ? <Spin size="small" /> : <Empty description="Введите название склада" />
+                  }
                 >
-                  <Button icon={<UploadOutlined />}>Загрузить ограничения складов</Button>
-                </Upload>
+                  {warehouses.map((warehouse) => (
+                    <Option key={warehouse.warehouse_id} value={warehouse.warehouse_id}>
+                      <div>
+                        <div style={{ fontWeight: 500 }}>{warehouse.name}</div>
+                        {warehouse.address && (
+                          <div style={{ fontSize: '12px', color: '#999' }}>
+                            {warehouse.address}
+                          </div>
+                        )}
+                        {warehouse.warehouse_type && (
+                          <div style={{ fontSize: '12px', color: '#999' }}>
+                            Тип: {getWarehouseTypeLabel(warehouse.warehouse_type)}
+                          </div>
+                        )}
               </div>
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
             </Form>
           </Modal>
+
+          {currentSnapshotId && currentTaskId && (
+            <ProgressModal
+              visible={progressModalVisible}
+              snapshotId={currentSnapshotId}
+              taskId={currentTaskId}
+              onComplete={() => {
+                setProgressModalVisible(false)
+                navigate(`/connections/${connectionId}/supply-templates/${currentSnapshotId}`)
+                setCurrentTaskId(null)
+                setCurrentSnapshotId(null)
+              }}
+              onCancel={() => {
+                setProgressModalVisible(false)
+                setCurrentTaskId(null)
+                setCurrentSnapshotId(null)
+              }}
+            />
+          )}
 
           <Table
             columns={columns}

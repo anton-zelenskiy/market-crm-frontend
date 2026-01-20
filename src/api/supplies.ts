@@ -53,6 +53,7 @@ export interface ClusterData {
   to_supply: number
   cluster_id: number
   macrolocal_cluster_id: number | null
+  restricted_quantity?: number
   warehouse_availability?: Record<string, any>
   is_neighbor_redirect?: boolean
 }
@@ -89,6 +90,12 @@ export interface CreateSnapshotConfig {
   offer_ids?: string[]
   supply_calculation_strategy?: SupplyCalculationStrategy
   supply_products_to_neighbor_cluster?: boolean
+  drop_off_warehouse_id?: number
+}
+
+export interface CreateSnapshotResponse {
+  snapshot_id: number
+  task_id: string
 }
 
 export interface RefreshSnapshotConfig {
@@ -96,6 +103,20 @@ export interface RefreshSnapshotConfig {
   offer_ids?: string[] | null
   supply_calculation_strategy?: SupplyCalculationStrategy | null
   supply_products_to_neighbor_cluster?: boolean | null
+  drop_off_warehouse_id?: number
+}
+
+export interface RefreshSnapshotResponse {
+  snapshot_id: number
+  task_id: string
+}
+
+export interface ProgressData {
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'error'
+  stage: string
+  progress: number
+  message?: string
+  error?: string
 }
 
 export interface Warehouse {
@@ -111,48 +132,69 @@ export interface DropOffWarehouse {
   address?: string | null
 }
 
-export interface CreateSupplyDraftRequest {
+// V2 API interfaces
+export interface CreateCrossdockDraftRequest {
   connection_id: number
   supply_data_snapshot_id: number
   drop_off_warehouse: DropOffWarehouse
   cluster_name: string
   items: Array<{ sku: number; quantity: number }>
+  deletion_sku_mode?: string
+}
+
+export type WarehouseAvailabilityState =
+  | 'FULL_AVAILABLE'
+  | 'PARTIAL_AVAILABLE'
+  | 'NOT_AVAILABLE'
+  | 'UNSPECIFIED'
+
+export interface DraftProductInfo {
+  offer_id: string
+  quantity: number
+  product_name: string | null
+  expected_quantity: number
+}
+
+export interface DraftCluster {
+  macrolocal_cluster_id: number
+  cluster_name: string
+}
+
+export interface DraftStorageWarehouse {
+  bundle_id?: string
+  restricted_bundle_id?: string
+  storage_warehouse?: {
+    address?: string
+    name: string
+    warehouse_id: number
+  }
+  availability_status?: {
+    invalid_reason?: string
+    state?: WarehouseAvailabilityState | string
+  }
+  total_rank?: number
+  total_score?: number
+  travel_time_days?: number
+  supply_tags?: string[]
+  state?: WarehouseAvailabilityState
+  products?: DraftProductInfo[]
 }
 
 export interface SupplyDraft {
   id: number
   connection_id: number
-  cluster_name: string
-  snapshot_data: any
-  payload: any
-  operation_id: string | null
   draft_id: number | null
+  cluster: DraftCluster
   status: string | null
-  errors: any | null
-  supply_warehouses: Array<{
-    bundle_ids: Array<{
-      bundle_id: string
-      is_docless: boolean
-    }>
-    restricted_bundle_id: string
-    status: {
-      invalid_reason: string
-      is_available: boolean
-      state: string
-    }
-    supply_warehouse: {
-      address: string
-      name: string
-      warehouse_id: number
-    }
-    total_rank: number
-    total_score: number
-    travel_time_days: number
-  }> | null
-  drop_off_warehouse_name: string | null  // Deprecated
+  errors: any[] | null
+  storage_warehouses: DraftStorageWarehouse[]
   drop_off_warehouse: DropOffWarehouse | null
-  create_supply_operation_id: string | null
-  order_ids: string[] | null
+  supply_create_info?: {
+    error_reasons?: string[] | null
+    order_id?: number | null
+    status: string
+  } | null
+  storage_warehouse_name?: string | null
   created_at: string
   updated_at: string
 }
@@ -162,49 +204,53 @@ export interface Timeslot {
   to_in_timezone: string
 }
 
-export interface DayTimeslots {
-  date_in_timezone: string
-  timeslots: Timeslot[]
+// V2 API interfaces
+export interface SelectedClusterWarehouse {
+  macrolocal_cluster_id: number
+  storage_warehouse_id: number
 }
 
-export interface WarehouseTimeslots {
-  current_time_in_timezone: string
-  days: DayTimeslots[]
-  drop_off_warehouse_id: number
-  warehouse_timezone: string
-}
-
-export interface DraftTimeslotRequest {
+export interface DraftTimeslotRequestV2 {
   date_from: string
   date_to: string
+  selected_cluster_warehouses: SelectedClusterWarehouse[]
 }
 
-export interface DraftTimeslotResponse {
-  drop_off_warehouse_timeslots: WarehouseTimeslots[]
-  requested_date_from: string
-  requested_date_to: string
+export interface DraftTimeslotResponseV2 {
+  error_reason?: string | null
+  result?: {
+    drop_off_warehouse_timeslots?: {
+      current_time_in_timezone: string
+      days: Array<{
+        date_in_timezone: string
+        timeslots: Timeslot[]
+      }>
+      warehouse_timezone: string
+    }
+    requested_date_from: string
+    requested_date_to: string
+  } | null
 }
 
-export interface CreateSupplyFromDraftRequest {
-  warehouse_id: number
+export interface CreateSupplyFromDraftV2Request {
+  selected_cluster_warehouses: SelectedClusterWarehouse[]
   timeslot: Timeslot
 }
 
-export interface CreateSupplyFromDraftResponse {
-  operation_id: string
+export interface CreateSupplyFromDraftV2Response {
+  error_reasons?: string[] | null
+  order_id?: number | null
+  status: string
 }
 
-export interface SupplyCreateStatusRequest {
-  operation_id: string
+// V2 API interfaces
+export interface SupplyCreateStatusV2Request {
+  draft_id: number
 }
 
-export interface SupplyCreateStatusResult {
-  order_ids: string[] | null
-}
-
-export interface SupplyCreateStatusResponse {
-  error_messages: string[] | null
-  result: SupplyCreateStatusResult | null
+export interface SupplyCreateStatusV2Response {
+  error_reasons?: string[] | null
+  order_id?: number | null
   status: string
 }
 
@@ -265,24 +311,45 @@ export const suppliesApi = {
 
   createSnapshot: async (
     connectionId: number,
-    config?: CreateSnapshotConfig,
-    file?: File
-  ): Promise<SupplySnapshotResponse> => {
+    config?: CreateSnapshotConfig
+  ): Promise<CreateSnapshotResponse> => {
     const formData = new FormData()
-    if (file) {
-      formData.append('file', file)
+    
+    if (!config?.drop_off_warehouse_id) {
+      throw new Error('drop_off_warehouse_id is required')
     }
-    if (config) {
-      formData.append('config', JSON.stringify(config))
+    formData.append('drop_off_warehouse_id', config.drop_off_warehouse_id.toString())
+    
+    if (config.supply_calculation_strategy) {
+      formData.append('supply_calculation_strategy', config.supply_calculation_strategy)
     }
-      const response = await api.post(
-        `/supplies/connection/${connectionId}/snapshot/create`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
+    
+    if (config.cluster_ids && config.cluster_ids.length > 0) {
+      formData.append('cluster_ids', JSON.stringify(config.cluster_ids))
+    }
+    
+    if (config.offer_ids && config.offer_ids.length > 0) {
+      formData.append('offer_ids', JSON.stringify(config.offer_ids))
+    }
+    
+    if (
+      config.supply_products_to_neighbor_cluster !== undefined &&
+      config.supply_products_to_neighbor_cluster !== null
+    ) {
+      formData.append(
+        'supply_products_to_neighbor_cluster',
+        config.supply_products_to_neighbor_cluster.toString()
+      )
+    }
+    
+    const response = await api.post(
+      `/supplies/connection/${connectionId}/snapshot/create`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
     )
     return response.data
   },
@@ -290,12 +357,161 @@ export const suppliesApi = {
   refreshSnapshot: async (
     snapshotId: number,
     config?: RefreshSnapshotConfig
-  ): Promise<SupplySnapshotResponse> => {
+  ): Promise<RefreshSnapshotResponse> => {
+    const formData = new FormData()
+    
+    if (!config?.drop_off_warehouse_id) {
+      throw new Error('drop_off_warehouse_id is required')
+    }
+    formData.append('drop_off_warehouse_id', config.drop_off_warehouse_id.toString())
+    
+    if (config.supply_calculation_strategy) {
+      formData.append('supply_calculation_strategy', config.supply_calculation_strategy)
+    }
+    
+    if (config.cluster_ids !== undefined) {
+      if (config.cluster_ids && config.cluster_ids.length > 0) {
+        formData.append('cluster_ids', JSON.stringify(config.cluster_ids))
+      } else {
+        formData.append('cluster_ids', JSON.stringify([]))
+      }
+    }
+    
+    if (config.offer_ids !== undefined) {
+      if (config.offer_ids && config.offer_ids.length > 0) {
+        formData.append('offer_ids', JSON.stringify(config.offer_ids))
+      } else {
+        formData.append('offer_ids', JSON.stringify([]))
+      }
+    }
+    
+    if (
+      config.supply_products_to_neighbor_cluster !== undefined &&
+      config.supply_products_to_neighbor_cluster !== null
+    ) {
+      formData.append(
+        'supply_products_to_neighbor_cluster',
+        config.supply_products_to_neighbor_cluster.toString()
+      )
+    }
+    
     const response = await api.post(
       `/supplies/snapshot/${snapshotId}/refresh`,
-      config || null
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
     )
     return response.data
+  },
+
+  getSnapshotProgress: (snapshotId: number, taskId: string): EventSource => {
+    const baseURL = api.defaults.baseURL || ''
+    const url = `${baseURL}/supplies/snapshot/${snapshotId}/progress?task_id=${encodeURIComponent(taskId)}`
+    
+    // EventSource doesn't support custom headers, so we need to use a custom implementation
+    // that supports Authorization header via fetch API
+    const token = localStorage.getItem('access_token')
+    const fullUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`
+    
+    // Create a custom EventSource-like object using fetch
+    const eventTarget = new EventTarget()
+    let abortController: AbortController | null = null
+    
+    const startStream = () => {
+      abortController = new AbortController()
+      
+      fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/event-stream',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        signal: abortController.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+          
+          const reader = response.body?.getReader()
+          const decoder = new TextDecoder()
+          
+          if (!reader) {
+            throw new Error('No response body')
+          }
+          
+          let buffer = ''
+          let currentEventType = 'progress'
+          let currentData: string[] = []
+          
+          while (true) {
+            const { done, value } = await reader.read()
+            
+            if (done) {
+              break
+            }
+            
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
+            
+            for (const line of lines) {
+              if (line.startsWith('event:')) {
+                currentEventType = line.substring(6).trim()
+              } else if (line.startsWith('data:')) {
+                currentData.push(line.substring(5))
+              } else if (line === '') {
+                // Empty line indicates end of event
+                if (currentData.length > 0) {
+                  try {
+                    const dataString = currentData.join('')
+                    // Pass the JSON string as data, ProgressModal will parse it
+                    const event = new MessageEvent(currentEventType, { data: dataString })
+                    eventTarget.dispatchEvent(event)
+                  } catch (e) {
+                    console.error('Error parsing SSE data:', e, 'Data:', currentData.join(''))
+                  }
+                }
+                currentEventType = 'progress'
+                currentData = []
+              }
+            }
+          }
+        })
+        .catch((error) => {
+          if (error.name !== 'AbortError') {
+            const errorEvent = new MessageEvent('error', {
+              data: { error: error.message },
+            })
+            eventTarget.dispatchEvent(errorEvent)
+          }
+        })
+    }
+    
+    startStream()
+    
+    // Create EventSource-like interface
+    const eventSource = {
+      addEventListener: (type: string, listener: EventListener) => {
+        eventTarget.addEventListener(type, listener)
+      },
+      removeEventListener: (type: string, listener: EventListener) => {
+        eventTarget.removeEventListener(type, listener)
+      },
+      close: () => {
+        if (abortController) {
+          abortController.abort()
+        }
+      },
+      readyState: EventSource.CONNECTING,
+      url: fullUrl,
+      withCredentials: true,
+    } as EventSource
+    
+    return eventSource
   },
 
   deleteSnapshot: async (snapshotId: number): Promise<void> => {
@@ -316,10 +532,16 @@ export const suppliesApi = {
     return response.data
   },
 
-  createSupplyDraft: async (
-    request: CreateSupplyDraftRequest
+  // V2 API methods
+  createCrossdockDraft: async (
+    request: CreateCrossdockDraftRequest
   ): Promise<SupplyDraft> => {
-    const response = await api.post('/supplies/supply-draft', request)
+    const response = await api.post('/supplies/v2/supply-draft', request)
+    return response.data
+  },
+
+  getDraftInfoV2: async (draftId: number): Promise<SupplyDraft> => {
+    const response = await api.get(`/supplies/v2/supply-draft/${draftId}`)
     return response.data
   },
 
@@ -327,62 +549,42 @@ export const suppliesApi = {
     await api.delete(`/supplies/supply-draft/${draftId}`)
   },
 
-  getConnectionDrafts: async (
-    connectionId: number
+  getSnapshotDrafts: async (
+    snapshotId: number
   ): Promise<SupplyDraftListResponse> => {
-    const response = await api.get(`/supplies/connection/${connectionId}/drafts`)
+    const response = await api.get(`/supplies/snapshot/${snapshotId}/drafts`)
     return response.data
   },
 
-  getDraftTimeslots: async (
+  getDraftTimeslotsV2: async (
     draftId: number,
-    request: DraftTimeslotRequest
-  ): Promise<DraftTimeslotResponse> => {
+    request: DraftTimeslotRequestV2
+  ): Promise<DraftTimeslotResponseV2> => {
     const response = await api.post(
-      `/supplies/supply-draft/${draftId}/timeslots`,
+      `/supplies/v2/supply-draft/${draftId}/timeslots`,
       request
     )
     return response.data
   },
 
-  createSupplyFromDraft: async (
+  createSupplyFromDraftV2: async (
     draftId: number,
-    request: CreateSupplyFromDraftRequest
-  ): Promise<CreateSupplyFromDraftResponse> => {
+    request: CreateSupplyFromDraftV2Request
+  ): Promise<CreateSupplyFromDraftV2Response> => {
     const response = await api.post(
-      `/supplies/supply-draft/${draftId}/create-supply`,
+      `/supplies/v2/supply-draft/${draftId}/create-supply`,
       request
     )
     return response.data
   },
 
-  getSupplyCreateStatus: async (
+  getSupplyCreateStatusV2: async (
     draftId: number,
-    request: SupplyCreateStatusRequest
-  ): Promise<SupplyCreateStatusResponse> => {
+    request: SupplyCreateStatusV2Request
+  ): Promise<SupplyCreateStatusV2Response> => {
     const response = await api.post(
-      `/supplies/supply-draft/${draftId}/create-supply-status`,
+      `/supplies/v2/supply-draft/${draftId}/status`,
       request
-    )
-    return response.data
-  },
-
-  downloadDeficitCsv: async (snapshotId: number): Promise<Blob> => {
-    const response = await api.get(
-      `/supplies/snapshot/${snapshotId}/deficit-csv`,
-      {
-        responseType: 'blob',
-      }
-    )
-    return response.data
-  },
-
-  downloadAvailabilityCsv: async (snapshotId: number): Promise<Blob> => {
-    const response = await api.get(
-      `/supplies/snapshot/${snapshotId}/availability-csv`,
-      {
-        responseType: 'blob',
-      }
     )
     return response.data
   },

@@ -25,6 +25,7 @@ import OzonProducts from './pages/OzonProducts'
 import Supplies from './pages/Supplies'
 import SupplyTemplates from './pages/SupplyTemplates'
 import SupplyTemplateDetail from './pages/SupplyTemplateDetail'
+import SupplyDraftDetail from './pages/SupplyDraftDetail'
 
 const { Header, Sider, Content } = Layout
 
@@ -161,6 +162,7 @@ const DashboardLayout: React.FC = () => {
             <Route path="/connections/:connectionId/supplies" element={<Supplies />} />
             <Route path="/connections/:connectionId/supply-templates" element={<SupplyTemplates />} />
             <Route path="/connections/:connectionId/supply-templates/:snapshotId" element={<SupplyTemplateDetail />} />
+            <Route path="/connections/:connectionId/supply-templates/:snapshotId/drafts/:draftId" element={<SupplyDraftDetail />} />
             <Route path="/data-sources" element={<DataSources />} />
             <Route path="/clusters" element={<Clusters />} />
             <Route path="/reports" element={<Reports />} />
