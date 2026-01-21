@@ -14,7 +14,9 @@ import {
   Checkbox,
   Spin,
   Empty,
+  Upload,
 } from 'antd'
+import type { UploadFile } from 'antd/es/upload/interface'
 import {
   ArrowLeftOutlined,
   PlusOutlined,
@@ -33,7 +35,7 @@ import { connectionsApi, type Connection } from '../api/connections'
 import { companiesApi, type Company } from '../api/companies'
 import { ozonClustersApi, type OzonCluster } from '../api/clusters'
 import { ozonProductsApi, type OzonProduct } from '../api/products'
-import { SUPPLY_PLAN_STRATEGY_DESCRIPTION, FIXED_PERCENTAGES_STRATEGY_DESCRIPTION, AVERAGE_SALES_STRATEGY_DESCRIPTION } from '../constants'
+import { SUPPLY_PLAN_STRATEGY_DESCRIPTION, FIXED_PERCENTAGES_STRATEGY_DESCRIPTION, AVERAGE_SALES_STRATEGY_DESCRIPTION, MANUAL_XLSX_STRATEGY_DESCRIPTION } from '../constants'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -183,6 +185,12 @@ const SupplyTemplates: React.FC = () => {
         offer_ids: values.offer_ids?.length > 0 ? values.offer_ids : undefined,
       }
 
+      const fileList = values.supply_data_file as UploadFile[] | undefined
+      const firstFile = fileList?.[0]?.originFileObj as File | undefined
+      if (firstFile) {
+        config.supply_data_file = firstFile
+      }
+
       const newSnapshot = await suppliesApi.createSnapshot(parseInt(connectionId), config)
       setModalVisible(false)
       form.resetFields()
@@ -216,6 +224,8 @@ const SupplyTemplates: React.FC = () => {
         return 'По плану поставок'
       case 'fixed_percentages':
         return 'Фиксированные проценты'
+      case 'manual_xlsx':
+        return 'Загрузить вручную'
       default:
         return '-'
     }
@@ -330,6 +340,9 @@ const SupplyTemplates: React.FC = () => {
                   <Option value="fixed_percentages">
                     Фиксированные проценты
                   </Option>
+                  <Option value="manual_xlsx">
+                    Загрузить вручную
+                  </Option>
                 </Select>
               </Form.Item>
 
@@ -353,6 +366,9 @@ const SupplyTemplates: React.FC = () => {
                       break
                     case 'average_sales':
                       strategyDescription = AVERAGE_SALES_STRATEGY_DESCRIPTION
+                      break
+                    case 'manual_xlsx':
+                      strategyDescription = MANUAL_XLSX_STRATEGY_DESCRIPTION
                       break
                   }
                   return (
@@ -391,50 +407,107 @@ const SupplyTemplates: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name="cluster_ids"
-                label="Кластеры (если не выбрано — все)"
+                noStyle
+                shouldUpdate={(prevValues, currentValues) =>
+                  prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
+                }
               >
-                <Select
-                  mode="multiple"
-                  allowClear
-                  placeholder="Выберите кластеры"
-                  loading={loadingClusters}
-                  optionFilterProp="children"
-                  showSearch
-                >
-                  {clusters
-                    .sort((a, b) => a.priority - b.priority)
-                    .map((cluster) => (
-                      <Option key={cluster.cluster_id} value={cluster.cluster_id}>
-                        {cluster.name} (приоритет: {cluster.priority})
-                      </Option>
-                    ))}
-                </Select>
+                {({ getFieldValue }) => {
+                  const strategy = getFieldValue('supply_calculation_strategy')
+                  if (strategy !== 'manual_xlsx') return null
+
+                  return (
+                    <Form.Item
+                      name="supply_data_file"
+                      label="Загрузите XLSX файл с количеством товаров к поставке для каждого кластера"
+                      rules={[{ required: true, message: 'Загрузите XLSX файл' }]}
+                      valuePropName="fileList"
+                      getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
+                    >
+                      <Upload accept=".xlsx" maxCount={1} beforeUpload={() => false}>
+                        <Button>Выбрать файл</Button>
+                      </Upload>
+                    </Form.Item>
+                  )
+                }}
               </Form.Item>
 
               <Form.Item
-                name="offer_ids"
-                label="Товары (если не выбрано — все)"
+                noStyle
+                shouldUpdate={(prevValues, currentValues) =>
+                  prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
+                }
               >
-                <Select
-                  mode="multiple"
-                  allowClear
-                  placeholder="Выберите товары"
-                  loading={loadingProducts}
-                  optionFilterProp="children"
-                  showSearch
-                  filterOption={(input, option) =>
-                    (option?.children as unknown as string)
-                      ?.toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                >
-                  {products.map((product) => (
-                    <Option key={product.offer_id} value={product.offer_id}>
-                      {product.offer_id} — {product.name}
-                    </Option>
-                  ))}
-                </Select>
+                {({ getFieldValue }) => {
+                  const strategy = getFieldValue('supply_calculation_strategy')
+                  if (strategy === 'manual_xlsx') return null
+
+                  return (
+                    <Form.Item
+                      name="cluster_ids"
+                      label="Кластеры (если не выбрано — все)"
+                    >
+                      <Select
+                        mode="multiple"
+                        allowClear
+                        placeholder="Выберите кластеры"
+                        loading={loadingClusters}
+                        optionFilterProp="children"
+                        showSearch
+                      >
+                        {clusters
+                          .sort((a, b) => a.priority - b.priority)
+                          .map((cluster) => (
+                            <Option
+                              key={cluster.cluster_id}
+                              value={cluster.cluster_id}
+                            >
+                              {cluster.name} (приоритет: {cluster.priority})
+                            </Option>
+                          ))}
+                      </Select>
+                    </Form.Item>
+                  )
+                }}
+              </Form.Item>
+
+              <Form.Item
+                noStyle
+                shouldUpdate={(prevValues, currentValues) =>
+                  prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
+                }
+              >
+                {({ getFieldValue }) => {
+                  const strategy = getFieldValue('supply_calculation_strategy')
+                  if (strategy === 'manual_xlsx') return null
+
+                  return (
+                    <Form.Item
+                      name="offer_ids"
+                      label="Товары (если не выбрано — все)"
+                    >
+                      <Select
+                        mode="multiple"
+                        allowClear
+                        placeholder="Выберите товары"
+                        loading={loadingProducts}
+                        optionFilterProp="children"
+                        showSearch
+                        filterOption={(input, option) =>
+                          (option?.children as unknown as string)
+                            ?.toLowerCase()
+                            .includes(input.toLowerCase())
+                        }
+                      >
+                        {products.map((product) => (
+                          <Option key={product.offer_id} value={product.offer_id}>
+                            {product.offer_id} — {product.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  )
+                }}
               </Form.Item>
 
               <Form.Item

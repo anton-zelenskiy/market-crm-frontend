@@ -44,7 +44,11 @@ export interface DownloadDocumentsRequest {
   external_order_id: string
 }
 
-export type SupplyCalculationStrategy = 'average_sales' | 'supply_plan' | 'fixed_percentages'
+export type SupplyCalculationStrategy =
+  | 'average_sales'
+  | 'supply_plan'
+  | 'fixed_percentages'
+  | 'manual_xlsx'
 
 export interface ClusterData {
   marketplace_stocks_count: number
@@ -91,6 +95,7 @@ export interface CreateSnapshotConfig {
   supply_calculation_strategy?: SupplyCalculationStrategy
   supply_products_to_neighbor_cluster?: boolean
   drop_off_warehouse_id?: number
+  supply_data_file?: File
 }
 
 export interface CreateSnapshotResponse {
@@ -322,6 +327,10 @@ export const suppliesApi = {
     
     if (config.supply_calculation_strategy) {
       formData.append('supply_calculation_strategy', config.supply_calculation_strategy)
+    }
+
+    if (config.supply_data_file) {
+      formData.append('supply_data_file', config.supply_data_file)
     }
     
     if (config.cluster_ids && config.cluster_ids.length > 0) {

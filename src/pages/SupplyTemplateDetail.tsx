@@ -67,12 +67,14 @@ const STRATEGY_LABELS: Record<SupplyCalculationStrategy, string> = {
   average_sales: 'По средним продажам',
   supply_plan: 'План поставок',
   fixed_percentages: 'Фиксированные проценты',
+  manual_xlsx: 'Загрузить вручную',
 }
 
 const VENDOR_STOCKS_COLUMN_LABELS: Record<SupplyCalculationStrategy, string> = {
   average_sales: 'Остатки на заводе',
   supply_plan: 'План поставок',
   fixed_percentages: 'План поставок',
+  manual_xlsx: 'План поставок',
 }
 
 const getStrategyLabel = (strategy: SupplyCalculationStrategy | null | undefined): string => {
