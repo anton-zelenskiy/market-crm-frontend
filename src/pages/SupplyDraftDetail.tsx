@@ -14,11 +14,16 @@ import {
   Col,
   Empty,
   Tag,
+  ConfigProvider,
+  Modal,
+  Table,
 } from 'antd'
+import ruRU from 'antd/locale/ru_RU'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import 'dayjs/locale/ru'
 import localeData from 'dayjs/plugin/localeData'
+import updateLocale from 'dayjs/plugin/updateLocale'
 import {
   ArrowLeftOutlined,
 } from '@ant-design/icons'
@@ -29,20 +34,19 @@ import {
   type Timeslot,
   type CreateSupplyFromDraftV2Request,
   type SupplyCreateStatusV2Response,
+  WAREHOUSE_AVAILABILITY_STATE_DESCRIPTION,
 } from '../api/supplies'
 
 dayjs.extend(localeData)
+dayjs.extend(updateLocale)
 dayjs.locale('ru')
+// Set Monday as the first day of the week (0 = Sunday, 1 = Monday)
+dayjs.updateLocale('ru', {
+  weekStart: 1,
+})
 
 const { Title, Text } = Typography
 
-const getTimeslotCategory = (timeStr: string) => {
-  const hour = parseInt(timeStr.split(':')[0])
-  if (hour >= 6 && hour < 12) return 'Утро'
-  if (hour >= 12 && hour < 18) return 'День'
-  if (hour >= 18 && hour < 24) return 'Вечер'
-  return 'Ночь'
-}
 
 const formatTime = (isoStr: string) => {
   if (!isoStr) return ''
@@ -68,6 +72,7 @@ const SupplyDraftDetail: React.FC = () => {
   const [creatingSupply, setCreatingSupply] = useState(false)
   const [supplyCreateStatus, setSupplyCreateStatus] = useState<SupplyCreateStatusV2Response | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [productsModalVisible, setProductsModalVisible] = useState(false)
 
   const loadDraftInfo = useCallback(async () => {
     if (!draftId) return
@@ -88,7 +93,7 @@ const SupplyDraftDetail: React.FC = () => {
     loadDraftInfo()
   }, [loadDraftInfo])
 
-  const handleLoadTimeslots = async (warehouseId?: number) => {
+  const handleLoadTimeslots = useCallback(async (warehouseId?: number) => {
     if (!draft?.draft_id) {
       message.error('Черновик не имеет draft_id')
       return
@@ -134,7 +139,28 @@ const SupplyDraftDetail: React.FC = () => {
     } finally {
       setLoadingTimeslots(false)
     }
-  }
+  }, [draft, selectedWarehouseId, draftId])
+
+  // Autoselect warehouse if there's only one warehouse with FULL_AVAILABLE state
+  useEffect(() => {
+    if (!draft || !draft.storage_warehouses) return
+
+    const availableWarehouses = draft.storage_warehouses || []
+    
+    // Check if there's exactly one warehouse with FULL_AVAILABLE state
+    if (availableWarehouses.length === 1) {
+      const warehouse = availableWarehouses[0]
+      if (warehouse.state === 'FULL_AVAILABLE' && warehouse.storage_warehouse?.warehouse_id) {
+        const warehouseId = warehouse.storage_warehouse.warehouse_id
+        // Only autoselect if not already selected
+        if (selectedWarehouseId !== warehouseId) {
+          setSelectedWarehouseId(warehouseId)
+          // Auto-load timeslots for the selected warehouse
+          handleLoadTimeslots(warehouseId)
+        }
+      }
+    }
+  }, [draft, selectedWarehouseId, handleLoadTimeslots])
 
   const handleCreateSupply = async () => {
     if (!draft) return
@@ -243,7 +269,7 @@ const SupplyDraftDetail: React.FC = () => {
   if (availableWarehouses.length === 0) {
     return (
       <Card>
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
           <Button
             icon={<ArrowLeftOutlined />}
             onClick={() => navigate(`/connections/${connectionId}/supply-templates/${snapshotId}`)}
@@ -251,7 +277,7 @@ const SupplyDraftDetail: React.FC = () => {
             Назад
           </Button>
           <Alert
-            message="Нет доступных складов"
+            title="Нет доступных складов"
             description="Для этого черновика нет доступных складов размещения"
             type="warning"
             showIcon
@@ -334,13 +360,7 @@ const SupplyDraftDetail: React.FC = () => {
     }
   }
 
-  const groupedTimeslots = selectedDayData?.timeslots.reduce((acc, slot) => {
-    const fromTime = formatTime(slot.from_in_timezone)
-    const category = getTimeslotCategory(fromTime)
-    if (!acc[category]) acc[category] = []
-    acc[category].push(slot)
-    return acc
-  }, {} as Record<string, Timeslot[]>) || {}
+  const allTimeslots = selectedDayData?.timeslots || []
 
   return (
     <div>
@@ -355,65 +375,7 @@ const SupplyDraftDetail: React.FC = () => {
 
           <Title level={2}>Детали черновика поставки</Title>
 
-          {/* Products list always shown after selecting warehouse */}
-          {selectedWarehouse && (
-            <div style={{ marginBottom: '24px' }}>
-              <Space size="middle" style={{ marginBottom: '12px' }}>
-                <Text strong>Выбранный склад:</Text>
-                <Text>{selectedWarehouse.storage_warehouse?.name || 'Unknown'}</Text>
-                {selectedWarehouse.state && (
-                  <Tag
-                    color={
-                      selectedWarehouse.state === 'FULL_AVAILABLE'
-                        ? 'green'
-                        : selectedWarehouse.state === 'PARTIAL_AVAILABLE'
-                          ? 'orange'
-                          : 'default'
-                    }
-                  >
-                    {selectedWarehouse.state}
-                  </Tag>
-                )}
-              </Space>
 
-              {hasSelectedWarehouseMismatch && (
-                <Alert
-                  message="После доп. проверки обнаружилось, что часть товаров склад не может принять:"
-                  type="warning"
-                  showIcon
-                  style={{ marginBottom: '12px' }}
-                />
-              )}
-
-              {selectedWarehouseProducts.length === 0 ? (
-                <Text type="secondary">Нет данных по товарам для выбранного склада</Text>
-              ) : (
-                <div>
-                  {selectedWarehouseProducts.map((product, idx) => {
-                    const isMismatch =
-                      product.quantity !== product.expected_quantity
-                    return (
-                      <div key={idx} style={{ marginBottom: '8px' }}>
-                        <Space size="small">
-                          <Text
-                            strong
-                            style={isMismatch ? { color: '#cf1322' } : undefined}
-                          >
-                            {product.product_name || product.offer_id}
-                          </Text>
-                          {isMismatch && <Tag color="red">Mismatch</Tag>}
-                          <Text type="secondary">
-                            Ожидалось: {product.expected_quantity}, Может принять:{' '}
-                            {product.quantity}
-                          </Text>
-                        </Space>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
 
           <div style={{ padding: '24px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
             <Space orientation="vertical" size="large" style={{ width: '100%' }}>
@@ -442,7 +404,7 @@ const SupplyDraftDetail: React.FC = () => {
                         return null
                       }
                       return (
-                        <Col span={8} key={warehouseData.warehouse_id}>
+                        <Col span={10} key={warehouseData.warehouse_id}>
                           <Radio.Button
                             value={warehouseData.warehouse_id}
                             style={{
@@ -471,15 +433,10 @@ const SupplyDraftDetail: React.FC = () => {
                                         : 'default'
                                   }
                                 >
-                                  {warehouse.state}
+                                  {WAREHOUSE_AVAILABILITY_STATE_DESCRIPTION[warehouse.state]}
                                 </Tag>
                               )}
                             </Space>
-                            {warehouseData.address && (
-                              <Text type="secondary" style={{ fontSize: '12px', display: 'block', whiteSpace: 'normal', textAlign: 'left', marginTop: '4px' }}>
-                                {warehouseData.address}
-                              </Text>
-                            )}
                           </Radio.Button>
                         </Col>
                       )
@@ -487,6 +444,18 @@ const SupplyDraftDetail: React.FC = () => {
                   </Row>
                 </Radio.Group>
               </div>
+
+              <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+                <Row gutter={[16, 16]}>
+                  <Col span={4}>
+                    {selectedWarehouseProducts.length > 0 && (
+                      <Button type="primary" onClick={() => setProductsModalVisible(true)}>
+                        Показать товары
+                      </Button>
+                    )}
+                  </Col>
+                </Row>
+              </Space>
 
               {/* Date and Time selection */}
               {selectedWarehouseId && (
@@ -503,36 +472,37 @@ const SupplyDraftDetail: React.FC = () => {
                       {/* Left side: Calendar */}
                       <Col span={10}>
                         <div style={{ border: '1px solid #f0f0f0', borderRadius: '12px', padding: '16px', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                          <Calendar
-                            fullscreen={false}
-                            headerRender={({ value, onChange }) => {
-                              const localeData = value.localeData();
-                              const year = value.year();
-                              return (
-                                <div style={{ padding: '8px 0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <Text strong style={{ fontSize: '16px' }}>{localeData.months(value)} {year}</Text>
-                                  <Space>
-                                    <Button
-                                      size="small"
-                                      icon={<span style={{ fontSize: '12px' }}>&lt;</span>}
-                                      onClick={() => onChange(value.clone().subtract(1, 'month'))}
-                                    />
-                                    <Button
-                                      size="small"
-                                      icon={<span style={{ fontSize: '12px' }}>&gt;</span>}
-                                      onClick={() => onChange(value.clone().add(1, 'month'))}
-                                    />
-                                  </Space>
-                                </div>
-                              );
-                            }}
-                            value={selectedDate ? dayjs(selectedDate) : undefined}
-                            onSelect={onDateSelect}
-                            cellRender={dateCellRender}
-                          />
+                          <ConfigProvider locale={ruRU}>
+                            <Calendar
+                              fullscreen={false}
+                              headerRender={({ value, onChange }) => {
+                                const localeData = value.localeData();
+                                const year = value.year();
+                                return (
+                                  <div style={{ padding: '8px 0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Text strong style={{ fontSize: '16px' }}>{localeData.months(value)} {year}</Text>
+                                    <Space>
+                                      <Button
+                                        size="small"
+                                        icon={<span style={{ fontSize: '12px' }}>&lt;</span>}
+                                        onClick={() => onChange(value.clone().subtract(1, 'month'))}
+                                      />
+                                      <Button
+                                        size="small"
+                                        icon={<span style={{ fontSize: '12px' }}>&gt;</span>}
+                                        onClick={() => onChange(value.clone().add(1, 'month'))}
+                                      />
+                                    </Space>
+                                  </div>
+                                );
+                              }}
+                              value={selectedDate ? dayjs(selectedDate) : undefined}
+                              onSelect={onDateSelect}
+                              cellRender={dateCellRender}
+                            />
+                          </ConfigProvider>
                         </div>
                       </Col>
-
                       {/* Right side: Timeslots */}
                       <Col span={14}>
                         {selectedDate ? (
@@ -541,47 +511,35 @@ const SupplyDraftDetail: React.FC = () => {
                               {dayjs(selectedDate).format('D MMMM, dddd')}
                             </Text>
 
-                            {Object.keys(groupedTimeslots).length > 0 ? (
+                            {allTimeslots.length > 0 ? (
                               <div style={{ maxHeight: '450px', overflowY: 'auto', paddingRight: '8px' }}>
-                                {['Утро', 'День', 'Вечер', 'Ночь'].map((category) => {
-                                  const slots = groupedTimeslots[category]
-                                  if (!slots || slots.length === 0) return null
-
-                                  return (
-                                    <div key={category} style={{ marginBottom: '24px' }}>
-                                      <Text type="secondary" style={{ display: 'block', marginBottom: '12px', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '0.5px' }}>
-                                        {category}
-                                      </Text>
-                                      <Row gutter={[12, 12]}>
-                                        {slots.map((slot, idx) => {
-                                          const fromTime = formatTime(slot.from_in_timezone)
-                                          const toTime = formatTime(slot.to_in_timezone)
-                                          const isSelected = selectedTimeslot?.from_in_timezone === slot.from_in_timezone &&
-                                            selectedTimeslot?.to_in_timezone === slot.to_in_timezone
-                                          return (
-                                            <Col key={idx} span={8}>
-                                              <Button
-                                                type={isSelected ? 'primary' : 'default'}
-                                                style={{
-                                                  width: '100%',
-                                                  height: '40px',
-                                                  borderRadius: '6px',
-                                                  backgroundColor: isSelected ? undefined : '#f5f5f5',
-                                                  border: isSelected ? undefined : 'none',
-                                                  color: isSelected ? undefined : '#555',
-                                                  fontWeight: isSelected ? 600 : 400
-                                                }}
-                                                onClick={() => setSelectedTimeslot(slot)}
-                                              >
-                                                {fromTime} - {toTime}
-                                              </Button>
-                                            </Col>
-                                          )
-                                        })}
-                                      </Row>
-                                    </div>
-                                  )
-                                })}
+                                <Row gutter={[12, 12]}>
+                                  {allTimeslots.map((slot, idx) => {
+                                    const fromTime = formatTime(slot.from_in_timezone)
+                                    const toTime = formatTime(slot.to_in_timezone)
+                                    const isSelected = selectedTimeslot?.from_in_timezone === slot.from_in_timezone &&
+                                      selectedTimeslot?.to_in_timezone === slot.to_in_timezone
+                                    return (
+                                      <Col key={idx} span={8}>
+                                        <Button
+                                          type={isSelected ? 'primary' : 'default'}
+                                          style={{
+                                            width: '100%',
+                                            height: '40px',
+                                            borderRadius: '6px',
+                                            backgroundColor: isSelected ? undefined : '#f5f5f5',
+                                            border: isSelected ? undefined : 'none',
+                                            color: isSelected ? undefined : '#555',
+                                            fontWeight: isSelected ? 600 : 400
+                                          }}
+                                          onClick={() => setSelectedTimeslot(slot)}
+                                        >
+                                          {fromTime} - {toTime}
+                                        </Button>
+                                      </Col>
+                                    )
+                                  })}
+                                </Row>
                               </div>
                             ) : (
                               <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #f0f0f0' }}>
@@ -700,6 +658,58 @@ const SupplyDraftDetail: React.FC = () => {
           </div>
         </Space>
       </Card>
+
+      {/* Products Modal */}
+      <Modal
+        title="Товары для поставки"
+        open={productsModalVisible}
+        onCancel={() => setProductsModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setProductsModalVisible(false)}>
+            Закрыть
+          </Button>,
+        ]}
+        width={800}
+      >
+        {hasSelectedWarehouseMismatch && (
+          <Alert
+            title="После доп. проверки обнаружилось, что часть товаров склад не может принять:"
+            type="warning"
+            showIcon
+            style={{ marginBottom: '12px' }}
+          />
+        )}
+        <Table
+          dataSource={selectedWarehouseProducts}
+          rowKey={(record, index) => `${record.offer_id}-${index}`}
+          pagination={false}
+          size="small"
+          columns={[
+            {
+              title: 'Артикул',
+              dataIndex: 'offer_id',
+              key: 'offer_id',
+            },
+            {
+              title: 'К поставке',
+              dataIndex: 'quantity',
+              key: 'quantity',
+              render: (quantity: number) => quantity,
+            },
+            {
+              title: 'Не сможем принять',
+              key: 'cannot_accept',
+              render: (_: any, record: typeof selectedWarehouseProducts[0]) => {
+                const isMismatch = record.quantity !== record.expected_quantity
+                if (isMismatch) {
+                  return record.expected_quantity - record.quantity
+                }
+                return ''
+              },
+            },
+          ]}
+        />
+      </Modal>
     </div>
   )
 }

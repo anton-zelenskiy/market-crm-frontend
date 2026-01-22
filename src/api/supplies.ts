@@ -153,6 +153,14 @@ export type WarehouseAvailabilityState =
   | 'NOT_AVAILABLE'
   | 'UNSPECIFIED'
 
+export const WAREHOUSE_AVAILABILITY_STATE_DESCRIPTION: Record<WarehouseAvailabilityState, string> = {
+  FULL_AVAILABLE: 'Примет все товары',
+  PARTIAL_AVAILABLE: 'Примет часть товаров',
+  NOT_AVAILABLE: 'Не может принимать товары',
+  UNSPECIFIED: 'Неизвестно',
+};
+  
+
 export interface DraftProductInfo {
   offer_id: string
   quantity: number
