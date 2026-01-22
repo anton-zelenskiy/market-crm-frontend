@@ -171,14 +171,20 @@ const SupplyTemplates: React.FC = () => {
     setCreating(true)
     try {
       const values = form.getFieldsValue()
+      const warehouseId = values.drop_off_warehouse_id
+      const selectedWarehouse = warehouses.find((w) => w.warehouse_id === warehouseId)
       
-      if (!values.drop_off_warehouse_id) {
+      if (!selectedWarehouse) {
         message.error('Необходимо выбрать склад отгрузки')
         return
       }
       
       const config: CreateSnapshotConfig = {
-        drop_off_warehouse_id: values.drop_off_warehouse_id,
+        drop_off_warehouse: {
+          warehouse_id: warehouseId,
+          name: selectedWarehouse.name,
+          address: selectedWarehouse.address || null,
+        },
         supply_calculation_strategy: values.supply_calculation_strategy as SupplyCalculationStrategy,
         supply_products_to_neighbor_cluster: values.supply_products_to_neighbor_cluster || false,
         cluster_ids: values.cluster_ids?.length > 0 ? values.cluster_ids : undefined,
@@ -187,11 +193,8 @@ const SupplyTemplates: React.FC = () => {
 
       const fileList = values.supply_data_file as UploadFile[] | undefined
       const firstFile = fileList?.[0]?.originFileObj as File | undefined
-      if (firstFile) {
-        config.supply_data_file = firstFile
-      }
 
-      const newSnapshot = await suppliesApi.createSnapshot(parseInt(connectionId), config)
+      const newSnapshot = await suppliesApi.createSnapshot(parseInt(connectionId), config, firstFile)
       setModalVisible(false)
       form.resetFields()
       

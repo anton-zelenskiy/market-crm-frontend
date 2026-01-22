@@ -442,12 +442,25 @@ const SupplyTemplateDetail: React.FC = () => {
     
     // Pre-fill form with current snapshot settings
     if (snapshot) {
-      settingsForm.setFieldsValue({
+      const formValues: any = {
         supply_calculation_strategy: snapshot.supply_calculation_strategy || 'average_sales',
         supply_products_to_neighbor_cluster: snapshot.supply_products_to_neighbor_cluster || false,
         cluster_ids: snapshot.cluster_ids || [],
         offer_ids: snapshot.offer_ids || [],
-      })
+      }
+      
+      // Pre-fill warehouse if available
+      if (snapshot.drop_off_warehouse) {
+        formValues.drop_off_warehouse_id = snapshot.drop_off_warehouse.warehouse_id
+        // Add warehouse to the list so it can be selected
+        setWarehouses([{
+          warehouse_id: snapshot.drop_off_warehouse.warehouse_id,
+          name: snapshot.drop_off_warehouse.name,
+          address: snapshot.drop_off_warehouse.address || undefined,
+        }])
+      }
+      
+      settingsForm.setFieldsValue(formValues)
     }
   }
 
@@ -457,18 +470,25 @@ const SupplyTemplateDetail: React.FC = () => {
     setSavingSettings(true)
     try {
       const values = settingsForm.getFieldsValue()
+      const warehouseId = values.drop_off_warehouse_id
+      const selectedWarehouse = warehouses.find((w) => w.warehouse_id === warehouseId)
+
+      if (!selectedWarehouse) {
+        message.error('Необходимо выбрать склад отгрузки')
+        setSavingSettings(false)
+        return
+      }
+
       const config: RefreshSnapshotConfig = {
         supply_calculation_strategy: values.supply_calculation_strategy as SupplyCalculationStrategy,
         supply_products_to_neighbor_cluster: values.supply_products_to_neighbor_cluster || false,
         cluster_ids: values.cluster_ids?.length > 0 ? values.cluster_ids : null,
         offer_ids: values.offer_ids?.length > 0 ? values.offer_ids : null,
-        drop_off_warehouse_id: values.drop_off_warehouse_id,
-      }
-
-      if (!config.drop_off_warehouse_id) {
-        message.error('Необходимо выбрать склад отгрузки')
-        setSavingSettings(false)
-        return
+        drop_off_warehouse: {
+          warehouse_id: warehouseId,
+          name: selectedWarehouse.name,
+          address: selectedWarehouse.address || null,
+        },
       }
 
       const response = await suppliesApi.refreshSnapshot(
@@ -553,7 +573,23 @@ const SupplyTemplateDetail: React.FC = () => {
       clearTimeout(searchTimeoutRef.current)
       searchTimeoutRef.current = null
     }
-  }, [])
+    
+    // Auto-fill warehouse from snapshot if available
+    if (snapshot?.drop_off_warehouse) {
+      const dropOffWarehouse = snapshot.drop_off_warehouse
+      form.setFieldsValue({
+        warehouse_id: dropOffWarehouse.warehouse_id,
+      })
+      // Add the warehouse to the list so it can be selected
+      setWarehouses([{
+        warehouse_id: dropOffWarehouse.warehouse_id,
+        name: dropOffWarehouse.name,
+        address: dropOffWarehouse.address || undefined,
+      }])
+    } else {
+      form.resetFields()
+    }
+  }, [snapshot, form])
 
   const loadWarehouses = useCallback(async (search: string) => {
     if (!connectionId) return

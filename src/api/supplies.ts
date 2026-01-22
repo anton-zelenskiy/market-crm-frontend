@@ -87,6 +87,7 @@ export interface SupplySnapshotResponse {
   offer_ids: string[] | null
   supply_calculation_strategy: SupplyCalculationStrategy | null
   supply_products_to_neighbor_cluster: boolean | null
+  drop_off_warehouse: DropOffWarehouse | null
 }
 
 export interface CreateSnapshotConfig {
@@ -94,8 +95,7 @@ export interface CreateSnapshotConfig {
   offer_ids?: string[]
   supply_calculation_strategy?: SupplyCalculationStrategy
   supply_products_to_neighbor_cluster?: boolean
-  drop_off_warehouse_id?: number
-  supply_data_file?: File
+  drop_off_warehouse?: DropOffWarehouse
 }
 
 export interface CreateSnapshotResponse {
@@ -108,7 +108,7 @@ export interface RefreshSnapshotConfig {
   offer_ids?: string[] | null
   supply_calculation_strategy?: SupplyCalculationStrategy | null
   supply_products_to_neighbor_cluster?: boolean | null
-  drop_off_warehouse_id?: number
+  drop_off_warehouse?: DropOffWarehouse
 }
 
 export interface RefreshSnapshotResponse {
@@ -316,39 +316,21 @@ export const suppliesApi = {
 
   createSnapshot: async (
     connectionId: number,
-    config?: CreateSnapshotConfig
+    config: CreateSnapshotConfig,
+    supply_data_file?: File
   ): Promise<CreateSnapshotResponse> => {
+    if (!config?.drop_off_warehouse) {
+      throw new Error('drop_off_warehouse is required')
+    }
+    
     const formData = new FormData()
     
-    if (!config?.drop_off_warehouse_id) {
-      throw new Error('drop_off_warehouse_id is required')
-    }
-    formData.append('drop_off_warehouse_id', config.drop_off_warehouse_id.toString())
+    // Send config as a single JSON object
+    formData.append('config', JSON.stringify(config))
     
-    if (config.supply_calculation_strategy) {
-      formData.append('supply_calculation_strategy', config.supply_calculation_strategy)
-    }
-
-    if (config.supply_data_file) {
-      formData.append('supply_data_file', config.supply_data_file)
-    }
-    
-    if (config.cluster_ids && config.cluster_ids.length > 0) {
-      formData.append('cluster_ids', JSON.stringify(config.cluster_ids))
-    }
-    
-    if (config.offer_ids && config.offer_ids.length > 0) {
-      formData.append('offer_ids', JSON.stringify(config.offer_ids))
-    }
-    
-    if (
-      config.supply_products_to_neighbor_cluster !== undefined &&
-      config.supply_products_to_neighbor_cluster !== null
-    ) {
-      formData.append(
-        'supply_products_to_neighbor_cluster',
-        config.supply_products_to_neighbor_cluster.toString()
-      )
+    // Add file if provided
+    if (supply_data_file) {
+      formData.append('supply_data_file', supply_data_file)
     }
     
     const response = await api.post(
@@ -367,51 +349,13 @@ export const suppliesApi = {
     snapshotId: number,
     config?: RefreshSnapshotConfig
   ): Promise<RefreshSnapshotResponse> => {
-    const formData = new FormData()
-    
-    if (!config?.drop_off_warehouse_id) {
-      throw new Error('drop_off_warehouse_id is required')
-    }
-    formData.append('drop_off_warehouse_id', config.drop_off_warehouse_id.toString())
-    
-    if (config.supply_calculation_strategy) {
-      formData.append('supply_calculation_strategy', config.supply_calculation_strategy)
-    }
-    
-    if (config.cluster_ids !== undefined) {
-      if (config.cluster_ids && config.cluster_ids.length > 0) {
-        formData.append('cluster_ids', JSON.stringify(config.cluster_ids))
-      } else {
-        formData.append('cluster_ids', JSON.stringify([]))
-      }
-    }
-    
-    if (config.offer_ids !== undefined) {
-      if (config.offer_ids && config.offer_ids.length > 0) {
-        formData.append('offer_ids', JSON.stringify(config.offer_ids))
-      } else {
-        formData.append('offer_ids', JSON.stringify([]))
-      }
-    }
-    
-    if (
-      config.supply_products_to_neighbor_cluster !== undefined &&
-      config.supply_products_to_neighbor_cluster !== null
-    ) {
-      formData.append(
-        'supply_products_to_neighbor_cluster',
-        config.supply_products_to_neighbor_cluster.toString()
-      )
+    if (!config?.drop_off_warehouse) {
+      throw new Error('drop_off_warehouse is required')
     }
     
     const response = await api.post(
       `/supplies/snapshot/${snapshotId}/refresh`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+      config
     )
     return response.data
   },
