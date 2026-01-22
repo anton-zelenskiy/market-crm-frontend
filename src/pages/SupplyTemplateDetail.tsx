@@ -190,6 +190,7 @@ const SupplyTemplateDetail: React.FC = () => {
   const [company, setCompany] = useState<Company | null>(null)
   const [drafts, setDrafts] = useState<SupplyDraft[]>([])
   const [warehouseModalVisible, setWarehouseModalVisible] = useState(false)
+  const [creatingDraft, setCreatingDraft] = useState(false)
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null)
   const [progressModalVisible, setProgressModalVisible] = useState(false)
   const [progressTaskId, setProgressTaskId] = useState<string | null>(null)
@@ -631,6 +632,7 @@ const SupplyTemplateDetail: React.FC = () => {
   }, [loadWarehouses])
 
   const handleSubmitDraft = async () => {
+    setCreatingDraft(true)
     if (!connectionId || !selectedCluster) return
 
     try {
@@ -679,6 +681,9 @@ const SupplyTemplateDetail: React.FC = () => {
       message.error(
         error.response?.data?.detail || 'Ошибка создания черновика'
       )
+    }
+    finally {
+      setCreatingDraft(false)
     }
   }
 
@@ -791,6 +796,35 @@ const SupplyTemplateDetail: React.FC = () => {
     }
   }, [handleCellChange, debouncedSave])
 
+  const copyTextToClipboard = useCallback(async (text: string) => {
+    const value = String(text ?? '').trim()
+    if (!value) return
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value)
+        message.success('Артикул скопирован')
+        return
+      }
+
+      const textarea = document.createElement('textarea')
+      textarea.value = value
+      textarea.setAttribute('readonly', '')
+      textarea.style.position = 'fixed'
+      textarea.style.top = '0'
+      textarea.style.left = '0'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(textarea)
+      if (!ok) throw new Error('copy failed')
+      message.success('Артикул скопирован')
+    } catch {
+      message.error('Не удалось скопировать')
+    }
+  }, [])
+
 
   // Build table column definitions dynamically based on clusters
   const columnDefs = useMemo(() => {
@@ -802,6 +836,29 @@ const SupplyTemplateDetail: React.FC = () => {
         headerName: 'Артикул',
         width: 180,
         pinned: 'left' as const,
+        cellRenderer: (params: any) => {
+          const value = params.value
+          return (
+            <Tooltip title="Нажмите, чтобы скопировать">
+              <div
+                onClick={(e) => {
+                  e?.stopPropagation?.()
+                  copyTextToClipboard(String(value ?? ''))
+                }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  userSelect: 'text',
+                }}
+              >
+                {value}
+              </div>
+            </Tooltip>
+          )
+        },
       },
       {
         field: 'name',
@@ -1143,7 +1200,7 @@ const SupplyTemplateDetail: React.FC = () => {
     }
 
     return baseHeaders
-  }, [snapshot, handleCreateDraft, clusterFilter, visibleBaseColumns, visibleSubColumns])
+  }, [snapshot, handleCreateDraft, clusterFilter, visibleBaseColumns, visibleSubColumns, copyTextToClipboard])
 
   // Transform data for AG Grid - keep nested structure, no flat keys with dots
   const tableRows = useMemo(() => {
@@ -1363,7 +1420,7 @@ const SupplyTemplateDetail: React.FC = () => {
 
       {/* Warehouse selection modal */}
       <Modal
-        title={`Выбор склада отгрузки - ${selectedCluster}`}
+        title={`Создание черновика поставки - ${selectedCluster}`}
         open={warehouseModalVisible}
         onOk={handleSubmitDraft}
         onCancel={() => {
@@ -1371,6 +1428,7 @@ const SupplyTemplateDetail: React.FC = () => {
           form.resetFields()
           setSelectedCluster(null)
         }}
+        confirmLoading={creatingDraft}
         okText="Создать"
         cancelText="Отмена"
         width={600}
@@ -1429,6 +1487,16 @@ const SupplyTemplateDetail: React.FC = () => {
                     title: 'Артикул',
                     dataIndex: 'offer_id',
                     key: 'offer_id',
+                    render: (value: any) => (
+                      <Tooltip title="Нажмите, чтобы скопировать">
+                        <span
+                          onClick={() => copyTextToClipboard(String(value ?? ''))}
+                          style={{ cursor: 'pointer', userSelect: 'text' }}
+                        >
+                          {value}
+                        </span>
+                      </Tooltip>
+                    ),
                   },
                   {
                     title: 'Кол-во',
