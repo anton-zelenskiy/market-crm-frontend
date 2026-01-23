@@ -137,13 +137,19 @@ export interface DropOffWarehouse {
   address?: string | null
 }
 
+export interface BundleItem {
+  sku: number
+  offer_id: string
+  quantity: number
+}
+
 // V2 API interfaces
 export interface CreateCrossdockDraftRequest {
   connection_id: number
   supply_data_snapshot_id: number
   drop_off_warehouse: DropOffWarehouse
   cluster_name: string
-  items: Array<{ sku: number; quantity: number }>
+  items: BundleItem[]
   deletion_sku_mode?: string
 }
 
@@ -166,6 +172,7 @@ export interface DraftProductInfo {
   quantity: number
   product_name: string | null
   expected_quantity: number
+  original_quantity?: number | null
 }
 
 export interface DraftCluster {

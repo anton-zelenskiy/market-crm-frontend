@@ -42,6 +42,7 @@ import {
   type Warehouse,
   type CreateCrossdockDraftRequest,
   type SupplyDraft,
+  type BundleItem,
   // @ts-expect-error
   type SelectedClusterWarehouse,
   type RefreshSnapshotConfig,
@@ -269,11 +270,7 @@ const SupplyTemplateDetail: React.FC = () => {
   const previewItems = useMemo(() => {
     if (!selectedCluster || !tableData.length) return []
 
-    const items: Array<{
-      offer_id: string
-      sku: number
-      quantity: number
-    }> = []
+    const items: BundleItem[] = []
 
     for (const item of tableData) {
       const clusterData = item[selectedCluster]
@@ -660,10 +657,7 @@ const SupplyTemplateDetail: React.FC = () => {
           address: selectedWarehouse.address || null,
         },
         cluster_name: selectedCluster,
-        items: previewItems.map((item) => ({
-          sku: item.sku,
-          quantity: item.quantity,
-        })),
+        items: previewItems,
         deletion_sku_mode: 'PARTIAL',
       }
 
