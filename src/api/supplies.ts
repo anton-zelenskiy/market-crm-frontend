@@ -62,25 +62,27 @@ export interface ClusterData {
   is_neighbor_redirect?: boolean
 }
 
+export interface SupplyDataItem {
+  offer_id: string
+  sku: number
+  name: string
+  box_count: number
+  vendor_stocks_count: number
+  [clusterName: string]: ClusterData | any
+  totals: {
+    marketplace_stocks_count: number
+    orders_count: number
+    avg_orders_leverage: number
+    vendor_stocks_count: number
+    to_supply: number
+    deficit: number
+  }
+}
+
 export interface SupplySnapshotResponse {
   id: number
   connection_id: number
-  data: Array<{
-    offer_id: string
-    sku: number
-    name: string
-    box_count: number
-    vendor_stocks_count: number
-    [clusterName: string]: ClusterData | any
-    totals: {
-      marketplace_stocks_count: number
-      orders_count: number
-      avg_orders_leverage: number
-      vendor_stocks_count: number
-      to_supply: number
-      deficit: number
-    }
-  }>
+  data: SupplyDataItem[]
   updated_at: string
   // Configuration fields
   cluster_ids: number[] | null
@@ -570,7 +572,7 @@ export const suppliesApi = {
 
 export async function saveSupplySnapshot(
   snapshotId: number,
-  data: SupplySnapshotResponse['data']
+  data: SupplyDataItem[]
 ): Promise<SupplySnapshotResponse> {
   const response = await api.put<SupplySnapshotResponse>(
     `/supplies/snapshot/${snapshotId}`,

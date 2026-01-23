@@ -38,6 +38,7 @@ import { debounce } from 'throttle-debounce'
 import {
   suppliesApi,
   type SupplySnapshotResponse,
+  type SupplyDataItem,
   type SupplyCalculationStrategy,
   type Warehouse,
   type CreateCrossdockDraftRequest,
@@ -163,22 +164,6 @@ const ClusterHeaderComponent = (params: any) => {
   )
 }
 
-interface SupplyDataItem {
-  offer_id: string
-  sku: number
-  name: string
-  box_count: number
-  vendor_stocks_count: number
-  [clusterName: string]: any
-  totals: {
-    marketplace_stocks_count: number
-    orders_count: number
-    avg_orders_leverage: number
-    vendor_stocks_count: number
-    to_supply: number
-    deficit: number
-  }
-}
 
 const SupplyTemplateDetail: React.FC = () => {
   const { connectionId, snapshotId } = useParams<{ connectionId: string, snapshotId: string }>()
