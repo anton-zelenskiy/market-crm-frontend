@@ -178,6 +178,7 @@ const SupplyTemplateDetail: React.FC = () => {
   const [drafts, setDrafts] = useState<SupplyDraft[]>([])
   const [warehouseModalVisible, setWarehouseModalVisible] = useState(false)
   const [creatingDraft, setCreatingDraft] = useState(false)
+  const [downloadingBundle, setDownloadingBundle] = useState(false)
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null)
   const [progressModalVisible, setProgressModalVisible] = useState(false)
   const [progressTaskId, setProgressTaskId] = useState<string | null>(null)
@@ -674,6 +675,40 @@ const SupplyTemplateDetail: React.FC = () => {
     }
     finally {
       setCreatingDraft(false)
+    }
+  }
+
+  const handleDownloadBundleXlsx = async () => {
+    if (!selectedCluster || previewItems.length === 0) {
+      message.warning('Нет товаров для скачивания')
+      return
+    }
+
+    setDownloadingBundle(true)
+    try {
+      const items = previewItems.map(item => ({
+        offer_id: item.offer_id,
+        quantity: item.quantity,
+      }))
+      const blob = await suppliesApi.downloadBundleXlsx(items, selectedCluster)
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Состав ${selectedCluster}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      
+      message.success('Файл скачан')
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка скачивания файла'
+      )
+    } finally {
+      setDownloadingBundle(false)
     }
   }
 
@@ -1464,13 +1499,23 @@ const SupplyTemplateDetail: React.FC = () => {
 
           {previewItems.length > 0 && (
             <div style={{ marginTop: '16px' }}>
-              <Text strong>Товары в поставке ({previewItems.length}):</Text>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <Text strong>Товары в поставке ({previewItems.length}):</Text>
+                <Button
+                  type="default"
+                  icon={<FileExcelOutlined />}
+                  onClick={handleDownloadBundleXlsx}
+                  loading={downloadingBundle}
+                  size="small"
+                >
+                  Скачать XLSX
+                </Button>
+              </div>
               <Table
                 dataSource={previewItems}
                 rowKey="offer_id"
                 size="small"
                 pagination={{ pageSize: 10 }}
-                style={{ marginTop: '8px' }}
                 columns={[
                   {
                     title: 'Артикул',

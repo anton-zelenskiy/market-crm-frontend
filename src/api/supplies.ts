@@ -570,6 +570,23 @@ export const suppliesApi = {
     )
     return response.data
   },
+
+  downloadBundleXlsx: async (
+    items: { offer_id: string; quantity: number }[],
+    clusterName: string
+  ): Promise<Blob> => {
+    const response = await api.post(
+      '/supplies/download-bundle-xlsx',
+      {
+        items,
+        cluster_name: clusterName,
+      },
+      {
+        responseType: 'blob',
+      }
+    )
+    return response.data
+  },
 }
 
 export async function saveSupplySnapshot(
