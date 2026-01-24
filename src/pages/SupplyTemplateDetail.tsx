@@ -48,6 +48,7 @@ import {
   type SelectedClusterWarehouse,
   type RefreshSnapshotConfig,
   saveSupplySnapshot,
+  type ClusterData,
 } from '../api/supplies'
 import { connectionsApi } from '../api/connections'
 import { connectionSettingsApi } from '../api/connectionSettings'
@@ -195,6 +196,7 @@ const SupplyTemplateDetail: React.FC = () => {
     'marketplace_stocks_count',
     'orders_count',
     'avg_orders_leverage',
+    'initial_to_supply',
     'to_supply'
   ])
   const searchTimeoutRef = useRef<number | null>(null)
@@ -241,6 +243,7 @@ const SupplyTemplateDetail: React.FC = () => {
               { label: 'Остатки на маркетплейсе', value: 'marketplace_stocks_count' },
               { label: 'Заказы (мес.)', value: 'orders_count' },
               { label: avgOrdersLabel, value: 'avg_orders_leverage' },
+              { label: 'Расчётное кол-во', value: 'initial_to_supply' },
               { label: 'Отгрузить на маркетплейс', value: 'to_supply' },
             ]}
             value={visibleSubColumns}
@@ -258,10 +261,10 @@ const SupplyTemplateDetail: React.FC = () => {
     const items: BundleItem[] = []
 
     for (const item of tableData) {
-      const clusterData = item[selectedCluster]
-      if (!clusterData || clusterData.to_supply <= 0) continue
+      const cluster = item.clusters?.find(c => c.cluster_name === selectedCluster)
+      if (!cluster || cluster.to_supply <= 0) continue
 
-      const toSupply = clusterData.to_supply
+      const toSupply = cluster.to_supply
       const boxCount = item.box_count || 0
       
       if (boxCount <= 0 && toSupply > 0) {
@@ -371,7 +374,15 @@ const SupplyTemplateDetail: React.FC = () => {
       )
       setSnapshot(snapshotData)
       if (snapshotData) {
-        setTableData(snapshotData.data)
+        // Compute initial_to_supply for each cluster on load (preserved on cell edits)
+        const dataWithInitial = snapshotData.data.map(item => ({
+          ...item,
+          clusters: item.clusters.map(cluster => ({
+            ...cluster,
+            initial_to_supply: (cluster.to_supply ?? 0) + (cluster.restricted_quantity ?? 0)
+          }))
+        }))
+        setTableData(dataWithInitial)
       }
     } catch (error: any) {
       message.error(
@@ -675,40 +686,39 @@ const SupplyTemplateDetail: React.FC = () => {
       return prevData.map((item) => {
         if (item.offer_id === rowId) {
           const updated = { ...item }
-          // Accessor format: clusterName_field (e.g., "cluster1_to_supply")
-          // Extract cluster name and field name
-          const clusterNames = Object.keys(item).filter(
-            (key) => !['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals'].includes(key)
-          )
-          
-          // Find matching cluster name by checking if accessor starts with cluster name + underscore
-          let matchedClusterName: string | null = null
+          const clusters = item.clusters || []
+
+          // Find matching cluster by checking if accessor starts with cluster name + underscore
+          let matchedCluster: ClusterData | null = null
           let fieldName: string | null = null
-          
-          for (const cn of clusterNames) {
-            if (accessor.startsWith(cn + '_')) {
-              matchedClusterName = cn
-              fieldName = accessor.substring(cn.length + 1) // Remove "clusterName_" prefix
+
+          for (const cluster of clusters) {
+            const clusterName = cluster.cluster_name
+            if (accessor.startsWith(clusterName + '_')) {
+              matchedCluster = cluster
+              fieldName = accessor.substring(clusterName.length + 1) // Remove "clusterName_" prefix
               break
             }
           }
-          
-          if (matchedClusterName && fieldName && updated[matchedClusterName]) {
-            updated[matchedClusterName] = {
-              ...updated[matchedClusterName],
-              [fieldName]: Number(newValue) || 0,
-            }
+
+          if (matchedCluster && fieldName) {
+            // Update the clusters array
+            updated.clusters = clusters.map(cluster => {
+              if (cluster.cluster_name === matchedCluster!.cluster_name) {
+                return {
+                  ...cluster,
+                  [fieldName!]: Number(newValue) || 0,
+                }
+              }
+              return cluster
+            })
 
             // Recalculate totals for to_supply if it was changed
             if (fieldName === 'to_supply' && updated.totals) {
-              const clusterNamesList = Object.keys(updated).filter(
-                (key) => !['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals'].includes(key)
-              )
-              
-              const newToSupplyTotal = clusterNamesList.reduce((sum, cn) => {
-                return sum + (updated[cn]?.to_supply || 0)
+              const newToSupplyTotal = updated.clusters.reduce((sum, cluster) => {
+                return sum + (cluster.to_supply || 0)
               }, 0)
-              
+
               // Recalculate deficit based on new total to_supply and vendor stocks
               const vendorStocks = updated.vendor_stocks_count || 0
               const newDeficit = Math.max(0, newToSupplyTotal - vendorStocks)
@@ -719,9 +729,6 @@ const SupplyTemplateDetail: React.FC = () => {
                 deficit: newDeficit
               }
             }
-          } else {
-            // Fallback for non-cluster fields
-            updated[accessor] = newValue
           }
           return updated
         }
@@ -902,14 +909,13 @@ const SupplyTemplateDetail: React.FC = () => {
       },
     ].filter(h => 'field' in h && visibleBaseColumns.includes(h.field as string))
 
-    // Get all unique cluster names from all items (excluding base fields and totals)
+    // Get all unique cluster names from all items' clusters arrays
     // This ensures neighbor clusters that only appear in some items are included
-    const baseFields = ['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals']
     const allClusterNames = new Set<string>()
     snapshot.data.forEach((item) => {
-      Object.keys(item).forEach((key) => {
-        if (!baseFields.includes(key)) {
-          allClusterNames.add(key)
+      item.clusters.forEach((cluster) => {
+        if (cluster.cluster_name) {
+          allClusterNames.add(cluster.cluster_name)
         }
       })
     })
@@ -933,11 +939,8 @@ const SupplyTemplateDetail: React.FC = () => {
           width: 120,
           type: 'numericColumn',
           valueGetter: (params) => {
-            const clusterData = params.data?.[clusterName]
-            if (clusterData && typeof clusterData === 'object') {
-              return clusterData.marketplace_stocks_count ?? 0
-            }
-            return 0
+            const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
+            return cluster?.marketplace_stocks_count ?? 0
           },
           valueFormatter: (params) => {
             const value = params.value !== undefined && params.value !== null ? params.value : 0
@@ -949,15 +952,12 @@ const SupplyTemplateDetail: React.FC = () => {
       if (visibleSubColumns.includes('orders_count')) {
         children.push({
           field: `${clusterName}_orders_count`,
-          headerName: 'Кол-во заказов (мес.)',
+          headerName: 'Заказы (30д.)',
           width: 150,
           type: 'numericColumn',
           valueGetter: (params) => {
-            const clusterData = params.data?.[clusterName]
-            if (clusterData && typeof clusterData === 'object') {
-              return clusterData.orders_count ?? 0
-            }
-            return 0
+            const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
+            return cluster?.orders_count ?? 0
           },
           valueFormatter: (params) => {
             const value = params.value !== undefined && params.value !== null ? params.value : 0
@@ -973,11 +973,8 @@ const SupplyTemplateDetail: React.FC = () => {
           width: 150,
           type: 'numericColumn',
           valueGetter: (params) => {
-            const clusterData = params.data?.[clusterName]
-            if (clusterData && typeof clusterData === 'object') {
-              return clusterData.avg_orders_leverage ?? 0
-            }
-            return 0
+            const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
+            return cluster?.avg_orders_leverage ?? 0
           },
           valueFormatter: (params) => {
             const value = params.value !== undefined && params.value !== null ? params.value : 0
@@ -986,11 +983,28 @@ const SupplyTemplateDetail: React.FC = () => {
         })
       }
 
+      if (visibleSubColumns.includes('initial_to_supply')) {
+        children.push({
+          field: `${clusterName}_initial_to_supply`,
+          headerName: 'Расчётное кол-во к поставке',
+          width: 110,
+          type: 'numericColumn',
+          valueGetter: (params) => {
+            const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
+            return cluster?.initial_to_supply ?? 0
+          },
+          valueFormatter: (params) => {
+            const value = params.value !== undefined && params.value !== null ? params.value : 0
+            return String(value)
+          },
+          cellStyle: { backgroundColor: '#f5f5f5' },
+        })
+      }
 
       if (visibleSubColumns.includes('to_supply')) {
         children.push({
           field: `${clusterName}_to_supply`,
-          headerName: 'К отгрузке',
+          headerName: 'К поставке',
           width: 120,
           type: 'numericColumn',
           editable: true,
@@ -1000,11 +1014,8 @@ const SupplyTemplateDetail: React.FC = () => {
             precision: 0,
           },
           valueGetter: (params) => {
-            const clusterData = params.data?.[clusterName]
-            if (clusterData && typeof clusterData === 'object') {
-              return clusterData.to_supply ?? 0
-            }
-            return 0
+            const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
+            return cluster?.to_supply ?? 0
           },
           valueFormatter: (params) => {
             const value = params.value !== undefined && params.value !== null ? params.value : 0
@@ -1012,10 +1023,10 @@ const SupplyTemplateDetail: React.FC = () => {
           },
           cellRenderer: (params: any) => {
             const boxCount = params.data?.box_count || 0
-            const clusterData = params.data?.[clusterName]
-            const actualValue = params.value !== undefined && params.value !== null 
-              ? params.value 
-              : (clusterData && typeof clusterData === 'object' ? (clusterData.to_supply ?? 0) : 0)
+            const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
+            const actualValue = params.value !== undefined && params.value !== null
+              ? params.value
+              : (cluster?.to_supply ?? 0)
             const numValue = Number(actualValue) || 0
             
             // Check box count validity
@@ -1027,15 +1038,14 @@ const SupplyTemplateDetail: React.FC = () => {
               boxCountError = 'Не задана кратность'
             } else if (numValue > 0 && numValue % boxCount !== 0) {
               isBoxCountValid = false
-              boxCountError = `Количество должно быть кратно ${boxCount}`
+              boxCountError = `Количество не кратно количеству в коробке (${boxCount})`
             }
 
-            // Get restricted quantity and neighbor redirect info
-            const restrictedQuantity = clusterData?.restricted_quantity || 0
-            const isNeighborRedirect = clusterData?.is_neighbor_redirect || false
-            
-            // Build tooltip content
             let tooltipContent: string | null = null
+            
+/*             const restrictedQuantity = cluster?.restricted_quantity || 0
+            const isNeighborRedirect = cluster?.is_neighbor_redirect || false
+            
             if (restrictedQuantity > 0) {
               tooltipContent = `Не отгружено из-за ограничений: ${restrictedQuantity}`
               if (isNeighborRedirect) {
@@ -1043,7 +1053,7 @@ const SupplyTemplateDetail: React.FC = () => {
               }
             } else if (isNeighborRedirect) {
               tooltipContent = 'Часть товара перенаправлена в соседний кластер'
-            }
+            } */
             
             // Default background color for cells with value 0 (soft green)
             const defaultBgColor = '#f0f9f4'
@@ -1110,7 +1120,7 @@ const SupplyTemplateDetail: React.FC = () => {
       if (visibleSubColumns.includes('marketplace_stocks_count')) {
         children.push({
           field: 'totals_marketplace_stocks_count',
-          headerName: 'Остатки на МП (всего)',
+          headerName: 'Остатки ozon',
           width: 150,
           type: 'numericColumn',
           valueGetter: (params) => params.data?.totals?.marketplace_stocks_count ?? 0,
@@ -1121,7 +1131,7 @@ const SupplyTemplateDetail: React.FC = () => {
       if (visibleSubColumns.includes('orders_count')) {
         children.push({
           field: 'totals_orders_count',
-          headerName: 'Заказы (всего)',
+          headerName: 'Заказы',
           width: 150,
           type: 'numericColumn',
           valueGetter: (params) => params.data?.totals?.orders_count ?? 0,
@@ -1132,7 +1142,7 @@ const SupplyTemplateDetail: React.FC = () => {
       if (visibleSubColumns.includes('avg_orders_leverage')) {
         children.push({
           field: 'totals_avg_orders_leverage',
-          headerName: 'Сред. кол-во (всего)',
+          headerName: 'Сред. кол-во заказов',
           width: 150,
           type: 'numericColumn',
           valueGetter: (params) => params.data?.totals?.avg_orders_leverage ?? 0,
@@ -1140,10 +1150,27 @@ const SupplyTemplateDetail: React.FC = () => {
         })
       }
 
+      if (visibleSubColumns.includes('initial_to_supply')) {
+        children.push({
+          field: 'totals_initial_to_supply',
+          headerName: 'Расчётное кол-во к поставке',
+          width: 150,
+          type: 'numericColumn',
+          valueGetter: (params) => {
+            const clusters = params.data?.clusters || []
+            return clusters.reduce((sum: number, cluster: ClusterData) => {
+              return sum + (cluster.initial_to_supply ?? 0)
+            }, 0)
+          },
+          valueFormatter: (params) => String(params.value ?? 0),
+          cellStyle: { backgroundColor: '#f5f5f5' }
+        })
+      }
+
       if (visibleSubColumns.includes('to_supply')) {
         children.push({
           field: 'totals_to_supply',
-          headerName: 'К поставке (всего)',
+          headerName: 'К поставке',
           width: 150,
           type: 'numericColumn',
           valueGetter: (params) => params.data?.totals?.to_supply ?? 0,
@@ -1152,8 +1179,6 @@ const SupplyTemplateDetail: React.FC = () => {
         })
       }
 
-      // Deficit is always shown if any of sub-columns are visible in totals, or maybe just always?
-      // Let's assume it's part of the totals.
       children.push({
         field: 'totals_deficit',
         headerName: 'Дефицит',
@@ -1181,27 +1206,12 @@ const SupplyTemplateDetail: React.FC = () => {
     return baseHeaders
   }, [snapshot, handleCreateDraft, clusterFilter, visibleBaseColumns, visibleSubColumns, copyTextToClipboard])
 
-  // Transform data for AG Grid - keep nested structure, no flat keys with dots
+  // Transform data for AG Grid - keep nested structure with clusters array
   const tableRows = useMemo(() => {
     if (!tableData || tableData.length === 0) return []
 
-    // Return data as-is, keeping nested cluster structure
-    // AG Grid will access nested data via valueGetter
-    return tableData.map((item) => ({
-      offer_id: item.offer_id,
-      sku: item.sku,
-      name: item.name,
-      box_count: item.box_count,
-      vendor_stocks_count: item.vendor_stocks_count,
-      totals: item.totals,
-      // Keep cluster data as nested objects
-      ...Object.keys(item)
-        .filter(key => !['offer_id', 'sku', 'name', 'box_count', 'vendor_stocks_count', 'totals'].includes(key))
-        .reduce((acc, clusterName) => {
-          acc[clusterName] = item[clusterName]
-          return acc
-        }, {} as Record<string, any>)
-    }))
+    // Return data as-is, AG Grid valueGetter functions now work with clusters array
+    return tableData
   }, [tableData])
 
   if (loading && !snapshot) {

@@ -51,15 +51,17 @@ export type SupplyCalculationStrategy =
   | 'manual_xlsx'
 
 export interface ClusterData {
+  cluster_name: string
+  cluster_id: number
+  macrolocal_cluster_id: number | null
   marketplace_stocks_count: number
   orders_count: number
   avg_orders_leverage: number
   to_supply: number
-  cluster_id: number
-  macrolocal_cluster_id: number | null
   restricted_quantity?: number
   warehouse_availability?: Record<string, any>
   is_neighbor_redirect?: boolean
+  initial_to_supply?: number  // Computed on load: to_supply + restricted_quantity
 }
 
 export interface SupplyDataItem {
@@ -68,7 +70,7 @@ export interface SupplyDataItem {
   name: string
   box_count: number
   vendor_stocks_count: number
-  [clusterName: string]: ClusterData | any
+  clusters: ClusterData[]
   totals: {
     marketplace_stocks_count: number
     orders_count: number
