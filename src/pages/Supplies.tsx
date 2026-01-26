@@ -275,34 +275,37 @@ const Supplies: React.FC = () => {
 
 
   const columns = [
-    {
-      title: 'ID заказа',
-      dataIndex: 'order_id',
-      key: 'order_id',
-      width: 120,
-    },
+    // {
+    //   title: 'ID заказа',
+    //   dataIndex: 'order_id',
+    //   key: 'order_id',
+    //   width: 120,
+    // },
     {
       title: 'Номер заявки',
       dataIndex: 'order_number',
       key: 'order_number',
-      width: 150,
+      width: 110,
+      fixed: 'left' as const,
     },
-    {
-      title: 'ID поставки',
-      dataIndex: 'supply_id',
-      key: 'supply_id',
-      width: 150,
-    },
+    // {
+    //   title: 'ID поставки',
+    //   dataIndex: 'supply_id',
+    //   key: 'supply_id',
+    //   width: 150,
+    // },
     {
       title: 'Склад хранения',
       dataIndex: 'storage_warehouse_name',
       key: 'storage_warehouse_name',
+      width: 110,
       render: (name: string | null) => name || '-',
     },
     {
       title: 'Статус',
       dataIndex: 'state',
       key: 'state',
+      width: 120,
       render: (state: string) => (
         <Tag color={getStateColor(state)}>{formatState(state)}</Tag>
       ),
@@ -311,6 +314,15 @@ const Supplies: React.FC = () => {
       title: 'Дата создания',
       dataIndex: 'created_date',
       key: 'created_date',
+      width: 140,
+      render: (date: string) =>
+        date ? new Date(date).toLocaleDateString('ru-RU') : '-',
+    },
+    {
+      title: 'Дата отгрузки',
+      dataIndex: 'timeslot',
+      key: 'timeslot',
+      width: 180,
       render: (date: string) =>
         date ? new Date(date).toLocaleString('ru-RU') : '-',
     },
@@ -330,6 +342,7 @@ const Supplies: React.FC = () => {
       title: 'Действия',
       key: 'actions',
       width: 100,
+      fixed: 'right' as const,
       render: (_: any, record: SupplyOrder) => {
         if (!connection) return null
         const supplyId = record.supply_id
