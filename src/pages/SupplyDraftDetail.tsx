@@ -365,7 +365,7 @@ const SupplyDraftDetail: React.FC = () => {
   return (
     <div>
       <Card>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
           <Button
             icon={<ArrowLeftOutlined />}
             onClick={() => navigate(`/connections/${connectionId}/supply-templates/${snapshotId}`)}

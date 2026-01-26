@@ -35,7 +35,7 @@ import { connectionsApi, type Connection } from '../api/connections'
 import { companiesApi, type Company } from '../api/companies'
 import { ozonClustersApi, type OzonCluster } from '../api/clusters'
 import { ozonProductsApi, type OzonProduct } from '../api/products'
-import { SUPPLY_PLAN_STRATEGY_DESCRIPTION, FIXED_PERCENTAGES_STRATEGY_DESCRIPTION, AVERAGE_SALES_STRATEGY_DESCRIPTION, MANUAL_XLSX_STRATEGY_DESCRIPTION } from '../constants'
+import { DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION, AVERAGE_SALES_STRATEGY_DESCRIPTION, MANUAL_XLSX_STRATEGY_DESCRIPTION } from '../constants'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -223,10 +223,8 @@ const SupplyTemplates: React.FC = () => {
     switch (strategy) {
       case 'average_sales':
         return 'По средним продажам'
-      case 'supply_plan':
-        return 'По плану поставок'
-      case 'fixed_percentages':
-        return 'Фиксированные проценты'
+      case 'dynamic_percentages':
+        return 'Динамические проценты'
       case 'manual_xlsx':
         return 'Загрузить вручную'
       default:
@@ -337,11 +335,8 @@ const SupplyTemplates: React.FC = () => {
                   <Option value="average_sales">
                     По средним продажам
                   </Option>
-                  <Option value="supply_plan">
-                    По плану поставок
-                  </Option>
-                  <Option value="fixed_percentages">
-                    Фиксированные проценты
+                  <Option value="dynamic_percentages">
+                    Динамические проценты
                   </Option>
                   <Option value="manual_xlsx">
                     Загрузить вручную
@@ -361,11 +356,8 @@ const SupplyTemplates: React.FC = () => {
                   let strategyDescription = ''
 
                   switch (strategy) {
-                    case 'supply_plan':
-                      strategyDescription = SUPPLY_PLAN_STRATEGY_DESCRIPTION
-                      break
-                    case 'fixed_percentages':
-                      strategyDescription = FIXED_PERCENTAGES_STRATEGY_DESCRIPTION
+                    case 'dynamic_percentages':
+                      strategyDescription = DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION
                       break
                     case 'average_sales':
                       strategyDescription = AVERAGE_SALES_STRATEGY_DESCRIPTION
@@ -381,7 +373,14 @@ const SupplyTemplates: React.FC = () => {
                       borderRadius: '8px', 
                       marginBottom: '16px' 
                     }}>
-                      <Text type="secondary">{strategyDescription}</Text>
+                      {strategy === 'dynamic_percentages' ? (
+                        <div 
+                          style={{ color: 'rgba(0, 0, 0, 0.65)' }}
+                          dangerouslySetInnerHTML={{ __html: strategyDescription }}
+                        />
+                      ) : (
+                        <Text type="secondary">{strategyDescription}</Text>
+                      )}
                     </div>
                   )
                 }}
@@ -395,7 +394,7 @@ const SupplyTemplates: React.FC = () => {
               >
                 {({ getFieldValue }) => {
                   const strategy = getFieldValue('supply_calculation_strategy')
-                  const showNeighborOption = strategy === 'supply_plan' || strategy === 'fixed_percentages'
+                  const showNeighborOption = strategy === 'dynamic_percentages'
                   return showNeighborOption && (
                     <Form.Item
                       name="supply_products_to_neighbor_cluster"
@@ -465,7 +464,7 @@ const SupplyTemplates: React.FC = () => {
                               key={cluster.cluster_id}
                               value={cluster.cluster_id}
                             >
-                              {cluster.name} (приоритет: {cluster.priority})
+                              {cluster.name}
                             </Option>
                           ))}
                       </Select>

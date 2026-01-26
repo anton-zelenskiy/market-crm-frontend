@@ -1,8 +1,67 @@
 export const APP_NAME = 'Marketplace CRM'
 
-export const SUPPLY_PLAN_STRATEGY_DESCRIPTION = "В стратегии «План поставок» остатки товаров на складе поставщика рассматриваются как план поставок. Товары распределяются по выбранным кластерам с учётом их приоритета и ограничений складов.";
 
-export const FIXED_PERCENTAGES_STRATEGY_DESCRIPTION = "В стратегии «Фиксированные проценты» остатки товаров на складе поставщика рассматриваются как план поставок. Товары распределяются по кластерам в фиксированных пропорциях: 1-й кластер — 25%, 2-й — 12.5%, 3-й — 12.5%, остальные кластеры делят оставшиеся 50% поровну.";
+export const DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION = `
+В стратегии «Динамические проценты» остатки товаров на складе поставщика распределяются 
+по кластерам в порядке их выбора в поле "Кластеры" ниже. Топ-3 кластера получают динамически рассчитанную долю (P) от общего количества: при 3 или менее кластерах — 100%, при большем количестве — доля рассчитывается так, чтобы остальные кластеры получали не более 90% от доли 3-го кластера. Внутри топ-3 распределение происходит в пропорциях 1.5:1:1 (первый кластер получает в 1.5 раза больше второго и третьего). Остальные кластеры делят оставшуюся часть (1-P) поровну. Количество товаров округляется вниз до кратности коробки.
+
+<p style="margin-top: 16px;"><strong>Формула расчета доли топ-3 кластеров:</strong></p>
+<p style="margin-top: 8px;">
+  При количестве кластеров <strong>n > 3</strong> доля топ-3 рассчитывается по формуле:
+</p>
+<p style="margin-top: 8px; font-family: monospace; background: #f9f9f9; padding: 12px; border-radius: 4px; border-left: 3px solid #1890ff;">
+  top3_pool = 1 / (1 + (n - 3) × 0.9 × 0.2857)
+</p>
+<p style="margin-top: 8px;">
+  где:
+</p>
+<ul style="margin-top: 8px;">
+  <li><strong>n</strong> — общее количество выбранных кластеров</li>
+  <li><strong>0.9</strong> — коэффициент, обеспечивающий, что каждый из остальных кластеров получает не более 90% от доли 3-го кластера</li>
+  <li><strong>0.2857</strong> — доля 3-го кластера внутри топ-3 (равна 1/3.5, так как веса распределения 1.5:1:1, сумма = 3.5)</li>
+</ul>
+<p style="margin-top: 8px;">
+  При <strong>n ≤ 3</strong>: top3_pool = 1.0 (100%)
+</p>
+
+<table style="border-collapse: collapse; width: 100%; margin-top: 16px;">
+  <thead>
+    <tr style="background-color: #f5f5f5;">
+      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Количество кластеров</th>
+      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Доля топ-3, %</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="border: 1px solid #ddd; padding: 8px;">1-3 кластера</td>
+      <td style="border: 1px solid #ddd; padding: 8px;">100%</td>
+    </tr>
+    <tr>
+      <td style="border: 1px solid #ddd; padding: 8px;">4 кластера</td>
+      <td style="border: 1px solid #ddd; padding: 8px;">79.6%</td>
+    </tr>
+    <tr>
+      <td style="border: 1px solid #ddd; padding: 8px;">5 кластеров</td>
+      <td style="border: 1px solid #ddd; padding: 8px;">66.1%</td>
+    </tr>
+    <tr>
+      <td style="border: 1px solid #ddd; padding: 8px;">6 кластеров</td>
+      <td style="border: 1px solid #ddd; padding: 8px;">56.2%</td>
+    </tr>
+    <tr>
+      <td style="border: 1px solid #ddd; padding: 8px;">10 кластеров</td>
+      <td style="border: 1px solid #ddd; padding: 8px;">37.3%</td>
+    </tr>
+  </tbody>
+</table>
+
+<p style="margin-top: 16px;"><strong>Пример для 10 кластеров:</strong></p>
+<ul style="margin-top: 8px;">
+  <li>Топ-3 кластера получают 37.3% от общего количества товаров</li>
+  <li>Внутри топ-3: первый кластер получает 1.5/3.5 ≈ 42.86% от доли топ-3, второй и третий — по 1/3.5 ≈ 28.57% каждый</li>
+  <li>Остальные 7 кластеров делят оставшиеся 62.7% поровну: каждый получает 62.7% / 7 ≈ 8.96%</li>
+  <li>Каждый из остальных кластеров получает не более 90% от доли 3-го кластера (8.96% ≤ 90% × 28.57% × 37.3% ≈ 9.6%)</li>
+</ul>`;
 
 export const AVERAGE_SALES_STRATEGY_DESCRIPTION = "В стратегии «По средним продажам» количество товаров к поставке рассчитывается исходя из средних продаж с учетом логистического плеча и остатков на складе Ozon.";
 

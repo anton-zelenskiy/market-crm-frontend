@@ -103,7 +103,7 @@ export const ProgressModal: React.FC<ProgressModalProps> = ({
       closable={progress.status === 'completed' || progress.status === 'failed'}
       maskClosable={false}
     >
-      <Space direction="vertical" style={{ width: '100%' }} size="large">
+      <Space orientation="vertical" style={{ width: '100%' }} size="large">
         <div>
           <Text strong>{getStageLabel(progress.stage)}</Text>
           {progress.message && (

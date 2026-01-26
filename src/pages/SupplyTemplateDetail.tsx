@@ -56,8 +56,7 @@ import { companiesApi, type Company } from '../api/companies'
 import { ozonClustersApi, type OzonCluster } from '../api/clusters'
 import { ozonProductsApi, type OzonProduct } from '../api/products'
 import {
-  SUPPLY_PLAN_STRATEGY_DESCRIPTION,
-  FIXED_PERCENTAGES_STRATEGY_DESCRIPTION,
+  DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION,
   AVERAGE_SALES_STRATEGY_DESCRIPTION,
 } from '../constants'
 import { ProgressModal } from '../components/ProgressModal'
@@ -68,15 +67,13 @@ const { Option } = Select
 // Strategy labels and column names
 const STRATEGY_LABELS: Record<SupplyCalculationStrategy, string> = {
   average_sales: 'По средним продажам',
-  supply_plan: 'План поставок',
-  fixed_percentages: 'Фиксированные проценты',
+  dynamic_percentages: 'Динамические проценты',
   manual_xlsx: 'Загрузить вручную',
 }
 
 const VENDOR_STOCKS_COLUMN_LABELS: Record<SupplyCalculationStrategy, string> = {
   average_sales: 'Остатки на заводе',
-  supply_plan: 'План поставок',
-  fixed_percentages: 'План поставок',
+  dynamic_percentages: 'План поставок',
   manual_xlsx: 'План поставок',
 }
 
@@ -1307,7 +1304,7 @@ const SupplyTemplateDetail: React.FC = () => {
               Формирование поставки - {company?.name || ''}
             </Title>
             {snapshot && (
-              <Tag color={snapshot.supply_calculation_strategy === 'supply_plan' ? 'blue' : 'green'}>
+              <Tag color="blue">
                 {getStrategyLabel(snapshot.supply_calculation_strategy)}
               </Tag>
             )}
@@ -1575,8 +1572,7 @@ const SupplyTemplateDetail: React.FC = () => {
           >
             <Select>
               <Option value="average_sales">По средним продажам</Option>
-              <Option value="supply_plan">По плану поставок</Option>
-              <Option value="fixed_percentages">Фиксированные проценты</Option>
+              <Option value="dynamic_percentages">Динамические проценты</Option>
             </Select>
           </Form.Item>
 
@@ -1592,11 +1588,8 @@ const SupplyTemplateDetail: React.FC = () => {
               let strategyDescription = ''
 
               switch (strategy) {
-                case 'supply_plan':
-                  strategyDescription = SUPPLY_PLAN_STRATEGY_DESCRIPTION
-                  break
-                case 'fixed_percentages':
-                  strategyDescription = FIXED_PERCENTAGES_STRATEGY_DESCRIPTION
+                case 'dynamic_percentages':
+                  strategyDescription = DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION
                   break
                 case 'average_sales':
                   strategyDescription = AVERAGE_SALES_STRATEGY_DESCRIPTION
@@ -1609,7 +1602,14 @@ const SupplyTemplateDetail: React.FC = () => {
                   borderRadius: '8px', 
                   marginBottom: '16px' 
                 }}>
-                  <Text type="secondary">{strategyDescription}</Text>
+                  {strategy === 'dynamic_percentages' ? (
+                    <div 
+                      style={{ color: 'rgba(0, 0, 0, 0.65)' }}
+                      dangerouslySetInnerHTML={{ __html: strategyDescription }}
+                    />
+                  ) : (
+                    <Text type="secondary">{strategyDescription}</Text>
+                  )}
                 </div>
               )
             }}
@@ -1623,7 +1623,7 @@ const SupplyTemplateDetail: React.FC = () => {
           >
             {({ getFieldValue }) => {
               const strategy = getFieldValue('supply_calculation_strategy')
-              const showNeighborOption = strategy === 'supply_plan' || strategy === 'fixed_percentages'
+              const showNeighborOption = strategy === 'dynamic_percentages'
               return showNeighborOption && (
                 <Form.Item
                   name="supply_products_to_neighbor_cluster"
@@ -1653,7 +1653,7 @@ const SupplyTemplateDetail: React.FC = () => {
                 .sort((a, b) => a.priority - b.priority)
                 .map((cluster) => (
                   <Option key={cluster.cluster_id} value={cluster.cluster_id}>
-                    {cluster.name} (приоритет: {cluster.priority})
+                    {cluster.name}
                   </Option>
                 ))}
             </Select>

@@ -46,8 +46,7 @@ export interface DownloadDocumentsRequest {
 
 export type SupplyCalculationStrategy =
   | 'average_sales'
-  | 'supply_plan'
-  | 'fixed_percentages'
+  | 'dynamic_percentages'
   | 'manual_xlsx'
 
 export interface ClusterData {
