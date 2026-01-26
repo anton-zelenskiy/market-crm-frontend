@@ -251,9 +251,7 @@ const Supplies: React.FC = () => {
         external_order_id: externalOrderId,
       })
 
-      // Construct filename using storage warehouse name from supply data
-      const filenameSuffix = supply.storage_warehouse_name || supplyId
-      const filename = `supply_documents_${filenameSuffix}.zip`
+      const filename = `${externalOrderId} ${supply.storage_warehouse_name}.zip`
 
       // Create download link using constructed filename
       const url = window.URL.createObjectURL(blob)

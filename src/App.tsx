@@ -3,7 +3,7 @@ import { Layout, Menu, Button, theme, ConfigProvider } from 'antd'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  UploadOutlined,
+  // UploadOutlined,
   DatabaseOutlined,
   ShopOutlined,
   LinkOutlined,
@@ -64,16 +64,16 @@ const DashboardLayout: React.FC = () => {
       icon: <ShopOutlined />,
       label: 'Компании',
     },
-    {
-      key: '/data-sources',
-      icon: <DatabaseOutlined />,
-      label: 'Источники данных',
-    },
-    {
-      key: '/reports',
-      icon: <UploadOutlined />,
-      label: 'Отчеты',
-    },
+    // {
+    //   key: '/data-sources',
+    //   icon: <DatabaseOutlined />,
+    //   label: 'Источники данных',
+    // },
+    // {
+    //   key: '/reports',
+    //   icon: <UploadOutlined />,
+    //   label: 'Отчеты',
+    // },
     {
       key: '/clusters',
       icon: <DatabaseOutlined />,
