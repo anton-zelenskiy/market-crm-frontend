@@ -243,6 +243,7 @@ const Supplies: React.FC = () => {
 
     const supplyId = supply.supply_id
     setDownloadingDocs((prev) => ({ ...prev, [supplyId]: true }))
+    let downloadSucceeded = false
 
     try {
       const blob = await suppliesApi.downloadDocuments(supplyId, {
@@ -264,12 +265,22 @@ const Supplies: React.FC = () => {
       window.URL.revokeObjectURL(url)
 
       message.success('Документы успешно скачаны')
+      downloadSucceeded = true
     } catch (error: any) {
       message.error(
         error.response?.data?.detail || 'Ошибка скачивания документов'
       )
     } finally {
       setDownloadingDocs((prev) => ({ ...prev, [supplyId]: false }))
+      if (downloadSucceeded) {
+        setSupplies((prev) =>
+          prev.map((s) =>
+            s.supply_id === supplyId
+              ? { ...s, external_order_id: externalOrderId }
+              : s
+          )
+        )
+      }
     }
   }
 
@@ -285,8 +296,8 @@ const Supplies: React.FC = () => {
       title: 'Номер заявки',
       dataIndex: 'order_number',
       key: 'order_number',
-      width: 110,
       fixed: 'left' as const,
+      width: 120,
     },
     // {
     //   title: 'ID поставки',
@@ -298,7 +309,8 @@ const Supplies: React.FC = () => {
       title: 'Склад хранения',
       dataIndex: 'storage_warehouse_name',
       key: 'storage_warehouse_name',
-      width: 110,
+      width: 120,
+      fixed: 'left' as const,
       render: (name: string | null) => name || '-',
     },
     {
@@ -322,7 +334,7 @@ const Supplies: React.FC = () => {
       title: 'Дата отгрузки',
       dataIndex: 'timeslot',
       key: 'timeslot',
-      width: 180,
+      width: 150,
       render: (date: string) =>
         date ? new Date(date).toLocaleString('ru-RU') : '-',
     },
@@ -330,13 +342,19 @@ const Supplies: React.FC = () => {
       title: 'Грузоместа',
       dataIndex: 'cargoes_count',
       key: 'cargoes_count',
-      width: 120,
+      width: 100,
       render: (count: number | null) => {
         if (count === null) {
           return <span style={{ color: '#999' }}>Не созданы</span>
         }
         return count
       },
+    },
+    {
+      title: 'Номер внешнего заказа',
+      dataIndex: 'external_order_id',
+      key: 'external_order_id',
+      width: 120,
     },
     {
       title: 'Действия',
@@ -427,6 +445,7 @@ const Supplies: React.FC = () => {
               dataSource={supplies}
               rowKey="supply_id"
               loading={loading}
+              scroll={{ x: 1200 }}
               pagination={{
                 pageSize: 50,
                 showSizeChanger: true,

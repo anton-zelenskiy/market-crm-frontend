@@ -6,9 +6,11 @@ export interface SupplyOrder {
   supply_id: string
   state: string
   created_date: string
+  timeslot?: string | null
   storage_warehouse_name: string | null
   cargoes_count: number | null
   errors: string[] | null
+  external_order_id?: string | null
 }
 
 export interface SupplyOrdersResponse {
