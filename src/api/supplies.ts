@@ -624,6 +624,20 @@ export const suppliesApi = {
     )
     return response.data
   },
+
+  downloadManualXlsxTemplate: async (
+    connectionId: number,
+    request: { cluster_ids?: number[]; offer_ids?: string[] }
+  ): Promise<Blob> => {
+    const response = await api.post(
+      `/supplies/connection/${connectionId}/manual-xlsx-template`,
+      request,
+      {
+        responseType: 'blob',
+      }
+    )
+    return response.data
+  },
 }
 
 export async function saveSupplySnapshot(

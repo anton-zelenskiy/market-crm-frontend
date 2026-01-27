@@ -384,7 +384,7 @@ const SupplyTemplateDetail: React.FC = () => {
       }
     } catch (error: any) {
       message.error(
-        error.response?.data?.detail || 'Ошибка загрузки данных снапшота'
+        error.response?.data?.detail || 'Ошибка загрузки данных шаблона'
       )
     } finally {
       setLoading(false)

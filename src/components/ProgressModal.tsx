@@ -96,7 +96,7 @@ export const ProgressModal: React.FC<ProgressModalProps> = ({
 
   return (
     <Modal
-      title="Создание снапшота"
+      title="Создание шаблона"
       open={visible}
       onCancel={onCancel}
       footer={null}

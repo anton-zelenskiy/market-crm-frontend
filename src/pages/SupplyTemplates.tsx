@@ -22,6 +22,7 @@ import {
   PlusOutlined,
   DeleteOutlined,
   FileTextOutlined,
+  FileExcelOutlined,
 } from '@ant-design/icons'
 import {
   suppliesApi,
@@ -206,6 +207,32 @@ const SupplyTemplates: React.FC = () => {
       message.error(error.response?.data?.detail || 'Ошибка создания шаблона')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleDownloadManualXlsxTemplate = async () => {
+    if (!connectionId) return
+
+    try {
+      const values = form.getFieldsValue()
+      const blob = await suppliesApi.downloadManualXlsxTemplate(
+        parseInt(connectionId),
+        {
+          cluster_ids: values.cluster_ids?.length > 0 ? values.cluster_ids : undefined,
+          offer_ids: values.offer_ids?.length > 0 ? values.offer_ids : undefined,
+        }
+      )
+
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Шаблон_поставок_${company?.name || connectionId}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error: any) {
+      message.error('Ошибка скачивания XLSX шаблона')
     }
   }
 
@@ -414,100 +441,101 @@ const SupplyTemplates: React.FC = () => {
                   prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
                 }
               >
+                {() => (
+                  <Form.Item
+                    name="cluster_ids"
+                    label="Кластеры (если не выбрано — все)"
+                  >
+                    <Select
+                      mode="multiple"
+                      allowClear
+                      placeholder="Выберите кластеры"
+                      loading={loadingClusters}
+                      optionFilterProp="children"
+                      showSearch
+                    >
+                      {clusters
+                        .sort((a, b) => a.priority - b.priority)
+                        .map((cluster) => (
+                          <Option
+                            key={cluster.cluster_id}
+                            value={cluster.cluster_id}
+                          >
+                            {cluster.name}
+                          </Option>
+                        ))}
+                    </Select>
+                  </Form.Item>
+                )}
+              </Form.Item>
+
+              <Form.Item
+                noStyle
+                shouldUpdate={(prevValues, currentValues) =>
+                  prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
+                }
+              >
+                {() => (
+                  <Form.Item
+                    name="offer_ids"
+                    label="Товары (если не выбрано — все)"
+                  >
+                    <Select
+                      mode="multiple"
+                      allowClear
+                      placeholder="Выберите товары"
+                      loading={loadingProducts}
+                      optionFilterProp="children"
+                      showSearch
+                      filterOption={(input, option) =>
+                        (option?.children as unknown as string)
+                          ?.toLowerCase()
+                          .includes(input.toLowerCase())
+                      }
+                    >
+                      {products.map((product) => (
+                        <Option key={product.offer_id} value={product.offer_id}>
+                          {product.offer_id} — {product.name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                )}
+              </Form.Item>
+
+              <Form.Item
+                noStyle
+                shouldUpdate={(prevValues, currentValues) =>
+                  prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
+                }
+              >
                 {({ getFieldValue }) => {
                   const strategy = getFieldValue('supply_calculation_strategy')
                   if (strategy !== 'manual_xlsx') return null
 
                   return (
-                    <Form.Item
-                      name="supply_data_file"
-                      label="Загрузите XLSX файл с количеством товаров к поставке для каждого кластера"
-                      rules={[{ required: true, message: 'Загрузите XLSX файл' }]}
-                      valuePropName="fileList"
-                      getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
-                    >
-                      <Upload accept=".xlsx" maxCount={1} beforeUpload={() => false}>
-                        <Button>Выбрать файл</Button>
-                      </Upload>
-                    </Form.Item>
-                  )
-                }}
-              </Form.Item>
+                    <>
+                      <Form.Item label="XLSX шаблон">
+                        <Button
+                          icon={<FileExcelOutlined />}
+                          onClick={handleDownloadManualXlsxTemplate}
+                        >
+                          Скачать XLSX шаблон
+                        </Button>
+                      </Form.Item>
 
-              <Form.Item
-                noStyle
-                shouldUpdate={(prevValues, currentValues) =>
-                  prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
-                }
-              >
-                {({ getFieldValue }) => {
-                  const strategy = getFieldValue('supply_calculation_strategy')
-                  if (strategy === 'manual_xlsx') return null
-
-                  return (
-                    <Form.Item
-                      name="cluster_ids"
-                      label="Кластеры (если не выбрано — все)"
-                    >
-                      <Select
-                        mode="multiple"
-                        allowClear
-                        placeholder="Выберите кластеры"
-                        loading={loadingClusters}
-                        optionFilterProp="children"
-                        showSearch
+                      <Form.Item
+                        name="supply_data_file"
+                        label="Загрузите заполненный XLSX файл"
+                        rules={[{ required: true, message: 'Загрузите XLSX файл' }]}
+                        valuePropName="fileList"
+                        getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
                       >
-                        {clusters
-                          .sort((a, b) => a.priority - b.priority)
-                          .map((cluster) => (
-                            <Option
-                              key={cluster.cluster_id}
-                              value={cluster.cluster_id}
-                            >
-                              {cluster.name}
-                            </Option>
-                          ))}
-                      </Select>
-                    </Form.Item>
-                  )
-                }}
-              </Form.Item>
-
-              <Form.Item
-                noStyle
-                shouldUpdate={(prevValues, currentValues) =>
-                  prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
-                }
-              >
-                {({ getFieldValue }) => {
-                  const strategy = getFieldValue('supply_calculation_strategy')
-                  if (strategy === 'manual_xlsx') return null
-
-                  return (
-                    <Form.Item
-                      name="offer_ids"
-                      label="Товары (если не выбрано — все)"
-                    >
-                      <Select
-                        mode="multiple"
-                        allowClear
-                        placeholder="Выберите товары"
-                        loading={loadingProducts}
-                        optionFilterProp="children"
-                        showSearch
-                        filterOption={(input, option) =>
-                          (option?.children as unknown as string)
-                            ?.toLowerCase()
-                            .includes(input.toLowerCase())
-                        }
-                      >
-                        {products.map((product) => (
-                          <Option key={product.offer_id} value={product.offer_id}>
-                            {product.offer_id} — {product.name}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
+                        <Upload accept=".xlsx" maxCount={1} beforeUpload={() => false}>
+                          <Button>Выбрать файл</Button>
+                        </Upload>
+                      </Form.Item>
+                    </>
                   )
                 }}
               </Form.Item>
