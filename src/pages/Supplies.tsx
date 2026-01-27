@@ -15,13 +15,44 @@ import {
   Input,
   Checkbox,
   Divider,
+  Select,
 } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
 import { ArrowLeftOutlined, MoreOutlined } from '@ant-design/icons'
-import { suppliesApi, type SupplyOrder } from '../api/supplies'
+import {
+  suppliesApi,
+  type SupplyOrder,
+  type SupplyOrderState,
+  SUPPLY_ORDER_STATE_LABELS,
+} from '../api/supplies'
 import { companiesApi, type Company } from '../api/companies'
 import { connectionsApi, type Connection } from '../api/connections'
 
 const { Title } = Typography
+const { Option } = Select
+
+type SupplyStateGroupId = 'PREPARATION' | 'IN_TRANSIT_AND_ACCEPTANCE'
+
+const SUPPLY_STATE_GROUPS: Array<{
+  id: SupplyStateGroupId
+  label: string
+  states: SupplyOrderState[]
+}> = [
+  {
+    id: 'PREPARATION',
+    label: 'Подготовка к поставкам',
+    states: ['DATA_FILLING', 'READY_TO_SUPPLY'],
+  },
+  {
+    id: 'IN_TRANSIT_AND_ACCEPTANCE',
+    label: 'В пути и приемка',
+    states: [
+      'ACCEPTED_AT_SUPPLY_WAREHOUSE',
+      'IN_TRANSIT',
+      'ACCEPTANCE_AT_STORAGE_WAREHOUSE',
+    ],
+  },
+]
 
 interface SupplyActionsProps {
   supply: SupplyOrder
@@ -114,6 +145,9 @@ const Supplies: React.FC = () => {
   const [connection, setConnection] = useState<Connection | null>(null)
   const [creatingCargoes, setCreatingCargoes] = useState<Record<string, boolean>>({})
   const [downloadingDocs, setDownloadingDocs] = useState<Record<string, boolean>>({})
+  const [stateGroupId, setStateGroupId] = useState<SupplyStateGroupId>('PREPARATION')
+  const selectedStates =
+    SUPPLY_STATE_GROUPS.find((g) => g.id === stateGroupId)?.states ?? []
 
   useEffect(() => {
     if (connectionId) {
@@ -123,9 +157,9 @@ const Supplies: React.FC = () => {
 
   useEffect(() => {
     if (connection) {
-      loadSupplies()
+      loadSupplies(selectedStates)
     }
-  }, [connection])
+  }, [connection, stateGroupId, selectedStates])
 
   const loadConnectionData = async () => {
     if (!connectionId) return
@@ -147,12 +181,12 @@ const Supplies: React.FC = () => {
     }
   }
 
-  const loadSupplies = async () => {
+  const loadSupplies = async (states: SupplyOrderState[]) => {
     if (!connection) return
 
     setLoading(true)
     try {
-      const response = await suppliesApi.getByConnectionId(connection.id)
+      const response = await suppliesApi.getByConnectionId(connection.id, { states })
       setSupplies(response.orders)
     } catch (error: any) {
       message.error(
@@ -163,7 +197,7 @@ const Supplies: React.FC = () => {
     }
   }
 
-  const getStateColor = (state: string) => {
+  const getStateColor = (state: SupplyOrderState | string) => {
     const stateColors: Record<string, string> = {
       DATA_FILLING: 'orange',
       READY_TO_SUPPLY: 'green',
@@ -180,22 +214,12 @@ const Supplies: React.FC = () => {
     return stateColors[state] || 'default'
   }
 
-  const formatState = (state: string) => {
-    const stateLabels: Record<string, string> = {
-      UNSPECIFIED: 'Не определён',
-      DATA_FILLING: 'Заполнение данных',
-      READY_TO_SUPPLY: 'Готова к отгрузке',
-      ACCEPTED_AT_SUPPLY_WAREHOUSE: 'Принята на точке отгрузки',
-      IN_TRANSIT: 'В пути',
-      ACCEPTANCE_AT_STORAGE_WAREHOUSE: 'Приёмка на складе',
-      REPORTS_CONFIRMATION_AWAITING: 'Согласование актов',
-      REPORT_REJECTED: 'Спор',
-      COMPLETED: 'Завершена',
-      REJECTED_AT_SUPPLY_WAREHOUSE: 'Отказано в приёмке',
-      CANCELLED: 'Отменена',
-      OVERDUE: 'Просрочена',
+  const formatState = (state: SupplyOrderState | string) => {
+    if (state === 'UNSPECIFIED') return 'Не определён'
+    if (state in SUPPLY_ORDER_STATE_LABELS) {
+      return SUPPLY_ORDER_STATE_LABELS[state as SupplyOrderState]
     }
-    return stateLabels[state] || state
+    return state
   }
 
   const formatErrorReason = (errorReason: string) => {
@@ -228,7 +252,7 @@ const Supplies: React.FC = () => {
       })
       message.success('Грузоместа успешно созданы')
       // Reload supplies to show updated cargoes_count and errors
-      await loadSupplies()
+      await loadSupplies(selectedStates)
     } catch (error: any) {
       message.error(
         error.response?.data?.detail || 'Ошибка создания грузомест'
@@ -285,7 +309,7 @@ const Supplies: React.FC = () => {
   }
 
 
-  const columns = [
+  const columns: ColumnsType<SupplyOrder> = [
     // {
     //   title: 'ID заказа',
     //   dataIndex: 'order_id',
@@ -326,7 +350,13 @@ const Supplies: React.FC = () => {
       title: 'Дата создания',
       dataIndex: 'created_date',
       key: 'created_date',
-      width: 140,
+      width: 120,
+      sorter: (a: SupplyOrder, b: SupplyOrder) => {
+        const aTime = a.created_date ? new Date(a.created_date).getTime() : Number.NEGATIVE_INFINITY
+        const bTime = b.created_date ? new Date(b.created_date).getTime() : Number.NEGATIVE_INFINITY
+        return aTime - bTime
+      },
+      sortDirections: ['ascend', 'descend'] as Array<'ascend' | 'descend'>,
       render: (date: string) =>
         date ? new Date(date).toLocaleDateString('ru-RU') : '-',
     },
@@ -335,6 +365,12 @@ const Supplies: React.FC = () => {
       dataIndex: 'timeslot',
       key: 'timeslot',
       width: 150,
+      sorter: (a: SupplyOrder, b: SupplyOrder) => {
+        const aTime = a.timeslot ? new Date(a.timeslot).getTime() : Number.NEGATIVE_INFINITY
+        const bTime = b.timeslot ? new Date(b.timeslot).getTime() : Number.NEGATIVE_INFINITY
+        return aTime - bTime
+      },
+      sortDirections: ['ascend', 'descend'] as Array<'ascend' | 'descend'>,
       render: (date: string) =>
         date ? new Date(date).toLocaleString('ru-RU') : '-',
     },
@@ -423,6 +459,21 @@ const Supplies: React.FC = () => {
                 Поставки - {company?.name || ''}
               </Title>
             </Space>
+
+            <Space>
+              <Typography.Text type="secondary">Статусы</Typography.Text>
+              <Select
+                style={{ minWidth: 260 }}
+                value={stateGroupId}
+                onChange={(value) => setStateGroupId(value)}
+              >
+                {SUPPLY_STATE_GROUPS.map((group) => (
+                  <Option key={group.id} value={group.id}>
+                    {group.label}
+                  </Option>
+                ))}
+              </Select>
+            </Space>
           </div>
 
           {!connection ? (
@@ -441,13 +492,15 @@ const Supplies: React.FC = () => {
             />
           ) : (
             <Table
+              showSorterTooltip={{ title: 'Нажмите для сортировки' }}
               columns={columns}
               dataSource={supplies}
               rowKey="supply_id"
               loading={loading}
               scroll={{ x: 1200 }}
+              size='small'
               pagination={{
-                pageSize: 50,
+                pageSize: 100,
                 showSizeChanger: true,
                 showTotal: (total) => `Всего: ${total}`,
               }}

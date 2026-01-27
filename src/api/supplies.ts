@@ -4,7 +4,7 @@ export interface SupplyOrder {
   order_id: number
   order_number: string
   supply_id: string
-  state: string
+  state: SupplyOrderState
   created_date: string
   timeslot?: string | null
   storage_warehouse_name: string | null
@@ -18,8 +18,40 @@ export interface SupplyOrdersResponse {
   total: number
 }
 
+export type SupplyOrderState =
+  | 'DATA_FILLING'
+  | 'READY_TO_SUPPLY'
+  | 'ACCEPTED_AT_SUPPLY_WAREHOUSE'
+  | 'IN_TRANSIT'
+  | 'ACCEPTANCE_AT_STORAGE_WAREHOUSE'
+  | 'REPORTS_CONFIRMATION_AWAITING'
+  | 'REPORT_REJECTED'
+  | 'COMPLETED'
+  | 'REJECTED_AT_SUPPLY_WAREHOUSE'
+  | 'CANCELLED'
+  | 'OVERDUE'
+
+export const SUPPLY_ORDER_STATE_LABELS: Record<SupplyOrderState, string> = {
+  DATA_FILLING: 'Заполнение данных',
+  READY_TO_SUPPLY: 'Готова к отгрузке',
+  ACCEPTED_AT_SUPPLY_WAREHOUSE: 'На точке отгрузки',
+  IN_TRANSIT: 'В пути',
+  ACCEPTANCE_AT_STORAGE_WAREHOUSE: 'Приёмка на складе',
+  REPORTS_CONFIRMATION_AWAITING: 'Согласование актов',
+  REPORT_REJECTED: 'Спор',
+  COMPLETED: 'Завершена',
+  REJECTED_AT_SUPPLY_WAREHOUSE: 'Отказано в приёмке',
+  CANCELLED: 'Отменена',
+  OVERDUE: 'Просрочена',
+}
+
+export const DEFAULT_SUPPLY_ORDER_STATES: SupplyOrderState[] = [
+  'DATA_FILLING',
+  'READY_TO_SUPPLY',
+]
+
 export interface SupplyOrderListRequest {
-  states?: string[]
+  states?: SupplyOrderState[]
   limit?: number
 }
 
@@ -288,7 +320,11 @@ export const suppliesApi = {
     connectionId: number,
     request: SupplyOrderListRequest = {}
   ): Promise<SupplyOrdersResponse> => {
-    const response = await api.post(`/supplies/connection/${connectionId}`, request)
+    const normalizedRequest: SupplyOrderListRequest = {
+      ...request,
+      states: request.states ?? DEFAULT_SUPPLY_ORDER_STATES,
+    }
+    const response = await api.post(`/supplies/connection/${connectionId}`, normalizedRequest)
     return response.data
   },
 
