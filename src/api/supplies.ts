@@ -242,6 +242,7 @@ export interface SupplyDraft {
   connection_id: number
   draft_id: number | null
   cluster: DraftCluster
+  is_expired?: boolean
   status: string | null
   errors: any[] | null
   storage_warehouses: DraftStorageWarehouse[]

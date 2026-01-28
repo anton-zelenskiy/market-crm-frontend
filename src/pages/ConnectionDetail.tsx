@@ -194,16 +194,16 @@ const ConnectionDetail: React.FC = () => {
                 itemLayout="horizontal"
                 dataSource={[
                   {
-                    title: 'Товары Ozon',
-                    description: 'Используйте раздел для заполнения кратности товаров.',
-                    buttonText: 'Товары Ozon',
-                    onClick: () => navigate(`/connections/${connection.id}/ozon-products`),
-                  },
-                  {
                     title: 'Формирование поставок',
                     description: 'Планируйте и создавайте поставки на основе остатков и доступности складов',
                     buttonText: 'Поставки',
                     onClick: () => navigate(`/connections/${connection.id}/supply-templates`),
+                  },
+                  {
+                    title: 'Товары Ozon',
+                    description: 'Используйте раздел для заполнения кратности товаров.',
+                    buttonText: 'Товары Ozon',
+                    onClick: () => navigate(`/connections/${connection.id}/ozon-products`),
                   },
                   {
                     title: 'Поставки Ozon',

@@ -1432,7 +1432,7 @@ const SupplyTemplateDetail: React.FC = () => {
                     ),
                   },
                 ]}
-                pagination={{ pageSize: 10 }}
+                pagination={{ pageSize: 30 }}
               />
             </>
           )}

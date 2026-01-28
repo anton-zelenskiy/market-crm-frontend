@@ -74,6 +74,8 @@ const SupplyDraftDetail: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [productsModalVisible, setProductsModalVisible] = useState(false)
 
+  const isExpired = Boolean(draft?.is_expired)
+
   const loadDraftInfo = useCallback(async () => {
     if (!draftId) return
 
@@ -94,6 +96,9 @@ const SupplyDraftDetail: React.FC = () => {
   }, [loadDraftInfo])
 
   const handleLoadTimeslots = useCallback(async (warehouseId?: number) => {
+    if (draft?.is_expired) {
+      return
+    }
     if (!draft?.draft_id) {
       message.error('Черновик не имеет draft_id')
       return
@@ -156,7 +161,9 @@ const SupplyDraftDetail: React.FC = () => {
         if (selectedWarehouseId !== warehouseId) {
           setSelectedWarehouseId(warehouseId)
           // Auto-load timeslots for the selected warehouse
-          handleLoadTimeslots(warehouseId)
+          if (!draft.is_expired) {
+            handleLoadTimeslots(warehouseId)
+          }
         }
       }
     }
@@ -375,6 +382,14 @@ const SupplyDraftDetail: React.FC = () => {
 
           <Title level={2}>Детали черновика поставки</Title>
 
+          {isExpired && (
+            <Alert
+              message="Черновик устарел, черновики, созданные через api доступны 30 минут с момента создания. Пожалуйста, пересоздайте черновик для данного кластера."
+              type="warning"
+              showIcon
+            />
+          )}
+
 
 
           <div style={{ padding: '24px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
@@ -393,7 +408,9 @@ const SupplyDraftDetail: React.FC = () => {
                     setSelectedTimeslot(null)
                     setSelectedDate(null)
                     // Auto-load timeslots when warehouse is selected
-                    await handleLoadTimeslots(warehouseId)
+                    if (!isExpired) {
+                      await handleLoadTimeslots(warehouseId)
+                    }
                   }}
                   style={{ width: '100%' }}
                 >

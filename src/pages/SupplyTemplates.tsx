@@ -487,11 +487,6 @@ const SupplyTemplates: React.FC = () => {
                       loading={loadingProducts}
                       optionFilterProp="children"
                       showSearch
-                      filterOption={(input, option) =>
-                        (option?.children as unknown as string)
-                          ?.toLowerCase()
-                          .includes(input.toLowerCase())
-                      }
                     >
                       {products.map((product) => (
                         <Option key={product.offer_id} value={product.offer_id}>
