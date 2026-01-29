@@ -36,9 +36,9 @@ import { connectionsApi, type Connection } from '../api/connections'
 import { companiesApi, type Company } from '../api/companies'
 import { ozonClustersApi, type OzonCluster } from '../api/clusters'
 import { ozonProductsApi, type OzonProduct } from '../api/products'
-import { DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION, AVERAGE_SALES_STRATEGY_DESCRIPTION, MANUAL_XLSX_STRATEGY_DESCRIPTION } from '../constants'
+import { DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION, AVERAGE_SALES_STRATEGY_DESCRIPTION, AVERAGE_SALES_WITH_LOCALIZATION_STRATEGY_DESCRIPTION, MANUAL_XLSX_STRATEGY_DESCRIPTION } from '../constants'
 
-const { Title, Text } = Typography
+const { Title } = Typography
 const { Option } = Select
 
 const getWarehouseTypeLabel = (warehouseType: string | undefined): string => {
@@ -254,6 +254,8 @@ const SupplyTemplates: React.FC = () => {
         return 'Динамические проценты'
       case 'manual_xlsx':
         return 'Загрузить вручную'
+      case 'average_sales_with_localization':
+        return 'По средним продажам с локализацией'
       default:
         return '-'
     }
@@ -362,6 +364,9 @@ const SupplyTemplates: React.FC = () => {
                   <Option value="average_sales">
                     По средним продажам
                   </Option>
+                  <Option value="average_sales_with_localization">
+                    По средним продажам с локализацией
+                  </Option>
                   <Option value="dynamic_percentages">
                     Динамические проценты
                   </Option>
@@ -389,6 +394,9 @@ const SupplyTemplates: React.FC = () => {
                     case 'average_sales':
                       strategyDescription = AVERAGE_SALES_STRATEGY_DESCRIPTION
                       break
+                    case 'average_sales_with_localization':
+                      strategyDescription = AVERAGE_SALES_WITH_LOCALIZATION_STRATEGY_DESCRIPTION
+                      break
                     case 'manual_xlsx':
                       strategyDescription = MANUAL_XLSX_STRATEGY_DESCRIPTION
                       break
@@ -400,39 +408,22 @@ const SupplyTemplates: React.FC = () => {
                       borderRadius: '8px', 
                       marginBottom: '16px' 
                     }}>
-                      {strategy === 'dynamic_percentages' ? (
-                        <div 
-                          style={{ color: 'rgba(0, 0, 0, 0.65)' }}
-                          dangerouslySetInnerHTML={{ __html: strategyDescription }}
-                        />
-                      ) : (
-                        <Text type="secondary">{strategyDescription}</Text>
-                      )}
+                      <div 
+                        style={{ color: 'rgba(0, 0, 0, 0.65)' }}
+                        dangerouslySetInnerHTML={{ __html: strategyDescription }}
+                      />
                     </div>
                   )
                 }}
               </Form.Item>
 
               <Form.Item
-                noStyle
-                shouldUpdate={(prevValues, currentValues) =>
-                  prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
-                }
+                name="supply_products_to_neighbor_cluster"
+                valuePropName="checked"
               >
-                {({ getFieldValue }) => {
-                  const strategy = getFieldValue('supply_calculation_strategy')
-                  const showNeighborOption = strategy === 'dynamic_percentages'
-                  return showNeighborOption && (
-                    <Form.Item
-                      name="supply_products_to_neighbor_cluster"
-                      valuePropName="checked"
-                    >
-                      <Checkbox>
-                        Поставить товар в соседний кластер (если есть ограничения)
-                      </Checkbox>
-                    </Form.Item>
-                  )
-                }}
+                <Checkbox>
+                  Поставить товар в соседний кластер (если есть ограничения)
+                </Checkbox>
               </Form.Item>
 
               <Form.Item

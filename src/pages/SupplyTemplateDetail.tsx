@@ -58,6 +58,7 @@ import { ozonProductsApi, type OzonProduct } from '../api/products'
 import {
   DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION,
   AVERAGE_SALES_STRATEGY_DESCRIPTION,
+  AVERAGE_SALES_WITH_LOCALIZATION_STRATEGY_DESCRIPTION,
 } from '../constants'
 import { ProgressModal } from '../components/ProgressModal'
 
@@ -67,12 +68,14 @@ const { Option } = Select
 // Strategy labels and column names
 const STRATEGY_LABELS: Record<SupplyCalculationStrategy, string> = {
   average_sales: 'По средним продажам',
+  average_sales_with_localization: 'По средним продажам с локализацией',
   dynamic_percentages: 'Динамические проценты',
   manual_xlsx: 'Загрузить вручную',
 }
 
 const VENDOR_STOCKS_COLUMN_LABELS: Record<SupplyCalculationStrategy, string> = {
   average_sales: 'Остатки на заводе',
+  average_sales_with_localization: 'Остатки на заводе',
   dynamic_percentages: 'План поставок',
   manual_xlsx: 'План поставок',
 }
@@ -242,7 +245,7 @@ const SupplyTemplateDetail: React.FC = () => {
               { label: 'Заказы (мес.)', value: 'orders_count' },
               { label: avgOrdersLabel, value: 'avg_orders_leverage' },
               { label: 'Расчётное кол-во', value: 'initial_to_supply' },
-              { label: 'Отгрузить на маркетплейс', value: 'to_supply' },
+              { label: 'К поставке', value: 'to_supply' },
             ]}
             value={visibleSubColumns}
             onChange={(values) => setVisibleSubColumns(values as string[])}
@@ -1572,6 +1575,7 @@ const SupplyTemplateDetail: React.FC = () => {
           >
             <Select>
               <Option value="average_sales">По средним продажам</Option>
+              <Option value="average_sales_with_localization">По средним продажам с локализацией</Option>
               <Option value="dynamic_percentages">Динамические проценты</Option>
             </Select>
           </Form.Item>
@@ -1594,6 +1598,9 @@ const SupplyTemplateDetail: React.FC = () => {
                 case 'average_sales':
                   strategyDescription = AVERAGE_SALES_STRATEGY_DESCRIPTION
                   break
+                case 'average_sales_with_localization':
+                  strategyDescription = AVERAGE_SALES_WITH_LOCALIZATION_STRATEGY_DESCRIPTION
+                  break
               }
               return (
                 <div style={{ 
@@ -1602,14 +1609,10 @@ const SupplyTemplateDetail: React.FC = () => {
                   borderRadius: '8px', 
                   marginBottom: '16px' 
                 }}>
-                  {strategy === 'dynamic_percentages' ? (
-                    <div 
-                      style={{ color: 'rgba(0, 0, 0, 0.65)' }}
-                      dangerouslySetInnerHTML={{ __html: strategyDescription }}
-                    />
-                  ) : (
-                    <Text type="secondary">{strategyDescription}</Text>
-                  )}
+                  <div 
+                    style={{ color: 'rgba(0, 0, 0, 0.65)' }}
+                    dangerouslySetInnerHTML={{ __html: strategyDescription }}
+                  />
                 </div>
               )
             }}

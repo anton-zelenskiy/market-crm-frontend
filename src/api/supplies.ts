@@ -80,6 +80,7 @@ export interface DownloadDocumentsRequest {
 
 export type SupplyCalculationStrategy =
   | 'average_sales'
+  | 'average_sales_with_localization'
   | 'dynamic_percentages'
   | 'manual_xlsx'
 
