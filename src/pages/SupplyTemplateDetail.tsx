@@ -116,6 +116,8 @@ const MemoizedTable = memo(({ columnDefs, rowData, onCellValueChanged }: {
         defaultColDef={{
           resizable: true,
           sortable: true,
+          wrapHeaderText: true,
+          autoHeaderHeight: true,
         }}
         cellSelection={false}
         suppressColumnMoveAnimation={false}
@@ -971,7 +973,7 @@ const SupplyTemplateDetail: React.FC = () => {
         children.push({
           field: `${clusterName}_marketplace_stocks_count`,
           headerName: 'Остатки ozon',
-          width: 120,
+          width: 90,
           type: 'numericColumn',
           valueGetter: (params) => {
             const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
@@ -988,7 +990,7 @@ const SupplyTemplateDetail: React.FC = () => {
         children.push({
           field: `${clusterName}_orders_count`,
           headerName: 'Заказы (30д.)',
-          width: 150,
+          width: 90,
           type: 'numericColumn',
           valueGetter: (params) => {
             const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
@@ -1005,7 +1007,7 @@ const SupplyTemplateDetail: React.FC = () => {
         children.push({
           field: `${clusterName}_avg_orders_leverage`,
           headerName: avgOrdersLabel,
-          width: 150,
+          width: 90,
           type: 'numericColumn',
           valueGetter: (params) => {
             const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
@@ -1022,7 +1024,7 @@ const SupplyTemplateDetail: React.FC = () => {
         children.push({
           field: `${clusterName}_initial_to_supply`,
           headerName: 'Расчётное кол-во к поставке',
-          width: 110,
+          width: 90,
           type: 'numericColumn',
           valueGetter: (params) => {
             const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
@@ -1040,7 +1042,7 @@ const SupplyTemplateDetail: React.FC = () => {
         children.push({
           field: `${clusterName}_to_supply`,
           headerName: 'К поставке',
-          width: 120,
+          width: 90,
           type: 'numericColumn',
           editable: true,
           cellEditor: 'agNumberCellEditor',
@@ -1156,7 +1158,7 @@ const SupplyTemplateDetail: React.FC = () => {
         children.push({
           field: 'totals_marketplace_stocks_count',
           headerName: 'Остатки ozon',
-          width: 150,
+          width: 90,
           type: 'numericColumn',
           valueGetter: (params) => params.data?.totals?.marketplace_stocks_count ?? 0,
           valueFormatter: (params) => String(params.value ?? 0),
@@ -1167,7 +1169,7 @@ const SupplyTemplateDetail: React.FC = () => {
         children.push({
           field: 'totals_orders_count',
           headerName: 'Заказы',
-          width: 150,
+          width: 90,
           type: 'numericColumn',
           valueGetter: (params) => params.data?.totals?.orders_count ?? 0,
           valueFormatter: (params) => String(params.value ?? 0),
@@ -1178,7 +1180,7 @@ const SupplyTemplateDetail: React.FC = () => {
         children.push({
           field: 'totals_avg_orders_leverage',
           headerName: 'Сред. кол-во заказов',
-          width: 150,
+          width: 90,
           type: 'numericColumn',
           valueGetter: (params) => params.data?.totals?.avg_orders_leverage ?? 0,
           valueFormatter: (params) => String(params.value ?? 0),
@@ -1189,7 +1191,7 @@ const SupplyTemplateDetail: React.FC = () => {
         children.push({
           field: 'totals_initial_to_supply',
           headerName: 'Расчётное кол-во к поставке',
-          width: 150,
+          width: 90,
           type: 'numericColumn',
           valueGetter: (params) => {
             const clusters = params.data?.clusters || []
@@ -1206,7 +1208,7 @@ const SupplyTemplateDetail: React.FC = () => {
         children.push({
           field: 'totals_to_supply',
           headerName: 'К поставке',
-          width: 150,
+          width: 90,
           type: 'numericColumn',
           valueGetter: (params) => params.data?.totals?.to_supply ?? 0,
           valueFormatter: (params) => String(params.value ?? 0),
@@ -1217,7 +1219,7 @@ const SupplyTemplateDetail: React.FC = () => {
       children.push({
         field: 'totals_deficit',
         headerName: 'Дефицит',
-        width: 150,
+        width: 90,
         type: 'numericColumn',
         valueGetter: (params) => params.data?.totals?.deficit ?? 0,
         valueFormatter: (params) => String(params.value ?? 0),
