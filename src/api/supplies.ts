@@ -133,6 +133,7 @@ export interface CreateSnapshotConfig {
   offer_ids?: string[]
   supply_calculation_strategy?: SupplyCalculationStrategy
   supply_products_to_neighbor_cluster?: boolean
+  fetch_availability?: boolean
   drop_off_warehouse?: DropOffWarehouse
 }
 
@@ -146,6 +147,7 @@ export interface RefreshSnapshotConfig {
   offer_ids?: string[] | null
   supply_calculation_strategy?: SupplyCalculationStrategy | null
   supply_products_to_neighbor_cluster?: boolean | null
+  fetch_availability?: boolean | null
   drop_off_warehouse?: DropOffWarehouse
 }
 

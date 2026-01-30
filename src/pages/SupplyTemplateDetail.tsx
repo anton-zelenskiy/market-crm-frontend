@@ -15,7 +15,6 @@ import {
   Alert,
   Divider,
   Tooltip,
-  Empty,
   Input,
   Checkbox,
   Popover,
@@ -55,12 +54,10 @@ import { connectionSettingsApi } from '../api/connectionSettings'
 import { companiesApi, type Company } from '../api/companies'
 import { ozonClustersApi, type OzonCluster } from '../api/clusters'
 import { ozonProductsApi, type OzonProduct } from '../api/products'
-import {
-  DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION,
-  AVERAGE_SALES_STRATEGY_DESCRIPTION,
-  AVERAGE_SALES_WITH_LOCALIZATION_STRATEGY_DESCRIPTION,
-} from '../constants'
 import { ProgressModal } from '../components/ProgressModal'
+import SupplyConfigModal, {
+  type SupplyConfigFormValues,
+} from '../components/SupplyConfigModal'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -211,7 +208,6 @@ const SupplyTemplateDetail: React.FC = () => {
 
   // Settings modal state
   const [settingsModalVisible, setSettingsModalVisible] = useState(false)
-  const [settingsForm] = Form.useForm()
   const [clusters, setClusters] = useState<OzonCluster[]>([])
   const [products, setProducts] = useState<OzonProduct[]>([])
   const [loadingClusters, setLoadingClusters] = useState(false)
@@ -436,64 +432,54 @@ const SupplyTemplateDetail: React.FC = () => {
   const handleOpenSettingsModal = () => {
     setSettingsModalVisible(true)
     loadClustersAndProducts()
-    
-    // Pre-fill form with current snapshot settings
-    if (snapshot) {
-      const formValues: any = {
-        supply_calculation_strategy: snapshot.supply_calculation_strategy || 'average_sales',
-        supply_products_to_neighbor_cluster: snapshot.supply_products_to_neighbor_cluster || false,
-        cluster_ids: snapshot.cluster_ids || [],
-        offer_ids: snapshot.offer_ids || [],
-      }
-      
-      // Pre-fill warehouse if available
-      if (snapshot.drop_off_warehouse) {
-        formValues.drop_off_warehouse_id = snapshot.drop_off_warehouse.warehouse_id
-        // Add warehouse to the list so it can be selected
-        setWarehouses([{
+
+    if (snapshot?.drop_off_warehouse) {
+      setWarehouses([
+        {
           warehouse_id: snapshot.drop_off_warehouse.warehouse_id,
           name: snapshot.drop_off_warehouse.name,
           address: snapshot.drop_off_warehouse.address || undefined,
-        }])
-      }
-      
-      settingsForm.setFieldsValue(formValues)
+        },
+      ])
     }
   }
 
-  const handleSaveSettings = async () => {
+  const handleSaveSettings = async (values: SupplyConfigFormValues) => {
     if (!snapshotId) return
+
+    const warehouseId = values.drop_off_warehouse_id
+    const selectedWarehouse = warehouses.find(
+      (w) => w.warehouse_id === warehouseId
+    )
+    if (!selectedWarehouse) {
+      message.error('Необходимо выбрать склад отгрузки')
+      return
+    }
 
     setSavingSettings(true)
     try {
-      const values = settingsForm.getFieldsValue()
-      const warehouseId = values.drop_off_warehouse_id
-      const selectedWarehouse = warehouses.find((w) => w.warehouse_id === warehouseId)
-
-      if (!selectedWarehouse) {
-        message.error('Необходимо выбрать склад отгрузки')
-        setSavingSettings(false)
-        return
-      }
-
       const config: RefreshSnapshotConfig = {
-        supply_calculation_strategy: values.supply_calculation_strategy as SupplyCalculationStrategy,
-        supply_products_to_neighbor_cluster: values.supply_products_to_neighbor_cluster || false,
-        cluster_ids: values.cluster_ids?.length > 0 ? values.cluster_ids : null,
-        offer_ids: values.offer_ids?.length > 0 ? values.offer_ids : null,
+        supply_calculation_strategy:
+          values.supply_calculation_strategy as SupplyCalculationStrategy,
+        supply_products_to_neighbor_cluster:
+          values.supply_products_to_neighbor_cluster ?? false,
+        fetch_availability: values.fetch_availability ?? true,
+        cluster_ids:
+          (values.cluster_ids?.length ?? 0) > 0 ? values.cluster_ids : null,
+        offer_ids:
+          (values.offer_ids?.length ?? 0) > 0 ? values.offer_ids : null,
         drop_off_warehouse: {
-          warehouse_id: warehouseId,
+          warehouse_id: selectedWarehouse.warehouse_id,
           name: selectedWarehouse.name,
           address: selectedWarehouse.address || null,
         },
       }
 
       const response = await suppliesApi.refreshSnapshot(
-        parseInt(snapshotId),
+        parseInt(snapshotId, 10),
         config
       )
-      
-      // Show progress modal
+
       setProgressTaskId(response.task_id)
       setProgressModalVisible(true)
       setSettingsModalVisible(false)
@@ -501,6 +487,7 @@ const SupplyTemplateDetail: React.FC = () => {
       message.error(
         error.response?.data?.detail || 'Ошибка сохранения настроек'
       )
+    } finally {
       setSavingSettings(false)
     }
   }
@@ -1557,183 +1544,39 @@ const SupplyTemplateDetail: React.FC = () => {
 
 
       {/* Settings modal */}
-      <Modal
+      <SupplyConfigModal
+        visible={settingsModalVisible}
         title="Настройки шаблона поставки"
-        open={settingsModalVisible}
-        onOk={handleSaveSettings}
-        onCancel={() => {
-          setSettingsModalVisible(false)
-          settingsForm.resetFields()
-        }}
-        confirmLoading={savingSettings}
         okText="Сохранить"
         cancelText="Отмена"
-        width={700}
-      >
-        <Form form={settingsForm} layout="vertical">
-          <Form.Item
-            name="supply_calculation_strategy"
-            label="Стратегия расчёта поставки"
-          >
-            <Select>
-              <Option value="average_sales">По средним продажам</Option>
-              <Option value="average_sales_with_localization">По средним продажам с локализацией</Option>
-              <Option value="dynamic_percentages">Динамические проценты</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) =>
-              prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
-            }
-          >
-            {({ getFieldValue }) => {
-              const strategy = getFieldValue('supply_calculation_strategy')
-
-              let strategyDescription = ''
-
-              switch (strategy) {
-                case 'dynamic_percentages':
-                  strategyDescription = DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION
-                  break
-                case 'average_sales':
-                  strategyDescription = AVERAGE_SALES_STRATEGY_DESCRIPTION
-                  break
-                case 'average_sales_with_localization':
-                  strategyDescription = AVERAGE_SALES_WITH_LOCALIZATION_STRATEGY_DESCRIPTION
-                  break
+        confirmLoading={savingSettings}
+        onOk={handleSaveSettings}
+        onCancel={() => setSettingsModalVisible(false)}
+        mode="settings"
+        initialValues={
+          snapshot
+            ? {
+                supply_calculation_strategy:
+                  (snapshot.supply_calculation_strategy as SupplyCalculationStrategy) ||
+                  'average_sales',
+                supply_products_to_neighbor_cluster:
+                  snapshot.supply_products_to_neighbor_cluster ?? false,
+                fetch_availability: false,
+                cluster_ids: snapshot.cluster_ids || [],
+                offer_ids: snapshot.offer_ids || [],
+                drop_off_warehouse_id:
+                  snapshot.drop_off_warehouse?.warehouse_id,
               }
-              return (
-                <div style={{ 
-                  background: '#f5f5f5', 
-                  padding: '12px', 
-                  borderRadius: '8px', 
-                  marginBottom: '16px' 
-                }}>
-                  <div 
-                    style={{ color: 'rgba(0, 0, 0, 0.65)' }}
-                    dangerouslySetInnerHTML={{ __html: strategyDescription }}
-                  />
-                </div>
-              )
-            }}
-          </Form.Item>
-
-          <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) =>
-              prevValues.supply_calculation_strategy !== currentValues.supply_calculation_strategy
-            }
-          >
-            {({ getFieldValue }) => {
-              const strategy = getFieldValue('supply_calculation_strategy')
-              const showNeighborOption = strategy === 'dynamic_percentages'
-              return showNeighborOption && (
-                <Form.Item
-                  name="supply_products_to_neighbor_cluster"
-                  valuePropName="checked"
-                >
-                  <Checkbox>
-                    Поставить товар в соседний кластер (если есть ограничения)
-                  </Checkbox>
-                </Form.Item>
-              )
-            }}
-          </Form.Item>
-
-          <Form.Item
-            name="cluster_ids"
-            label="Кластеры (если не выбрано — все)"
-          >
-            <Select
-              mode="multiple"
-              allowClear
-              placeholder="Выберите кластеры"
-              loading={loadingClusters}
-              optionFilterProp="children"
-              showSearch
-            >
-              {clusters
-                .sort((a, b) => a.priority - b.priority)
-                .map((cluster) => (
-                  <Option key={cluster.cluster_id} value={cluster.cluster_id}>
-                    {cluster.name}
-                  </Option>
-                ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="offer_ids"
-            label="Товары (если не выбрано — все)"
-          >
-            <Select
-              mode="multiple"
-              allowClear
-              placeholder="Выберите товары"
-              loading={loadingProducts}
-              optionFilterProp="children"
-              showSearch
-              filterOption={(input, option) =>
-                (option?.children as unknown as string)
-                  ?.toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-            >
-              {products.map((product) => (
-                <Option key={product.offer_id} value={product.offer_id}>
-                  {product.offer_id} — {product.name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="drop_off_warehouse_id"
-            label="Склад отгрузки"
-            rules={[{ required: true, message: 'Необходимо выбрать склад отгрузки' }]}
-          >
-            <Select
-              placeholder="Введите название склада (минимум 4 символа)"
-              showSearch
-              allowClear
-              filterOption={false}
-              onSearch={handleWarehouseSearch}
-              loading={warehouseLoading}
-              notFoundContent={
-                warehouseLoading ? <Spin size="small" /> : <Empty description="Введите название склада" />
-              }
-            >
-              {warehouses.map((warehouse) => (
-                <Option key={warehouse.warehouse_id} value={warehouse.warehouse_id}>
-                  <div>
-                    <div style={{ fontWeight: 500 }}>{warehouse.name}</div>
-                    {warehouse.address && (
-                      <div style={{ fontSize: '12px', color: '#999' }}>
-                        {warehouse.address}
-                      </div>
-                    )}
-                    {warehouse.warehouse_type && (
-                      <div style={{ fontSize: '12px', color: '#999' }}>
-                        Тип: {getWarehouseTypeLabel(warehouse.warehouse_type)}
-                      </div>
-                    )}
-                  </div>
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Alert
-            title="Информация"
-            description="При сохранении данные будут обновлены с Ozon и пересчитаны с указанными параметрами."
-            type="info"
-            showIcon
-            style={{ marginTop: '16px' }}
-          />
-        </Form>
-      </Modal>
+            : undefined
+        }
+        clusters={clusters}
+        products={products}
+        warehouses={warehouses}
+        loadingClusters={loadingClusters}
+        loadingProducts={loadingProducts}
+        warehouseLoading={warehouseLoading}
+        onWarehouseSearch={handleWarehouseSearch}
+      />
 
       {/* Progress modal */}
       {progressTaskId && snapshotId && (
