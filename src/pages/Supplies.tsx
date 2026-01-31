@@ -73,6 +73,10 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
   const [cargoForm] = Form.useForm()
   const [docForm] = Form.useForm()
 
+  useEffect(() => {
+    docForm.setFieldsValue({ external_order_id: supply.external_order_id ?? '' })
+  }, [supply.supply_id, supply.external_order_id, docForm])
+
   return (
     <div style={{ padding: '16px', minWidth: '300px' }}>
       <Form
@@ -115,6 +119,7 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
         <Form.Item
           name="external_order_id"
           label="Номер внешнего заказа"
+          initialValue={supply.external_order_id ?? ''}
           rules={[
             { required: true, message: 'Пожалуйста, введите номер внешнего заказа' },
           ]}
