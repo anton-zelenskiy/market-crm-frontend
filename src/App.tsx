@@ -9,7 +9,7 @@ import {
   LinkOutlined,
   LogoutOutlined,
 } from '@ant-design/icons'
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -50,34 +50,33 @@ const DashboardLayout: React.FC = () => {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken()
   const { logout } = useAuth()
-  const navigate = useNavigate()
   const location = useLocation()
 
   const menuItems = [
     {
       key: '/connections',
       icon: <LinkOutlined />,
-      label: 'API Подключения',
+      label: <Link to="/connections">API Подключения</Link>,
     },
     {
       key: '/companies',
       icon: <ShopOutlined />,
-      label: 'Компании',
+      label: <Link to="/companies">Компании</Link>,
     },
     // {
     //   key: '/data-sources',
     //   icon: <DatabaseOutlined />,
-    //   label: 'Источники данных',
+    //   label: <Link to="/data-sources">Источники данных</Link>,
     // },
     // {
     //   key: '/reports',
     //   icon: <UploadOutlined />,
-    //   label: 'Отчеты',
+    //   label: <Link to="/reports">Отчеты</Link>,
     // },
     {
       key: '/clusters',
       icon: <DatabaseOutlined />,
-      label: 'Кластеры',
+      label: <Link to="/clusters">Кластеры</Link>,
     },
     {
       key: 'logout',
@@ -90,8 +89,6 @@ const DashboardLayout: React.FC = () => {
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key === 'logout') {
       logout()
-    } else {
-      navigate(key)
     }
   }
 

@@ -75,6 +75,7 @@ const SupplyDraftDetail: React.FC = () => {
   const [productsModalVisible, setProductsModalVisible] = useState(false)
 
   const isExpired = Boolean(draft?.is_expired)
+  
 
   const loadDraftInfo = useCallback(async () => {
     if (!draftId) return
@@ -83,6 +84,7 @@ const SupplyDraftDetail: React.FC = () => {
     try {
       const draftInfo = await suppliesApi.getDraftInfoV2(parseInt(draftId))
       setDraft(draftInfo)
+      setSupplyCreateStatus(draftInfo.supply_create_info as SupplyCreateStatusV2Response)
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка загрузки данных черновика')
       console.error('Failed to load draft info:', error)
@@ -382,297 +384,303 @@ const SupplyDraftDetail: React.FC = () => {
 
           <Title level={2}>Детали черновика поставки</Title>
 
-          {isExpired && (
+          {/* Supply not created, expired draft alert */}
+          {isExpired && !supplyCreateStatus?.order_id && (
             <Alert
-              message="Черновик устарел, черновики, созданные через api доступны 30 минут с момента создания. Пожалуйста, пересоздайте черновик для данного кластера."
+              title="Черновик устарел, черновики, созданные через api доступны 30 минут с момента создания. Пожалуйста, пересоздайте черновик для данного кластера."
               type="warning"
               showIcon
             />
           )}
 
-
-
-          <div style={{ padding: '24px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
-            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-              {/* Warehouse selection */}
-              <div>
-                <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '16px' }}>
-                  1. Выберите склад размещения:
-                </Text>
-                <Radio.Group
-                  value={selectedWarehouseId}
-                  onChange={async (e) => {
-                    const warehouseId = e.target.value
-                    setSelectedWarehouseId(warehouseId)
-                    // Clear timeslot and date when warehouse changes
-                    setSelectedTimeslot(null)
-                    setSelectedDate(null)
-                    // Auto-load timeslots when warehouse is selected
-                    if (!isExpired) {
-                      await handleLoadTimeslots(warehouseId)
-                    }
-                  }}
-                  style={{ width: '100%' }}
-                >
-                  <Row gutter={[16, 16]}>
-                    {availableWarehouses.map((warehouse) => {
-                      const warehouseData = warehouse.storage_warehouse
-                      if (!warehouseData) {
-                        return null
-                      }
-                      return (
-                        <Col span={10} key={warehouseData.warehouse_id}>
-                          <Radio.Button
-                            value={warehouseData.warehouse_id}
-                            style={{
-                              width: '100%',
-                              height: 'auto',
-                              padding: '12px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'flex-start',
-                              borderRadius: '8px',
-                              border: selectedWarehouseId === warehouseData.warehouse_id ? '2px solid #1890ff' : '1px solid #d9d9d9'
-                            }}
-                          >
-                            <Space
-                              size="small"
-                              style={{ width: '100%', justifyContent: 'space-between' }}
-                            >
-                              <Text strong>{warehouseData.name}</Text>
-                              {warehouse.state && (
-                                <Tag
-                                  color={
-                                    warehouse.state === 'FULL_AVAILABLE'
-                                      ? 'green'
-                                      : warehouse.state === 'PARTIAL_AVAILABLE'
-                                        ? 'orange'
-                                        : 'default'
-                                  }
-                                >
-                                  {WAREHOUSE_AVAILABILITY_STATE_DESCRIPTION[warehouse.state]}
-                                </Tag>
-                              )}
-                            </Space>
-                          </Radio.Button>
-                        </Col>
-                      )
-                    })}
-                  </Row>
-                </Radio.Group>
-              </div>
-
-              <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-                <Row gutter={[16, 16]}>
-                  <Col span={4}>
-                    {selectedWarehouseProducts.length > 0 && (
-                      <Button type="primary" onClick={() => setProductsModalVisible(true)}>
-                        Показать товары
-                      </Button>
+          {/* Supply created, show status */}
+          {supplyCreateStatus?.order_id && (
+            <div style={{ marginTop: '16px' }}>
+              <Alert
+                title={
+                  <Space orientation="vertical" size={4}>
+                    <Text strong>
+                      {supplyCreateStatus.status === 'SUCCESS' ? 'Поставка успешно создана' :
+                        supplyCreateStatus.status === 'FAILED' ? 'Ошибка при создании поставки' :
+                          'Неизвестный статус'}
+                    </Text>
+                    {supplyCreateStatus.order_id && (
+                      <Text>ID заказа: <Tag color="green">{String(supplyCreateStatus.order_id)}</Tag></Text>
                     )}
-                  </Col>
-                </Row>
-              </Space>
+                    {supplyCreateStatus.order_pass_status && (
+                      <Text>Данные водителя: <Tag color="green">{supplyCreateStatus.order_pass_status === 'Success' ? 'Заполнены' : supplyCreateStatus.order_pass_status === 'Failed' ? 'Не заполнены' : 'Нет информации'}</Tag></Text>
+                    )}
+                    {'error_reasons' in supplyCreateStatus && Array.isArray(supplyCreateStatus.error_reasons) && supplyCreateStatus.error_reasons.length > 0 && (
+                      <div style={{ marginTop: '4px' }}>
+                        {(supplyCreateStatus.error_reasons as string[]).map((err: string, i: number) => (
+                          <div key={i} style={{ color: '#ff4d4f' }}>• {err}</div>
+                        ))}
+                      </div>
+                    )}
+                    {'error_messages' in supplyCreateStatus && Array.isArray(supplyCreateStatus.error_messages) && supplyCreateStatus.error_messages.length > 0 && (
+                      <div style={{ marginTop: '4px' }}>
+                        {(supplyCreateStatus.error_messages as string[]).map((err: string, i: number) => (
+                          <div key={i} style={{ color: '#ff4d4f' }}>• {err}</div>
+                        ))}
+                      </div>
+                    )}
+                  </Space>
+                }
+                type={
+                  supplyCreateStatus.status === 'SUCCESS' ? 'success' :
+                    supplyCreateStatus.status === 'FAILED' ? 'error' : 'info'
+                }
+                showIcon
+                style={{ borderRadius: '12px' }}
+              />
+            </div>
+          ) }
 
-              {/* Date and Time selection */}
-              {selectedWarehouseId && (
+          {/* Supply not created, show warehouse selection */}
+          {!supplyCreateStatus?.order_id && (
+            <div style={{ padding: '24px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
+              <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+                {/* Warehouse selection */}
                 <div>
                   <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '16px' }}>
-                    2. Выберите дату и время отгрузки:
+                    1. Выберите склад размещения:
                   </Text>
-                  {loadingTimeslots ? (
-                    <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '8px' }}>
-                      <Spin /> <Text type="secondary" style={{ marginLeft: '12px' }}>Загрузка доступных интервалов...</Text>
-                    </div>
-                  ) : (
-                    <Row gutter={32}>
-                      {/* Left side: Calendar */}
-                      <Col span={10}>
-                        <div style={{ border: '1px solid #f0f0f0', borderRadius: '12px', padding: '16px', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                          <ConfigProvider locale={ruRU}>
-                            <Calendar
-                              fullscreen={false}
-                              headerRender={({ value, onChange }) => {
-                                const localeData = value.localeData();
-                                const year = value.year();
-                                return (
-                                  <div style={{ padding: '8px 0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Text strong style={{ fontSize: '16px' }}>{localeData.months(value)} {year}</Text>
-                                    <Space>
-                                      <Button
-                                        size="small"
-                                        icon={<span style={{ fontSize: '12px' }}>&lt;</span>}
-                                        onClick={() => onChange(value.clone().subtract(1, 'month'))}
-                                      />
-                                      <Button
-                                        size="small"
-                                        icon={<span style={{ fontSize: '12px' }}>&gt;</span>}
-                                        onClick={() => onChange(value.clone().add(1, 'month'))}
-                                      />
-                                    </Space>
-                                  </div>
-                                );
-                              }}
-                              value={selectedDate ? dayjs(selectedDate) : undefined}
-                              onSelect={onDateSelect}
-                              cellRender={dateCellRender}
-                            />
-                          </ConfigProvider>
-                        </div>
-                      </Col>
-                      {/* Right side: Timeslots */}
-                      <Col span={14}>
-                        {selectedDate ? (
-                          <div style={{ height: '100%' }}>
-                            <Text strong style={{ fontSize: '18px', display: 'block', marginBottom: '24px' }}>
-                              {dayjs(selectedDate).format('D MMMM, dddd')}
-                            </Text>
-
-                            {allTimeslots.length > 0 ? (
-                              <div style={{ maxHeight: '450px', overflowY: 'auto', paddingRight: '8px' }}>
-                                <Row gutter={[12, 12]}>
-                                  {allTimeslots.map((slot, idx) => {
-                                    const fromTime = formatTime(slot.from_in_timezone)
-                                    const toTime = formatTime(slot.to_in_timezone)
-                                    const isSelected = selectedTimeslot?.from_in_timezone === slot.from_in_timezone &&
-                                      selectedTimeslot?.to_in_timezone === slot.to_in_timezone
-                                    return (
-                                      <Col key={idx} span={8}>
-                                        <Button
-                                          type={isSelected ? 'primary' : 'default'}
-                                          style={{
-                                            width: '100%',
-                                            height: '40px',
-                                            borderRadius: '6px',
-                                            backgroundColor: isSelected ? undefined : '#f5f5f5',
-                                            border: isSelected ? undefined : 'none',
-                                            color: isSelected ? undefined : '#555',
-                                            fontWeight: isSelected ? 600 : 400
-                                          }}
-                                          onClick={() => setSelectedTimeslot(slot)}
-                                        >
-                                          {fromTime} - {toTime}
-                                        </Button>
-                                      </Col>
-                                    )
-                                  })}
-                                </Row>
-                              </div>
-                            ) : (
-                              <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #f0f0f0' }}>
-                                <Empty description="Нет доступных таймслотов на эту дату" />
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div style={{
-                            height: '100%',
-                            minHeight: '350px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: '2px dashed #e8e8e8',
-                            borderRadius: '12px',
-                            backgroundColor: '#fff'
-                          }}>
-                            <Space orientation="vertical" align="center">
-                              <Text type="secondary" style={{ fontSize: '16px' }}>Выберите дату в календаре</Text>
-                              <Text type="secondary" style={{ fontSize: '12px' }}>Слева отображены доступные дни</Text>
-                            </Space>
-                          </div>
-                        )}
-                      </Col>
-                    </Row>
-                  )}
-                </div>
-              )}
-
-              {/* Confirmation section */}
-              {selectedWarehouseId && selectedTimeslot && (
-                <div style={{
-                  marginTop: '8px',
-                  padding: '24px',
-                  backgroundColor: '#fff',
-                  borderRadius: '12px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  border: '1px solid #e6f7ff'
-                }}>
-                  <Space orientation="vertical" size={4}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <Text type="secondary">Время:</Text>
-                      <Text strong>
-                        {dayjs(selectedDate).format('dddd, D MMMM')}, {formatTime(selectedTimeslot.from_in_timezone)} - {formatTime(selectedTimeslot.to_in_timezone)}
-                      </Text>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <Text type="secondary">На складе отгрузки:</Text>
-                      <Text strong>{draft.drop_off_warehouse?.name}</Text>
-                    </div>
-                  </Space>
-                  <Button
-                    type="primary"
-                    size="large"
-                    onClick={handleCreateSupply}
-                    loading={creatingSupply}
-                    disabled={creatingSupply}
-                    style={{
-                      height: '48px',
-                      padding: '0 48px',
-                      fontSize: '16px',
-                      fontWeight: 600,
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 10px rgba(24, 144, 255, 0.3)'
+                  <Radio.Group
+                    value={selectedWarehouseId}
+                    onChange={async (e) => {
+                      const warehouseId = e.target.value
+                      setSelectedWarehouseId(warehouseId)
+                      // Clear timeslot and date when warehouse changes
+                      setSelectedTimeslot(null)
+                      setSelectedDate(null)
+                      // Auto-load timeslots when warehouse is selected
+                      if (!isExpired) {
+                        await handleLoadTimeslots(warehouseId)
+                      }
                     }}
+                    style={{ width: '100%' }}
                   >
-                    Подтвердить
-                  </Button>
+                    <Row gutter={[16, 16]}>
+                      {availableWarehouses.map((warehouse) => {
+                        const warehouseData = warehouse.storage_warehouse
+                        if (!warehouseData) {
+                          return null
+                        }
+                        return (
+                          <Col span={10} key={warehouseData.warehouse_id}>
+                            <Radio.Button
+                              value={warehouseData.warehouse_id}
+                              style={{
+                                width: '100%',
+                                height: 'auto',
+                                padding: '12px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                borderRadius: '8px',
+                                border: selectedWarehouseId === warehouseData.warehouse_id ? '2px solid #1890ff' : '1px solid #d9d9d9'
+                              }}
+                            >
+                              <Space
+                                size="small"
+                                style={{ width: '100%', justifyContent: 'space-between' }}
+                              >
+                                <Text strong>{warehouseData.name}</Text>
+                                {warehouse.state && (
+                                  <Tag
+                                    color={
+                                      warehouse.state === 'FULL_AVAILABLE'
+                                        ? 'green'
+                                        : warehouse.state === 'PARTIAL_AVAILABLE'
+                                          ? 'orange'
+                                          : 'default'
+                                    }
+                                  >
+                                    {WAREHOUSE_AVAILABILITY_STATE_DESCRIPTION[warehouse.state]}
+                                  </Tag>
+                                )}
+                              </Space>
+                            </Radio.Button>
+                          </Col>
+                        )
+                      })}
+                    </Row>
+                  </Radio.Group>
                 </div>
-              )}
 
-              {/* Supply creation status */}
-              {supplyCreateStatus && (
-                <div style={{ marginTop: '16px' }}>
-                  <Alert
-                    title={
-                      <Space orientation="vertical" size={4}>
+                <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+                  <Row gutter={[16, 16]}>
+                    <Col span={4}>
+                      {selectedWarehouseProducts.length > 0 && (
+                        <Button type="primary" onClick={() => setProductsModalVisible(true)}>
+                          Показать товары
+                        </Button>
+                      )}
+                    </Col>
+                  </Row>
+                </Space>
+
+                {/* Date and Time selection */}
+                {selectedWarehouseId && (
+                  <div>
+                    <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '16px' }}>
+                      2. Выберите дату и время отгрузки:
+                    </Text>
+                    {loadingTimeslots ? (
+                      <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '8px' }}>
+                        <Spin /> <Text type="secondary" style={{ marginLeft: '12px' }}>Загрузка доступных интервалов...</Text>
+                      </div>
+                    ) : (
+                      <Row gutter={32}>
+                        {/* Left side: Calendar */}
+                        <Col span={10}>
+                          <div style={{ border: '1px solid #f0f0f0', borderRadius: '12px', padding: '16px', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                            <ConfigProvider locale={ruRU}>
+                              <Calendar
+                                fullscreen={false}
+                                headerRender={({ value, onChange }) => {
+                                  const localeData = value.localeData();
+                                  const year = value.year();
+                                  return (
+                                    <div style={{ padding: '8px 0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <Text strong style={{ fontSize: '16px' }}>{localeData.months(value)} {year}</Text>
+                                      <Space>
+                                        <Button
+                                          size="small"
+                                          icon={<span style={{ fontSize: '12px' }}>&lt;</span>}
+                                          onClick={() => onChange(value.clone().subtract(1, 'month'))}
+                                        />
+                                        <Button
+                                          size="small"
+                                          icon={<span style={{ fontSize: '12px' }}>&gt;</span>}
+                                          onClick={() => onChange(value.clone().add(1, 'month'))}
+                                        />
+                                      </Space>
+                                    </div>
+                                  );
+                                }}
+                                value={selectedDate ? dayjs(selectedDate) : undefined}
+                                onSelect={onDateSelect}
+                                cellRender={dateCellRender}
+                              />
+                            </ConfigProvider>
+                          </div>
+                        </Col>
+                        {/* Right side: Timeslots */}
+                        <Col span={14}>
+                          {selectedDate ? (
+                            <div style={{ height: '100%' }}>
+                              <Text strong style={{ fontSize: '18px', display: 'block', marginBottom: '24px' }}>
+                                {dayjs(selectedDate).format('D MMMM, dddd')}
+                              </Text>
+
+                              {allTimeslots.length > 0 ? (
+                                <div style={{ maxHeight: '450px', overflowY: 'auto', paddingRight: '8px' }}>
+                                  <Row gutter={[12, 12]}>
+                                    {allTimeslots.map((slot, idx) => {
+                                      const fromTime = formatTime(slot.from_in_timezone)
+                                      const toTime = formatTime(slot.to_in_timezone)
+                                      const isSelected = selectedTimeslot?.from_in_timezone === slot.from_in_timezone &&
+                                        selectedTimeslot?.to_in_timezone === slot.to_in_timezone
+                                      return (
+                                        <Col key={idx} span={8}>
+                                          <Button
+                                            type={isSelected ? 'primary' : 'default'}
+                                            style={{
+                                              width: '100%',
+                                              height: '40px',
+                                              borderRadius: '6px',
+                                              backgroundColor: isSelected ? undefined : '#f5f5f5',
+                                              border: isSelected ? undefined : 'none',
+                                              color: isSelected ? undefined : '#555',
+                                              fontWeight: isSelected ? 600 : 400
+                                            }}
+                                            onClick={() => setSelectedTimeslot(slot)}
+                                          >
+                                            {fromTime} - {toTime}
+                                          </Button>
+                                        </Col>
+                                      )
+                                    })}
+                                  </Row>
+                                </div>
+                              ) : (
+                                <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #f0f0f0' }}>
+                                  <Empty description="Нет доступных таймслотов на эту дату" />
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div style={{
+                              height: '100%',
+                              minHeight: '350px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              border: '2px dashed #e8e8e8',
+                              borderRadius: '12px',
+                              backgroundColor: '#fff'
+                            }}>
+                              <Space orientation="vertical" align="center">
+                                <Text type="secondary" style={{ fontSize: '16px' }}>Выберите дату в календаре</Text>
+                                <Text type="secondary" style={{ fontSize: '12px' }}>Слева отображены доступные дни</Text>
+                              </Space>
+                            </div>
+                          )}
+                        </Col>
+                      </Row>
+                    )}
+                  </div>
+                )}
+
+                {/* Confirmation section */}
+                {selectedWarehouseId && selectedTimeslot && (
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '24px',
+                    backgroundColor: '#fff',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    border: '1px solid #e6f7ff'
+                  }}>
+                    <Space orientation="vertical" size={4}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <Text type="secondary">Время:</Text>
                         <Text strong>
-                          {supplyCreateStatus.status === 'SUCCESS' ? 'Поставка успешно создана' :
-                            supplyCreateStatus.status === 'FAILED' ? 'Ошибка при создании поставки' :
-                              'Неизвестный статус'}
+                          {dayjs(selectedDate).format('dddd, D MMMM')}, {formatTime(selectedTimeslot.from_in_timezone)} - {formatTime(selectedTimeslot.to_in_timezone)}
                         </Text>
-                        {supplyCreateStatus.order_id && (
-                          <Text>ID заказа: <Tag color="green">{String(supplyCreateStatus.order_id)}</Tag></Text>
-                        )}
-                        {'error_reasons' in supplyCreateStatus && Array.isArray(supplyCreateStatus.error_reasons) && supplyCreateStatus.error_reasons.length > 0 && (
-                          <div style={{ marginTop: '4px' }}>
-                            {(supplyCreateStatus.error_reasons as string[]).map((err: string, i: number) => (
-                              <div key={i} style={{ color: '#ff4d4f' }}>• {err}</div>
-                            ))}
-                          </div>
-                        )}
-                        {'error_messages' in supplyCreateStatus && Array.isArray(supplyCreateStatus.error_messages) && supplyCreateStatus.error_messages.length > 0 && (
-                          <div style={{ marginTop: '4px' }}>
-                            {(supplyCreateStatus.error_messages as string[]).map((err: string, i: number) => (
-                              <div key={i} style={{ color: '#ff4d4f' }}>• {err}</div>
-                            ))}
-                          </div>
-                        )}
-                      </Space>
-                    }
-                    type={
-                      supplyCreateStatus.status === 'SUCCESS' ? 'success' :
-                        supplyCreateStatus.status === 'FAILED' ? 'error' : 'info'
-                    }
-                    showIcon
-                    style={{ borderRadius: '12px' }}
-                  />
-                </div>
-              )}
-            </Space>
-          </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <Text type="secondary">На складе отгрузки:</Text>
+                        <Text strong>{draft.drop_off_warehouse?.name}</Text>
+                      </div>
+                    </Space>
+                    <Button
+                      type="primary"
+                      size="large"
+                      onClick={handleCreateSupply}
+                      loading={creatingSupply}
+                      disabled={creatingSupply}
+                      style={{
+                        height: '48px',
+                        padding: '0 48px',
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 10px rgba(24, 144, 255, 0.3)'
+                      }}
+                    >
+                      Подтвердить
+                    </Button>
+                  </div>
+                )}
+              </Space>
+            </div>
+          )}
+
         </Space>
       </Card>
 

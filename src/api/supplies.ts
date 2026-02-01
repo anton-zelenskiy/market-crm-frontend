@@ -254,6 +254,7 @@ export interface SupplyDraft {
     error_reasons?: string[] | null
     order_id?: number | null
     status: string
+    order_pass_status?: SupplyOrderPassStatus | null
   } | null
   storage_warehouse_name?: string | null
   created_at: string
@@ -309,10 +310,13 @@ export interface SupplyCreateStatusV2Request {
   draft_id: number
 }
 
+export type SupplyOrderPassStatus = 'Success' | 'Failed' | 'InProgress' | 'Unknown'
+
 export interface SupplyCreateStatusV2Response {
   error_reasons?: string[] | null
   order_id?: number | null
   status: string
+  order_pass_status?: SupplyOrderPassStatus | null
 }
 
 export interface SupplyDraftListResponse {

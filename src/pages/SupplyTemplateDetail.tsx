@@ -1367,7 +1367,8 @@ const SupplyTemplateDetail: React.FC = () => {
                 rowKey="id"
                 onRow={(record: SupplyDraft) => ({
                   onClick: () => {
-                    navigate(`/connections/${connectionId}/supply-templates/${snapshotId}/drafts/${record.id}`)
+                    const path = `/connections/${connectionId}/supply-templates/${snapshotId}/drafts/${record.id}`
+                    window.open(path, '_blank', 'noopener,noreferrer')
                   },
                   style: { cursor: 'pointer' },
                 })}
@@ -1407,6 +1408,12 @@ const SupplyTemplateDetail: React.FC = () => {
                         <Text type="secondary">-</Text>
                       )
                     },
+                  },
+                  {
+                    title: 'Дата создания',
+                    dataIndex: 'created_at',
+                    key: 'created_at',
+                    render: (date: string) => new Date(date).toLocaleString('ru-RU'),
                   },
                   {
                     title: 'Действия',
