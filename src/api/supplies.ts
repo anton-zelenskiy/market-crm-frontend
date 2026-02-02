@@ -364,6 +364,15 @@ export const suppliesApi = {
     return response.data
   },
 
+  downloadProductsSummaryXlsx: async (connectionId: number): Promise<Blob> => {
+    const response = await api.post(
+      `/supplies/connection/${connectionId}/products-summary-xlsx`,
+      {},
+      { responseType: 'blob' }
+    )
+    return response.data
+  },
+
   getSnapshots: async (
     connectionId: number
   ): Promise<SupplySnapshotResponse[]> => {

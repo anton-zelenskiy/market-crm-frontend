@@ -150,6 +150,7 @@ const Supplies: React.FC = () => {
   const [connection, setConnection] = useState<Connection | null>(null)
   const [creatingCargoes, setCreatingCargoes] = useState<Record<string, boolean>>({})
   const [downloadingDocs, setDownloadingDocs] = useState<Record<string, boolean>>({})
+  const [downloadingSummaryXlsx, setDownloadingSummaryXlsx] = useState(false)
   const [stateGroupId, setStateGroupId] = useState<SupplyStateGroupId>('PREPARATION')
   const selectedStates =
     SUPPLY_STATE_GROUPS.find((g) => g.id === stateGroupId)?.states ?? []
@@ -264,6 +265,32 @@ const Supplies: React.FC = () => {
       )
     } finally {
       setCreatingCargoes((prev) => ({ ...prev, [supplyId]: false }))
+    }
+  }
+
+  const handleDownloadProductsSummaryXlsx = async () => {
+    if (!connectionId || !connection) return
+
+    setDownloadingSummaryXlsx(true)
+    try {
+      const blob = await suppliesApi.downloadProductsSummaryXlsx(
+        parseInt(connectionId)
+      )
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Движение_товаров_${company?.name ?? 'supplies'}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      message.success('Файл «Движение товаров» скачан')
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка скачивания сводки по товарам'
+      )
+    } finally {
+      setDownloadingSummaryXlsx(false)
     }
   }
 
@@ -466,6 +493,14 @@ const Supplies: React.FC = () => {
             </Space>
 
             <Space>
+              <Button
+                type="primary"
+                loading={downloadingSummaryXlsx}
+                onClick={handleDownloadProductsSummaryXlsx}
+                disabled={!connection || connection.data_source?.name !== 'ozon'}
+              >
+                Скачать «Движение товаров»
+              </Button>
               <Typography.Text type="secondary">Статусы</Typography.Text>
               <Select
                 style={{ minWidth: 260 }}
