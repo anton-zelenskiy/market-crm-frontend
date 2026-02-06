@@ -375,15 +375,7 @@ const SupplyTemplateDetail: React.FC = () => {
       )
       setSnapshot(snapshotData)
       if (snapshotData) {
-        // Compute initial_to_supply for each cluster on load (preserved on cell edits)
-        const dataWithInitial = snapshotData.data.map(item => ({
-          ...item,
-          clusters: item.clusters.map(cluster => ({
-            ...cluster,
-            initial_to_supply: (cluster.to_supply ?? 0) + (cluster.restricted_quantity ?? 0)
-          }))
-        }))
-        setTableData(dataWithInitial)
+        setTableData(snapshotData.data)
       }
     } catch (error: any) {
       message.error(
@@ -1211,8 +1203,8 @@ const SupplyTemplateDetail: React.FC = () => {
             }, 0)
           },
           valueFormatter: (params) => {
-            const value = params.value
-            return value !== undefined && value !== null ? String(value) : 'Без ограничений'
+            const value = params.value ?? 0
+            return String(value)
           },
           cellStyle: { backgroundColor: '#f5f5f5' }
         })
