@@ -647,8 +647,13 @@ const SupplyTemplateDetail: React.FC = () => {
         deletion_sku_mode: 'PARTIAL',
       }
 
-      await suppliesApi.createCrossdockDraft(request)
-      message.success('Черновик поставки создан')
+      const response = await suppliesApi.createCrossdockDraft(request)
+      if (response.id) {
+        message.success('Черновик поставки создан')
+        window.open(`/connections/${connectionId}/supply-templates/${snapshotId}/drafts/${response.id}`, '_blank', 'noopener,noreferrer')
+      } else {
+        message.error('Не удалось создать черновик поставки')
+      }
       setWarehouseModalVisible(false)
       form.resetFields()
       setSelectedCluster(null)
