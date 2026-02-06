@@ -196,6 +196,7 @@ const SupplyTemplateDetail: React.FC = () => {
     'marketplace_stocks_count',
     'orders_count',
     'avg_orders_leverage',
+    'available_quantity',
     'initial_to_supply',
     'to_supply'
   ])
@@ -242,6 +243,7 @@ const SupplyTemplateDetail: React.FC = () => {
               { label: 'Остатки на маркетплейсе', value: 'marketplace_stocks_count' },
               { label: 'Заказы (мес.)', value: 'orders_count' },
               { label: avgOrdersLabel, value: 'avg_orders_leverage' },
+              { label: 'Доступное кол-во', value: 'available_quantity' },
               { label: 'Расчётное кол-во', value: 'initial_to_supply' },
               { label: 'К поставке', value: 'to_supply' },
             ]}
@@ -1011,6 +1013,23 @@ const SupplyTemplateDetail: React.FC = () => {
           },
         })
       }
+      if (visibleSubColumns.includes('available_quantity')) {
+        children.push({
+          field: `${clusterName}_available_quantity`,
+          headerName: 'Доступное кол-во',
+          width: 90,
+          type: 'numericColumn',
+          valueGetter: (params) => {
+            const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
+            return cluster?.available_quantity ?? null
+          },
+          valueFormatter: (params) => {
+            const value = params.value
+            return value !== undefined && value !== null ? String(value) : 'Без ограничений'
+          },
+        })
+      }
+
 
       if (visibleSubColumns.includes('initial_to_supply')) {
         children.push({
@@ -1191,7 +1210,10 @@ const SupplyTemplateDetail: React.FC = () => {
               return sum + (cluster.initial_to_supply ?? 0)
             }, 0)
           },
-          valueFormatter: (params) => String(params.value ?? 0),
+          valueFormatter: (params) => {
+            const value = params.value
+            return value !== undefined && value !== null ? String(value) : 'Без ограничений'
+          },
           cellStyle: { backgroundColor: '#f5f5f5' }
         })
       }

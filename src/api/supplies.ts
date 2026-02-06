@@ -93,6 +93,7 @@ export interface ClusterData {
   avg_orders_leverage: number
   to_supply: number
   restricted_quantity?: number
+  available_quantity?: number
   warehouse_availability?: Record<string, any>
   is_neighbor_redirect?: boolean
   initial_to_supply?: number  // Computed on load: to_supply + restricted_quantity
@@ -111,6 +112,7 @@ export interface SupplyDataItem {
     avg_orders_leverage: number
     vendor_stocks_count: number
     to_supply: number
+    available_quantity: number
     deficit: number
   }
 }
