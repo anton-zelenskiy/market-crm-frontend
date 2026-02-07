@@ -22,7 +22,7 @@ export default defineConfig({
         },
       },
     },
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 1400,
   },
   server: {
     host: true,
