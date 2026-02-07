@@ -33,7 +33,7 @@ import {
   type DraftTimeslotResponseV2,
   type Timeslot,
   type CreateSupplyFromDraftV2Request,
-  type SupplyCreateStatusV2Response,
+  type SupplyCreateInfo,
   WAREHOUSE_AVAILABILITY_STATE_DESCRIPTION,
 } from '../api/supplies'
 
@@ -70,7 +70,7 @@ const SupplyDraftDetail: React.FC = () => {
   const [loadingTimeslots, setLoadingTimeslots] = useState(false)
   const [selectedTimeslot, setSelectedTimeslot] = useState<Timeslot | null>(null)
   const [creatingSupply, setCreatingSupply] = useState(false)
-  const [supplyCreateStatus, setSupplyCreateStatus] = useState<SupplyCreateStatusV2Response | null>(null)
+  const [supplyCreateInfo, setSupplyCreateInfo] = useState<SupplyCreateInfo | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [productsModalVisible, setProductsModalVisible] = useState(false)
 
@@ -84,7 +84,7 @@ const SupplyDraftDetail: React.FC = () => {
     try {
       const draftInfo = await suppliesApi.getDraftInfoV2(parseInt(draftId))
       setDraft(draftInfo)
-      setSupplyCreateStatus(draftInfo.supply_create_info as SupplyCreateStatusV2Response)
+      setSupplyCreateInfo(draftInfo.supply_create_info as SupplyCreateInfo)
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка загрузки данных черновика')
       console.error('Failed to load draft info:', error)
@@ -208,8 +208,7 @@ const SupplyDraftDetail: React.FC = () => {
         createRequest
       )
 
-      // Backend polls until terminal status, so we get final result directly
-      setSupplyCreateStatus(createResponse as SupplyCreateStatusV2Response)
+      setSupplyCreateInfo(createResponse as SupplyCreateInfo)
       setCreatingSupply(false)
 
       if (createResponse.status === 'SUCCESS') {
@@ -385,7 +384,7 @@ const SupplyDraftDetail: React.FC = () => {
           <Title level={2}>Детали черновика поставки</Title>
 
           {/* Supply not created, expired draft alert */}
-          {isExpired && !supplyCreateStatus?.order_id && (
+          {isExpired && !supplyCreateInfo?.order_id && (
             <Alert
               title="Черновик устарел, черновики, созданные через api доступны 30 минут с момента создания. Пожалуйста, пересоздайте черновик для данного кластера."
               type="warning"
@@ -394,32 +393,32 @@ const SupplyDraftDetail: React.FC = () => {
           )}
 
           {/* Supply created, show status */}
-          {supplyCreateStatus?.order_id && (
+          {supplyCreateInfo?.order_id && (
             <div style={{ marginTop: '16px' }}>
               <Alert
                 title={
                   <Space orientation="vertical" size={4}>
                     <Text strong>
-                      {supplyCreateStatus.status === 'SUCCESS' ? 'Поставка успешно создана' :
-                        supplyCreateStatus.status === 'FAILED' ? 'Ошибка при создании поставки' :
+                      {supplyCreateInfo.status === 'SUCCESS' ? 'Поставка успешно создана' :
+                        supplyCreateInfo.status === 'FAILED' ? 'Ошибка при создании поставки' :
                           'Неизвестный статус'}
                     </Text>
-                    {supplyCreateStatus.order_id && (
-                      <Text>ID заказа: <Tag color="green">{String(supplyCreateStatus.order_id)}</Tag></Text>
+                    {supplyCreateInfo.order_id && (
+                      <Text>ID заказа: <Tag color="green">{String(supplyCreateInfo.order_id)}</Tag></Text>
                     )}
-                    {supplyCreateStatus.order_pass_status && (
-                      <Text>Данные водителя: <Tag color="green">{supplyCreateStatus.order_pass_status === 'Success' ? 'Заполнены' : supplyCreateStatus.order_pass_status === 'Failed' ? 'Не заполнены' : 'Нет информации'}</Tag></Text>
+                    {supplyCreateInfo.order_pass_status && (
+                      <Text>Данные водителя: <Tag color="green">{supplyCreateInfo.order_pass_status === 'Success' ? 'Заполнены' : supplyCreateInfo.order_pass_status === 'Failed' ? 'Не заполнены' : 'Нет информации'}</Tag></Text>
                     )}
-                    {'error_reasons' in supplyCreateStatus && Array.isArray(supplyCreateStatus.error_reasons) && supplyCreateStatus.error_reasons.length > 0 && (
+                    {'error_reasons' in supplyCreateInfo && Array.isArray(supplyCreateInfo.error_reasons) && supplyCreateInfo.error_reasons.length > 0 && (
                       <div style={{ marginTop: '4px' }}>
-                        {(supplyCreateStatus.error_reasons as string[]).map((err: string, i: number) => (
+                        {(supplyCreateInfo.error_reasons as string[]).map((err: string, i: number) => (
                           <div key={i} style={{ color: '#ff4d4f' }}>• {err}</div>
                         ))}
                       </div>
                     )}
-                    {'error_messages' in supplyCreateStatus && Array.isArray(supplyCreateStatus.error_messages) && supplyCreateStatus.error_messages.length > 0 && (
+                    {'error_messages' in supplyCreateInfo && Array.isArray(supplyCreateInfo.error_messages) && supplyCreateInfo.error_messages.length > 0 && (
                       <div style={{ marginTop: '4px' }}>
-                        {(supplyCreateStatus.error_messages as string[]).map((err: string, i: number) => (
+                        {(supplyCreateInfo.error_messages as string[]).map((err: string, i: number) => (
                           <div key={i} style={{ color: '#ff4d4f' }}>• {err}</div>
                         ))}
                       </div>
@@ -427,8 +426,8 @@ const SupplyDraftDetail: React.FC = () => {
                   </Space>
                 }
                 type={
-                  supplyCreateStatus.status === 'SUCCESS' ? 'success' :
-                    supplyCreateStatus.status === 'FAILED' ? 'error' : 'info'
+                  supplyCreateInfo.status === 'SUCCESS' ? 'success' :
+                    supplyCreateInfo.status === 'FAILED' ? 'error' : 'info'
                 }
                 showIcon
                 style={{ borderRadius: '12px' }}
@@ -437,7 +436,7 @@ const SupplyDraftDetail: React.FC = () => {
           ) }
 
           {/* Supply not created, show warehouse selection */}
-          {!supplyCreateStatus?.order_id && (
+          {!supplyCreateInfo?.order_id && (
             <div style={{ padding: '24px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
               <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 {/* Warehouse selection */}

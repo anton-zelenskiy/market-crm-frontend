@@ -242,6 +242,13 @@ export interface DraftStorageWarehouse {
   products?: DraftProductInfo[]
 }
 
+export interface SupplyCreateInfo {
+  error_reasons?: string[] | null
+  order_id?: number | null
+  status: string
+  order_pass_status?: SupplyOrderPassStatus | null
+}
+
 export interface SupplyDraft {
   id: number
   connection_id: number
@@ -252,12 +259,7 @@ export interface SupplyDraft {
   errors: any[] | null
   storage_warehouses: DraftStorageWarehouse[]
   drop_off_warehouse: DropOffWarehouse | null
-  supply_create_info?: {
-    error_reasons?: string[] | null
-    order_id?: number | null
-    status: string
-    order_pass_status?: SupplyOrderPassStatus | null
-  } | null
+  supply_create_info?: SupplyCreateInfo | null
   storage_warehouse_name?: string | null
   created_at: string
   updated_at: string
@@ -301,25 +303,8 @@ export interface CreateSupplyFromDraftV2Request {
   timeslot: Timeslot
 }
 
-export interface CreateSupplyFromDraftV2Response {
-  error_reasons?: string[] | null
-  order_id?: number | null
-  status: string
-}
-
-// V2 API interfaces
-export interface SupplyCreateStatusV2Request {
-  draft_id: number
-}
-
 export type SupplyOrderPassStatus = 'Success' | 'Failed' | 'InProgress' | 'Unknown'
 
-export interface SupplyCreateStatusV2Response {
-  error_reasons?: string[] | null
-  order_id?: number | null
-  status: string
-  order_pass_status?: SupplyOrderPassStatus | null
-}
 
 export interface SupplyDraftListResponse {
   drafts: SupplyDraft[]
@@ -598,20 +583,9 @@ export const suppliesApi = {
   createSupplyFromDraftV2: async (
     draftId: number,
     request: CreateSupplyFromDraftV2Request
-  ): Promise<CreateSupplyFromDraftV2Response> => {
+  ): Promise<SupplyCreateInfo> => {
     const response = await api.post(
       `/supplies/v2/supply-draft/${draftId}/create-supply`,
-      request
-    )
-    return response.data
-  },
-
-  getSupplyCreateStatusV2: async (
-    draftId: number,
-    request: SupplyCreateStatusV2Request
-  ): Promise<SupplyCreateStatusV2Response> => {
-    const response = await api.post(
-      `/supplies/v2/supply-draft/${draftId}/status`,
       request
     )
     return response.data
