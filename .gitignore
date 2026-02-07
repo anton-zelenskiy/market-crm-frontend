@@ -24,8 +24,6 @@ dist-ssr
 *.sw?
 .vite
 .env
-market-crm-frontend.code-workspace
-docker-compose.override.yml
 
-.cursor
+docker-compose.override.yml
 .husky/_

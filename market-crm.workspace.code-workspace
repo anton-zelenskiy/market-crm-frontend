@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../market-crm"
+		},
+		{
+			"path": "../nginx-bot"
+		}
+	],
+	"settings": {}
+}
