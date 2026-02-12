@@ -549,12 +549,12 @@ export const suppliesApi = {
   createCrossdockDraft: async (
     request: CreateCrossdockDraftRequest
   ): Promise<SupplyDraft> => {
-    const response = await api.post('/supplies/v2/supply-draft', request)
+    const response = await api.post('/supplies/supply-draft', request)
     return response.data
   },
 
   getDraftInfoV2: async (draftId: number): Promise<SupplyDraft> => {
-    const response = await api.get(`/supplies/v2/supply-draft/${draftId}`)
+    const response = await api.get(`/supplies/supply-draft/${draftId}`)
     return response.data
   },
 
@@ -574,7 +574,7 @@ export const suppliesApi = {
     request: DraftTimeslotRequestV2
   ): Promise<DraftTimeslotResponseV2> => {
     const response = await api.post(
-      `/supplies/v2/supply-draft/${draftId}/timeslots`,
+      `/supplies/supply-draft/${draftId}/timeslots`,
       request
     )
     return response.data
@@ -585,7 +585,7 @@ export const suppliesApi = {
     request: CreateSupplyFromDraftV2Request
   ): Promise<SupplyCreateInfo> => {
     const response = await api.post(
-      `/supplies/v2/supply-draft/${draftId}/create-supply`,
+      `/supplies/supply-draft/${draftId}/create-supply`,
       request
     )
     return response.data

@@ -13,6 +13,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } f
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import Home from './pages/Home'
+import TariffDetail from './pages/TariffDetail'
 import DataSources from './pages/DataSources'
 import Companies from './pages/Companies'
 import CompanyDetail from './pages/CompanyDetail'
@@ -53,6 +55,11 @@ const DashboardLayout: React.FC = () => {
   const location = useLocation()
 
   const menuItems = [
+    {
+      key: '/',
+      icon: <LinkOutlined />,
+      label: <Link to="/">Главная</Link>,
+    },
     {
       key: '/connections',
       icon: <LinkOutlined />,
@@ -95,7 +102,7 @@ const DashboardLayout: React.FC = () => {
   // Determine selected menu key based on current path
   const getSelectedKey = () => {
     const path = location.pathname
-    if (path === '/' || path.startsWith('/connections')) {
+    if (path.startsWith('/connections')) {
       return '/connections'
     }
     if (path.startsWith('/companies')) {
@@ -163,7 +170,7 @@ const DashboardLayout: React.FC = () => {
             <Route path="/data-sources" element={<DataSources />} />
             <Route path="/clusters" element={<Clusters />} />
             <Route path="/reports" element={<Reports />} />
-            <Route path="/" element={<Navigate to="/connections" replace />} />
+
           </Routes>
         </Content>
       </Layout>
@@ -204,6 +211,8 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/tariff/:slug" element={<TariffDetail />} />
             <Route
               path="/*"
               element={
