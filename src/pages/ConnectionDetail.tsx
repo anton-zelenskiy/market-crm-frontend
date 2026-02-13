@@ -166,7 +166,7 @@ const ConnectionDetail: React.FC = () => {
     )
   }
 
-  if (!connection || !settings) {
+  if (!connection || !settings || !company) {
     return null
   }
 
@@ -198,6 +198,12 @@ const ConnectionDetail: React.FC = () => {
                     description: 'Планируйте и создавайте поставки на основе остатков и доступности складов',
                     buttonText: 'Поставки',
                     onClick: () => navigate(`/connections/${connection.id}/supply-templates`),
+                  },
+                  {
+                    title: 'Управление товарами поставщика',
+                    description: 'Используйте раздел для заполнения остатков товаров на складах поставщика.',
+                    buttonText: 'Товары поставщика',
+                    onClick: () => navigate(`/companies/${company.id}/vendor-products`),
                   },
                   {
                     title: 'Товары Ozon',

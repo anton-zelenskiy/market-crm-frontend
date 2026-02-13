@@ -7,6 +7,7 @@ import {
   DatabaseOutlined,
   ShopOutlined,
   LinkOutlined,
+  HomeOutlined,
   LogoutOutlined,
 } from '@ant-design/icons'
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'
@@ -57,7 +58,7 @@ const DashboardLayout: React.FC = () => {
   const menuItems = [
     {
       key: '/',
-      icon: <LinkOutlined />,
+      icon: <HomeOutlined />,
       label: <Link to="/">Главная</Link>,
     },
     {

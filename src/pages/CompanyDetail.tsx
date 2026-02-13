@@ -8,7 +8,6 @@ import {
   Table,
   message,
   Tag,
-  List,
   Spin,
   Alert,
   Descriptions,
@@ -90,35 +89,7 @@ const CompanyDetail: React.FC = () => {
             <Descriptions.Item label="Создано">
               {new Date(company.created_at).toLocaleString('ru-RU')}
             </Descriptions.Item>
-          </Descriptions> 
-
-          <Card size="small">
-              <List
-                itemLayout="horizontal"
-                dataSource={[
-                  {
-                    title: 'Управление товарами поставщика',
-                    description: 'Используйте раздел для заполнения остатков товаров на складах поставщика.',
-                    buttonText: 'Товары поставщика',
-                    onClick: () => navigate(`/companies/${id}/vendor-products`),
-                  },
-                ]}
-                renderItem={(item) => (
-                  <List.Item
-                    actions={[
-                      <Button type="primary" onClick={item.onClick} style={{ width: 140 }}>
-                        {item.buttonText}
-                      </Button>
-                    ]}
-                  >
-                    <List.Item.Meta
-                      title={<strong>{item.title}</strong>}
-                      description={item.description}
-                    />
-                  </List.Item>
-                )}
-              />
-            </Card>
+          </Descriptions>
 
           <div>
             <Title level={4} style={{ marginBottom: 16 }}>

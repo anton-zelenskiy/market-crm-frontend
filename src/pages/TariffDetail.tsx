@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Button, Radio, Typography, Space, message, Spin } from 'antd'
+import { Layout, Card, Button, Radio, Typography, Space, message, Spin } from 'antd'
 import { subscriptionsApi } from '../api/subscriptions'
 import type { Tariff } from '../api/subscriptions'
 import { useAuth } from '../context/AuthContext'
+import Header from '../components/Header'
+import Footer from '../components/Footer'
 
+const { Content } = Layout
 const { Title, Text, Paragraph } = Typography
 
 const TariffDetail: React.FC = () => {
@@ -54,67 +57,123 @@ const TariffDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <Spin size="large" />
-      </div>
+      <Layout style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#fafafa' }}>
+        <Header />
+        <Content style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+          <Spin size="large" />
+        </Content>
+        <Footer />
+      </Layout>
     )
   }
 
   if (!tariff) {
     return (
-      <div style={{ padding: '50px', textAlign: 'center' }}>
-        <Title level={2}>Тариф не найден</Title>
-      </div>
+      <Layout style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#fafafa' }}>
+        <Header />
+        <Content style={{ padding: '50px', textAlign: 'center', flex: 1 }}>
+          <Title level={2} style={{ color: '#1a1a1a' }}>Тариф не найден</Title>
+        </Content>
+        <Footer />
+      </Layout>
     )
   }
 
   return (
-    <div style={{ maxWidth: '800px', margin: '50px auto', padding: '0 24px' }}>
-      <Card>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <div>
-            <Title level={2}>{tariff.tariff_type.toUpperCase()}</Title>
-            <Paragraph>Выберите период подписки</Paragraph>
-          </div>
+    <Layout style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#fafafa' }}>
+      <Header />
+      <Content style={{ padding: '80px 24px', background: '#fafafa', flex: 1 }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <Card
+            style={{
+              border: '1px solid #f0f0f0',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+            }}
+          >
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+              <div>
+                <Title level={2} style={{ color: '#1a1a1a', fontWeight: 700 }}>
+                  {tariff.tariff_type.toUpperCase()}
+                </Title>
+                <Paragraph style={{ color: '#595959', fontSize: '16px' }}>
+                  Выберите период подписки
+                </Paragraph>
+              </div>
 
-          <div>
-            <Title level={4}>Преимущества тарифа:</Title>
-            <ul>
-              {tariff.options.map((option, index) => (
-                <li key={index}>{option}</li>
-              ))}
-            </ul>
-          </div>
+              <div>
+                <Title level={4} style={{ color: '#1a1a1a', fontWeight: 600 }}>Преимущества тарифа:</Title>
+                <ul style={{ color: '#595959', paddingLeft: '20px', marginTop: '12px' }}>
+                  {tariff.options.map((option, index) => (
+                    <li key={index} style={{ marginBottom: '8px' }}>{option}</li>
+                  ))}
+                </ul>
+              </div>
 
-          <div>
-            <Title level={4}>Период подписки:</Title>
-            <Radio.Group
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
-              style={{ width: '100%' }}
-            >
-              <Space direction="vertical">
-                {tariff.variants.map((variant) => (
-                  <Radio key={variant.id} value={variant.period}>
-                    {variant.period} месяц(ев) - {variant.price} ₽
-                  </Radio>
-                ))}
-              </Space>
-            </Radio.Group>
-          </div>
+              <div>
+                <Title level={4} style={{ color: '#1a1a1a', fontWeight: 600 }}>Период подписки:</Title>
+                <Radio.Group
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value)}
+                  style={{ width: '100%', marginTop: '16px' }}
+                >
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    {tariff.variants.map((variant) => (
+                      <Radio
+                        key={variant.id}
+                        value={variant.period}
+                        style={{
+                          padding: '12px',
+                          borderRadius: '4px',
+                          border: '1px solid #f0f0f0',
+                          width: '100%',
+                        }}
+                      >
+                        <span style={{ color: '#1a1a1a' }}>
+                          {variant.period} месяц(ев) - {variant.price} ₽
+                        </span>
+                      </Radio>
+                    ))}
+                  </Space>
+                </Radio.Group>
+              </div>
 
-          {selectedVariant && (
-            <div style={{ padding: '16px', background: '#f0f2f5', borderRadius: '4px' }}>
-              <Text strong>Итого: {selectedVariant.price} ₽ за {selectedVariant.period} месяц(ев)</Text>
-            </div>
-          )}
+              {selectedVariant && (
+                <div
+                  style={{
+                    padding: '20px',
+                    background: '#fafafa',
+                    borderRadius: '8px',
+                    border: '1px solid #f0f0f0',
+                  }}
+                >
+                  <Text strong style={{ color: '#1a1a1a', fontSize: '16px' }}>
+                    Итого: {selectedVariant.price} ₽ за {selectedVariant.period} месяц(ев)
+                  </Text>
+                </div>
+              )}
 
-          <Button type="primary" size="large" block onClick={handleConnect}>
-            Подключить
-          </Button>
-        </Space>
-      </Card>
-    </div>
+              <Button
+                type="primary"
+                size="large"
+                block
+                onClick={handleConnect}
+                style={{
+                  background: '#1a1a1a',
+                  borderColor: '#1a1a1a',
+                  height: '48px',
+                  fontWeight: 500,
+                  marginTop: '8px',
+                }}
+              >
+                Подключить
+              </Button>
+            </Space>
+          </Card>
+        </div>
+      </Content>
+      <Footer />
+    </Layout>
   )
 }
 
