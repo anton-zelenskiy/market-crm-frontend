@@ -10,10 +10,10 @@ import {
   message,
   Card,
   Typography,
-  Badge,
   Divider,
   Row,
   Col,
+  Tag,
 } from 'antd'
 import {
   PlusOutlined,
@@ -116,11 +116,15 @@ const Companies: React.FC = () => {
       title: 'API Подключения',
       key: 'connections',
       render: (_: any, record: Company) => (
-        <Badge count={record.connections?.length || 0} showZero></Badge>
+        <div>
+          {record.connections?.map((connection) => (
+            <Tag color="blue" key={connection.data_source?.name}>{connection.data_source?.name}</Tag>
+          ))}
+        </div>
       ),
     },
     {
-      title: 'Создано',
+      title: 'Дата создания',
       dataIndex: 'created_at',
       key: 'created_at',
       render: (date: string) => new Date(date).toLocaleDateString('ru-RU'),

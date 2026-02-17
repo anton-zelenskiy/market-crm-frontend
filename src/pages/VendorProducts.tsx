@@ -192,9 +192,9 @@ const VendorProducts: React.FC = () => {
             <Space>
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(`/companies/${companyId}`)}
+                onClick={() => navigate(-1 as any)}
               >
-                Назад к компании
+                Назад
               </Button>
             </Space>
             <Space>

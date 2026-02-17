@@ -3,7 +3,7 @@ import { Layout, Menu, Button, theme, ConfigProvider } from 'antd'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  // UploadOutlined,
+  UploadOutlined,
   DatabaseOutlined,
   ShopOutlined,
   LinkOutlined,
@@ -12,10 +12,11 @@ import {
 } from '@ant-design/icons'
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Home from './pages/Home'
-import TariffDetail from './pages/TariffDetail'
+import Login from './pages/landing/Login'
+import Register from './pages/landing/Register'
+import Home from './pages/landing/Home'
+import TariffDetail from './pages/landing/TariffDetail'
+import Tariffs from './pages/landing/Tariffs'
 import DataSources from './pages/DataSources'
 import Companies from './pages/Companies'
 import CompanyDetail from './pages/CompanyDetail'
@@ -47,15 +48,29 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   return <>{children}</>
 }
 
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAdmin, isLoading } = useAuth()
+
+  if (isLoading) {
+    return <div>Загрузка...</div>
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />
+  }
+
+  return <>{children}</>
+}
+
 const DashboardLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false)
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken()
-  const { logout } = useAuth()
+  const { logout, isAdmin } = useAuth()
   const location = useLocation()
 
-  const menuItems = [
+  const allMenuItems = [
     {
       key: '/',
       icon: <HomeOutlined />,
@@ -71,16 +86,18 @@ const DashboardLayout: React.FC = () => {
       icon: <ShopOutlined />,
       label: <Link to="/companies">Компании</Link>,
     },
-    // {
-    //   key: '/data-sources',
-    //   icon: <DatabaseOutlined />,
-    //   label: <Link to="/data-sources">Источники данных</Link>,
-    // },
-    // {
-    //   key: '/reports',
-    //   icon: <UploadOutlined />,
-    //   label: <Link to="/reports">Отчеты</Link>,
-    // },
+    {
+      key: '/data-sources',
+      icon: <DatabaseOutlined />,
+      label: <Link to="/data-sources">Источники данных</Link>,
+      adminOnly: true,
+    },
+    {
+      key: '/reports',
+      icon: <UploadOutlined />,
+      label: <Link to="/reports">Отчеты</Link>,
+      adminOnly: true,
+    },
     {
       key: '/clusters',
       icon: <DatabaseOutlined />,
@@ -93,6 +110,8 @@ const DashboardLayout: React.FC = () => {
       onClick: logout,
     },
   ]
+
+  const menuItems = allMenuItems.filter((item) => !item.adminOnly || isAdmin)
 
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key === 'logout') {
@@ -168,10 +187,23 @@ const DashboardLayout: React.FC = () => {
             <Route path="/connections/:connectionId/supply-templates" element={<SupplyTemplates />} />
             <Route path="/connections/:connectionId/supply-templates/:snapshotId" element={<SupplyTemplateDetail />} />
             <Route path="/connections/:connectionId/supply-templates/:snapshotId/drafts/:draftId" element={<SupplyDraftDetail />} />
-            <Route path="/data-sources" element={<DataSources />} />
+            <Route
+              path="/data-sources"
+              element={
+                <AdminRoute>
+                  <DataSources />
+                </AdminRoute>
+              }
+            />
             <Route path="/clusters" element={<Clusters />} />
-            <Route path="/reports" element={<Reports />} />
-
+            <Route
+              path="/reports"
+              element={
+                <AdminRoute>
+                  <Reports />
+                </AdminRoute>
+              }
+            />
           </Routes>
         </Content>
       </Layout>
@@ -213,6 +245,7 @@ const App: React.FC = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/" element={<Home />} />
+            <Route path="/tariffs" element={<Tariffs />} />
             <Route path="/tariff/:slug" element={<TariffDetail />} />
             <Route
               path="/*"

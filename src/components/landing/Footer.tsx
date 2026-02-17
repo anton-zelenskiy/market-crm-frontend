@@ -33,7 +33,7 @@ const Footer: React.FC = () => {
                   style={{
                     width: '32px',
                     height: '32px',
-                    background: '#4CAF50',
+                    background: 'linear-gradient(135deg, #1a1a1a 0%, #45a049 100%)',
                     borderRadius: '6px',
                     display: 'flex',
                     alignItems: 'center',
@@ -52,7 +52,6 @@ const Footer: React.FC = () => {
               <Text style={{ color: '#90A4AE', fontSize: '14px', lineHeight: '1.6' }}>
                 Copyright © {new Date().getFullYear()} Market CRM.
                 <br />
-                All rights reserved
               </Text>
               <Space size="middle">
                 <div
@@ -67,7 +66,7 @@ const Footer: React.FC = () => {
                     cursor: 'pointer',
                     transition: 'background 0.3s',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#4CAF50')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#1a1a1a')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = '#37474F')}
                 >
                   <InstagramOutlined style={{ color: '#90A4AE', fontSize: '16px' }} />
@@ -84,7 +83,7 @@ const Footer: React.FC = () => {
                     cursor: 'pointer',
                     transition: 'background 0.3s',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#4CAF50')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#1a1a1a')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = '#37474F')}
                 >
                   <GlobalOutlined style={{ color: '#90A4AE', fontSize: '16px' }} />
@@ -101,7 +100,7 @@ const Footer: React.FC = () => {
                     cursor: 'pointer',
                     transition: 'background 0.3s',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#4CAF50')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#1a1a1a')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = '#37474F')}
                 >
                   <TwitterOutlined style={{ color: '#90A4AE', fontSize: '16px' }} />
@@ -118,7 +117,7 @@ const Footer: React.FC = () => {
                     cursor: 'pointer',
                     transition: 'background 0.3s',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#4CAF50')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#1a1a1a')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = '#37474F')}
                 >
                   <YoutubeOutlined style={{ color: '#90A4AE', fontSize: '16px' }} />
@@ -128,11 +127,11 @@ const Footer: React.FC = () => {
           </Col>
 
           <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" size="middle">
+            <Space orientation="vertical" size="middle">
               <Title level={5} style={{ margin: 0, fontWeight: 600, color: '#ffffff', fontSize: '16px' }}>
                 Компания
               </Title>
-              <Space direction="vertical" size="small">
+              <Space orientation="vertical" size="small">
                 <Link
                   to="/about"
                   style={{
@@ -176,7 +175,7 @@ const Footer: React.FC = () => {
                   Контакты
                 </Link>
                 <Link
-                  to="/tariff"
+                  to="/tariffs"
                   style={{
                     color: '#90A4AE',
                     fontSize: '14px',
@@ -194,11 +193,11 @@ const Footer: React.FC = () => {
           </Col>
 
           <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" size="middle">
+            <Space orientation="vertical" size="middle">
               <Title level={5} style={{ margin: 0, fontWeight: 600, color: '#ffffff', fontSize: '16px' }}>
                 Поддержка
               </Title>
-              <Space direction="vertical" size="small">
+              <Space orientation="vertical" size="small">
                 <Link
                   to="/help"
                   style={{
@@ -211,7 +210,7 @@ const Footer: React.FC = () => {
                   onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
                   onMouseLeave={(e) => (e.currentTarget.style.color = '#90A4AE')}
                 >
-                  Центр помощи
+                  Инструкция
                 </Link>
                 <Link
                   to="/terms"
@@ -225,56 +224,14 @@ const Footer: React.FC = () => {
                   onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
                   onMouseLeave={(e) => (e.currentTarget.style.color = '#90A4AE')}
                 >
-                  Условия использования
-                </Link>
-                <Link
-                  to="/legal"
-                  style={{
-                    color: '#90A4AE',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    display: 'block',
-                    transition: 'color 0.3s',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#90A4AE')}
-                >
-                  Правовая информация
-                </Link>
-                <Link
-                  to="/privacy"
-                  style={{
-                    color: '#90A4AE',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    display: 'block',
-                    transition: 'color 0.3s',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#90A4AE')}
-                >
-                  Политика конфиденциальности
-                </Link>
-                <Link
-                  to="/status"
-                  style={{
-                    color: '#90A4AE',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    display: 'block',
-                    transition: 'color 0.3s',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#90A4AE')}
-                >
-                  Статус
+                  Оферта
                 </Link>
               </Space>
             </Space>
           </Col>
 
           <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
               <Title level={5} style={{ margin: 0, fontWeight: 600, color: '#ffffff', fontSize: '16px' }}>
                 Оставайтесь в курсе
               </Title>
@@ -288,9 +245,9 @@ const Footer: React.FC = () => {
                     flex: 1,
                     background: '#37474F',
                     border: 'none',
-                    borderRadius: '6px 0 0 6px',
+                    borderRadius: '12px 0 0 12px',
                     color: '#ffffff',
-                    padding: '10px 16px',
+                    // padding: '10px 16px',
                   }}
                   styles={{
                     input: {
@@ -304,14 +261,7 @@ const Footer: React.FC = () => {
                   icon={<SendOutlined />}
                   onClick={handleSubscribe}
                   style={{
-                    background: '#4CAF50',
-                    borderColor: '#4CAF50',
-                    borderRadius: '0 6px 6px 0',
-                    height: 'auto',
-                    padding: '10px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    borderRadius: '0 12px 12px 0',
                   }}
                 />
               </div>

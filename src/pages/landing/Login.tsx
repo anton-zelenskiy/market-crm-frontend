@@ -2,9 +2,10 @@ import React, { useState } from 'react'
 import { Form, Input, Button, Card, Alert, Typography } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useNavigate, Link } from 'react-router-dom'
-import api from '../api/axios'
-import { useAuth } from '../context/AuthContext'
-import { APP_NAME } from '../constants'
+import { login as loginApi } from '../../api/auth'
+import { useAuth } from '../../context/AuthContext'
+import { APP_NAME } from '../../constants'
+import './landing.css'
 
 const { Title } = Typography
 
@@ -18,11 +19,11 @@ const Login: React.FC = () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await api.post('/auth/login', {
+      const response = await loginApi({
         email: values.email,
         password: values.password,
       })
-      login(response.data.access_token, response.data.refresh_token)
+      await login(response.access_token, response.refresh_token)
       navigate('/')
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Ошибка входа')
@@ -32,14 +33,14 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f0f2f5' }}>
-      <Card style={{ width: 400 }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+    <div className="auth-container">
+      <Card className="auth-card">
+        <div className="auth-header">
           <Title level={2}>{APP_NAME}</Title>
           <Title level={4} type="secondary">Вход</Title>
         </div>
         
-        {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 24 }} />}
+        {error && <Alert message={error} type="error" showIcon className="auth-error" />}
         
         <Form
           name="login_form"
@@ -62,12 +63,17 @@ const Login: React.FC = () => {
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading}>
+            <Button 
+              type="primary" 
+              htmlType="submit" 
+              block 
+              loading={loading}
+            >
               Войти
             </Button>
           </Form.Item>
 
-          <div style={{ textAlign: 'center' }}>
+          <div className="auth-link">
             <Typography.Text>Нет аккаунта? <Link to="/register">Зарегистрироваться</Link></Typography.Text>
           </div>
         </Form>
@@ -77,4 +83,3 @@ const Login: React.FC = () => {
 }
 
 export default Login
-
