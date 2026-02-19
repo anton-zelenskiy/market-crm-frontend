@@ -9,11 +9,13 @@ export default defineConfig({
       output: {
         manualChunks: (id) => {
           if (id.includes('node_modules')) {
-            if (id.includes('react-dom') || id.includes('react/')) {
+            if (
+              id.includes('react-dom') ||
+              id.includes('react/') ||
+              id.includes('antd') ||
+              id.includes('@ant-design')
+            ) {
               return 'react-vendor'
-            }
-            if (id.includes('antd') || id.includes('@ant-design')) {
-              return 'antd'
             }
             if (id.includes('react-router')) {
               return 'router'
@@ -26,10 +28,14 @@ export default defineConfig({
     chunkSizeWarningLimit: 1400,
   },
   optimizeDeps: {
-    include: ['react', 'react-dom'],
+    include: ['react', 'react-dom', 'antd'],
   },
   resolve: {
     dedupe: ['react', 'react-dom'],
+    alias: {
+      react: 'react',
+      'react-dom': 'react-dom',
+    },
   },
   server: {
     host: true,
