@@ -4,10 +4,12 @@ export interface ConnectionSettings {
   id: number
   connection_id: number
   logistics_distance: number
+  auto_create_cargoes: boolean
 }
 
 export interface ConnectionSettingsUpdate {
   logistics_distance?: number
+  auto_create_cargoes?: boolean
 }
 
 export const connectionSettingsApi = {

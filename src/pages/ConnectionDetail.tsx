@@ -13,6 +13,7 @@ import {
   List,
   InputNumber,
   Form,
+  Switch,
 } from 'antd'
 import {
   ArrowLeftOutlined,
@@ -78,13 +79,14 @@ const ConnectionDetail: React.FC = () => {
     }
   }
 
-  const handleUpdateSettings = async (values: { logistics_distance: number }) => {
+  const handleUpdateSettings = async (values: { logistics_distance: number; auto_create_cargoes: boolean }) => {
     if (!connectionId || !connection) return
 
     setSavingSettings(true)
     try {
       const updated = await connectionSettingsApi.update(parseInt(connectionId), {
         logistics_distance: values.logistics_distance,
+        auto_create_cargoes: values.auto_create_cargoes,
       })
       setSettings(updated)
       message.success('Настройки успешно сохранены')
@@ -240,9 +242,12 @@ const ConnectionDetail: React.FC = () => {
             <Form
               key={`${connection.id}-${settings.id}`}
               form={form}
-              layout="inline"
+              layout="vertical"
               onFinish={handleUpdateSettings}
-              initialValues={{ logistics_distance: settings.logistics_distance }}
+              initialValues={{ 
+                logistics_distance: settings.logistics_distance,
+                auto_create_cargoes: settings.auto_create_cargoes,
+              }}
             >
               <Form.Item
                 name="logistics_distance"
@@ -250,6 +255,13 @@ const ConnectionDetail: React.FC = () => {
                 rules={[{ required: true, message: 'Введите количество дней' }]}
               >
                 <InputNumber min={1} max={365} />
+              </Form.Item>
+              <Form.Item
+                name="auto_create_cargoes"
+                label="Автоматически создавать грузоместа"
+                valuePropName="checked"
+              >
+                <Switch />
               </Form.Item>
               <Form.Item>
                 <Button

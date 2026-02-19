@@ -11,6 +11,7 @@ export interface SupplyOrder {
   cargoes_count: number | null
   errors: string[] | null
   external_order_id?: string | null
+  default_external_order_id?: number | null
 }
 
 export interface SupplyOrdersResponse {
@@ -75,7 +76,7 @@ export interface CreateCargoesResponse {
 export interface DownloadDocumentsRequest {
   connection_id: number
   order_id: string
-  external_order_id: string
+  external_order_id?: string | null
 }
 
 export type SupplyCalculationStrategy =
@@ -343,8 +344,10 @@ export const suppliesApi = {
     const params = new URLSearchParams({
       connection_id: request.connection_id.toString(),
       order_id: request.order_id,
-      external_order_id: request.external_order_id,
     })
+    if (request.external_order_id) {
+      params.append('external_order_id', request.external_order_id)
+    }
     const response = await api.get(`/supplies/${supplyId}/documents?${params}`, {
       responseType: 'blob',
     })

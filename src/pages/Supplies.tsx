@@ -74,8 +74,9 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
   const [docForm] = Form.useForm()
 
   useEffect(() => {
-    docForm.setFieldsValue({ external_order_id: supply.external_order_id ?? '' })
-  }, [supply.supply_id, supply.external_order_id, docForm])
+    const orderId = supply.external_order_id ?? supply.default_external_order_id?.toString() ?? ''
+    docForm.setFieldsValue({ external_order_id: orderId })
+  }, [supply.supply_id, supply.external_order_id, supply.default_external_order_id, docForm])
 
   return (
     <div style={{ padding: '16px', minWidth: '300px' }}>
@@ -118,13 +119,11 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
         <Typography.Title level={5}>Скачать документы к поставке</Typography.Title>
         <Form.Item
           name="external_order_id"
-          label="Номер внешнего заказа"
-          initialValue={supply.external_order_id ?? ''}
-          rules={[
-            { required: true, message: 'Пожалуйста, введите номер внешнего заказа' },
-          ]}
+          label="Номер внешнего заказа (необязательно)"
+          required={false}
+          initialValue={supply.external_order_id ?? supply.default_external_order_id?.toString() ?? ''}
         >
-          <Input placeholder="Для транспортной компании" />
+          <Input placeholder="Укажите, если нужно переопределить" />
         </Form.Item>
         <Form.Item>
           <Button
@@ -299,16 +298,16 @@ const Supplies: React.FC = () => {
 
     const supplyId = supply.supply_id
     setDownloadingDocs((prev) => ({ ...prev, [supplyId]: true }))
-    let downloadSucceeded = false
 
     try {
       const blob = await suppliesApi.downloadDocuments(supplyId, {
         connection_id: connection.id,
         order_id: supply.order_id.toString(),
-        external_order_id: externalOrderId,
+        external_order_id: externalOrderId || null,
       })
 
-      const filename = `${externalOrderId} ${supply.storage_warehouse_name}.zip`
+      const displayOrderId = externalOrderId || supply.default_external_order_id?.toString() || supplyId
+      const filename = `${displayOrderId} ${supply.storage_warehouse_name}.zip`
 
       // Create download link using constructed filename
       const url = window.URL.createObjectURL(blob)
@@ -321,22 +320,14 @@ const Supplies: React.FC = () => {
       window.URL.revokeObjectURL(url)
 
       message.success('Документы успешно скачаны')
-      downloadSucceeded = true
+
+      await loadSupplies(selectedStates)
     } catch (error: any) {
       message.error(
         error.response?.data?.detail || 'Ошибка скачивания документов'
       )
     } finally {
       setDownloadingDocs((prev) => ({ ...prev, [supplyId]: false }))
-      if (downloadSucceeded) {
-        setSupplies((prev) =>
-          prev.map((s) =>
-            s.supply_id === supplyId
-              ? { ...s, external_order_id: externalOrderId }
-              : s
-          )
-        )
-      }
     }
   }
 
@@ -423,6 +414,9 @@ const Supplies: React.FC = () => {
       dataIndex: 'external_order_id',
       key: 'external_order_id',
       width: 120,
+      render: (_: any, record: SupplyOrder) => {
+        return record.external_order_id ?? record.default_external_order_id ?? '-'
+      },
     },
     {
       title: 'Действия',
