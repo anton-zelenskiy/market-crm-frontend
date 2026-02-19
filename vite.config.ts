@@ -3,46 +3,22 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      // Ensure React is properly transformed
+      jsxRuntime: 'automatic',
+    }),
+  ],
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            const reactDeps = [
-              'react',
-              'react-dom',
-              'react-router',
-              'antd',
-              '@ant-design',
-              'ag-grid-react',
-              'ag-grid-community',
-            ]
-            
-            if (reactDeps.some(dep => id.includes(dep))) {
-              return 'react-vendor'
-            }
-            
-            return 'vendor'
-          }
-        },
-      },
-      external: [],
-    },
+    // Let Vite handle chunking automatically - it respects dependency order
+    // This ensures React loads before any libraries that depend on it
     chunkSizeWarningLimit: 1400,
-    commonjsOptions: {
-      include: [/node_modules/],
-    },
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'antd', 'ag-grid-react', 'ag-grid-community', 'react-router-dom'],
   },
   resolve: {
     dedupe: ['react', 'react-dom'],
-    alias: {
-      react: 'react',
-      'react-dom': 'react-dom',
-    },
   },
   server: {
     host: true,
