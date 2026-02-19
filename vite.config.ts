@@ -9,34 +9,33 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (
-              id.includes('react-dom') ||
-              id.includes('react/') ||
-              id.includes('antd') ||
-              id.includes('@ant-design') ||
-              id.includes('ag-grid-react') ||
-              id.includes('ag-grid-community')
-            ) {
+            const reactDeps = [
+              'react',
+              'react-dom',
+              'react-router',
+              'antd',
+              '@ant-design',
+              'ag-grid-react',
+              'ag-grid-community',
+            ]
+            
+            if (reactDeps.some(dep => id.includes(dep))) {
               return 'react-vendor'
             }
-            if (id.includes('react-router')) {
-              return 'router'
-            }
+            
             return 'vendor'
           }
         },
-        chunkFileNames: (chunkInfo) => {
-          if (chunkInfo.name === 'react-vendor') {
-            return 'assets/react-vendor-[hash].js'
-          }
-          return 'assets/[name]-[hash].js'
-        },
       },
+      external: [],
     },
     chunkSizeWarningLimit: 1400,
+    commonjsOptions: {
+      include: [/node_modules/],
+    },
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'antd', 'ag-grid-react', 'ag-grid-community'],
+    include: ['react', 'react-dom', 'antd', 'ag-grid-react', 'ag-grid-community', 'react-router-dom'],
   },
   resolve: {
     dedupe: ['react', 'react-dom'],
