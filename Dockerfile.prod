@@ -8,7 +8,7 @@ COPY package*.json ./
 
 # Install dependencies with memory limit
 # Use --max-old-space-size to limit Node.js memory usage
-RUN NODE_OPTIONS="--max-old-space-size=512" npm ci --only=production=false
+RUN NODE_OPTIONS="--max-old-space-size=576" npm ci --only=production=false
 
 # Copy source code
 COPY . .
