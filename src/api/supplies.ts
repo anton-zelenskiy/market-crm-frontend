@@ -237,6 +237,7 @@ export interface SupplyCreateInfo {
   order_id?: number | null
   status: string
   order_pass_status?: SupplyOrderPassStatus | null
+  cargoes_created?: boolean
 }
 
 export interface SupplyDraft {

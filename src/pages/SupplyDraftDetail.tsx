@@ -26,6 +26,8 @@ import localeData from 'dayjs/plugin/localeData'
 import updateLocale from 'dayjs/plugin/updateLocale'
 import {
   ArrowLeftOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons'
 import {
   suppliesApi,
@@ -394,45 +396,66 @@ const SupplyDraftDetail: React.FC = () => {
 
           {/* Supply created, show status */}
           {supplyCreateInfo?.order_id && (
-            <div style={{ marginTop: '16px' }}>
-              <Alert
-                title={
-                  <Space orientation="vertical" size={4}>
-                    <Text strong>
-                      {supplyCreateInfo.status === 'SUCCESS' ? 'Поставка успешно создана' :
-                        supplyCreateInfo.status === 'FAILED' ? 'Ошибка при создании поставки' :
-                          'Неизвестный статус'}
-                    </Text>
-                    {supplyCreateInfo.order_id && (
-                      <Text>ID заказа: <Tag color="green">{String(supplyCreateInfo.order_id)}</Tag></Text>
+            <Card
+              title={
+                <Text strong>
+                  {supplyCreateInfo.status === 'SUCCESS' ? 'Поставка успешно создана' :
+                    supplyCreateInfo.status === 'FAILED' ? 'Ошибка при создании поставки' :
+                      'Неизвестный статус'}
+                </Text>
+              }
+              style={{
+                marginTop: '16px',
+                borderRadius: '12px',
+                borderLeftWidth: 4,
+                borderLeftColor:
+                  supplyCreateInfo.status === 'SUCCESS' ? '#52c41a' :
+                    supplyCreateInfo.status === 'FAILED' ? '#ff4d4f' : '#1890ff',
+              }}
+            >
+              <Space orientation="vertical" size={4} style={{ width: '100%' }}>
+                {supplyCreateInfo.order_id && (
+                  <Text>
+                    Поставка (ID: {String(supplyCreateInfo.order_id)}) создана: 
+                      <Button style={{ marginLeft: '8px', padding: '8px' }} href={`https://seller.ozon.ru/app/supply/orders/${supplyCreateInfo.order_id}`} target="_blank" rel="noopener noreferrer">Открыть в Ozon</Button>
+                  </Text>
+                )}
+                {supplyCreateInfo.order_pass_status && (
+                  <Text>
+                    Данные водителя установлены{' '}
+                    {supplyCreateInfo.order_pass_status === 'Success' ? (
+                      <CheckCircleOutlined style={{ color: '#52c41a', marginLeft: 4 }} />
+                    ) : supplyCreateInfo.order_pass_status === 'Failed' ? (
+                      <CloseCircleOutlined style={{ color: '#ff4d4f', marginLeft: 4 }} />
+                    ) : null}
+                  </Text>
+                )}
+                {supplyCreateInfo.cargoes_created !== undefined && (
+                  <Text>
+                    Грузоместа созданы{' '}
+                    {supplyCreateInfo.cargoes_created ? (
+                      <CheckCircleOutlined style={{ color: '#52c41a', marginLeft: 4 }} />
+                    ) : (
+                      <CloseCircleOutlined style={{ color: '#ff4d4f', marginLeft: 4 }} />
                     )}
-                    {supplyCreateInfo.order_pass_status && (
-                      <Text>Данные водителя: <Tag color="green">{supplyCreateInfo.order_pass_status === 'Success' ? 'Заполнены' : supplyCreateInfo.order_pass_status === 'Failed' ? 'Не заполнены' : 'Нет информации'}</Tag></Text>
-                    )}
-                    {'error_reasons' in supplyCreateInfo && Array.isArray(supplyCreateInfo.error_reasons) && supplyCreateInfo.error_reasons.length > 0 && (
-                      <div style={{ marginTop: '4px' }}>
-                        {(supplyCreateInfo.error_reasons as string[]).map((err: string, i: number) => (
-                          <div key={i} style={{ color: '#ff4d4f' }}>• {err}</div>
-                        ))}
-                      </div>
-                    )}
-                    {'error_messages' in supplyCreateInfo && Array.isArray(supplyCreateInfo.error_messages) && supplyCreateInfo.error_messages.length > 0 && (
-                      <div style={{ marginTop: '4px' }}>
-                        {(supplyCreateInfo.error_messages as string[]).map((err: string, i: number) => (
-                          <div key={i} style={{ color: '#ff4d4f' }}>• {err}</div>
-                        ))}
-                      </div>
-                    )}
-                  </Space>
-                }
-                type={
-                  supplyCreateInfo.status === 'SUCCESS' ? 'success' :
-                    supplyCreateInfo.status === 'FAILED' ? 'error' : 'info'
-                }
-                showIcon
-                style={{ borderRadius: '12px' }}
-              />
-            </div>
+                  </Text>
+                )}
+                {'error_reasons' in supplyCreateInfo && Array.isArray(supplyCreateInfo.error_reasons) && supplyCreateInfo.error_reasons.length > 0 && (
+                  <div style={{ marginTop: '4px' }}>
+                    {(supplyCreateInfo.error_reasons as string[]).map((err: string, i: number) => (
+                      <div key={i} style={{ color: '#ff4d4f' }}>• {err}</div>
+                    ))}
+                  </div>
+                )}
+                {'error_messages' in supplyCreateInfo && Array.isArray(supplyCreateInfo.error_messages) && supplyCreateInfo.error_messages.length > 0 && (
+                  <div style={{ marginTop: '4px' }}>
+                    {(supplyCreateInfo.error_messages as string[]).map((err: string, i: number) => (
+                      <div key={i} style={{ color: '#ff4d4f' }}>• {err}</div>
+                    ))}
+                  </div>
+                )}
+              </Space>
+            </Card>
           ) }
 
           {/* Supply not created, show warehouse selection */}
