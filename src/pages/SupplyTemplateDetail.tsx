@@ -67,14 +67,12 @@ const STRATEGY_LABELS: Record<SupplyCalculationStrategy, string> = {
   average_sales: 'По средним продажам',
   average_sales_with_localization: 'По средним продажам с локализацией',
   dynamic_percentages: 'Динамические проценты',
-  manual_xlsx: 'Загрузить вручную',
 }
 
 const VENDOR_STOCKS_COLUMN_LABELS: Record<SupplyCalculationStrategy, string> = {
   average_sales: 'Остатки на заводе',
   average_sales_with_localization: 'Остатки на заводе',
   dynamic_percentages: 'План поставок',
-  manual_xlsx: 'План поставок',
 }
 
 const getStrategyLabel = (strategy: SupplyCalculationStrategy | null | undefined): string => {

@@ -248,7 +248,7 @@ const SupplyDraftDetail: React.FC = () => {
     return (
       <Card>
         <Alert
-          message="Черновик не найден"
+          title="Черновик не найден"
           description="Не удалось загрузить данные черновика"
           type="error"
           showIcon

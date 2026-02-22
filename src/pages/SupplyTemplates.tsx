@@ -174,13 +174,9 @@ const SupplyTemplates: React.FC = () => {
             : undefined,
       }
 
-      const fileList = values.supply_data_file
-      const firstFile = fileList?.[0]?.originFileObj as File | undefined
-
       const newSnapshot = await suppliesApi.createSnapshot(
         parseInt(connectionId),
-        config,
-        firstFile
+        config
       )
       setModalVisible(false)
 
@@ -193,38 +189,6 @@ const SupplyTemplates: React.FC = () => {
       )
     } finally {
       setCreating(false)
-    }
-  }
-
-  const handleDownloadManualXlsxTemplate = async (values: {
-    cluster_ids?: number[]
-    offer_ids?: string[]
-  }) => {
-    if (!connectionId) return
-
-    try {
-      const blob = await suppliesApi.downloadManualXlsxTemplate(
-        parseInt(connectionId),
-        {
-          cluster_ids:
-            (values.cluster_ids?.length ?? 0) > 0
-              ? values.cluster_ids
-              : undefined,
-          offer_ids:
-            (values.offer_ids?.length ?? 0) > 0 ? values.offer_ids : undefined,
-        }
-      )
-
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `Шаблон_поставок_${company?.name || connectionId}.xlsx`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
-    } catch (error: any) {
-      message.error('Ошибка скачивания XLSX шаблона')
     }
   }
 
@@ -244,8 +208,6 @@ const SupplyTemplates: React.FC = () => {
         return 'По средним продажам'
       case 'dynamic_percentages':
         return 'Динамические проценты'
-      case 'manual_xlsx':
-        return 'Загрузить вручную'
       case 'average_sales_with_localization':
         return 'По средним продажам с локализацией'
       default:
@@ -356,7 +318,6 @@ const SupplyTemplates: React.FC = () => {
             loadingProducts={loadingProducts}
             warehouseLoading={warehouseLoading}
             onWarehouseSearch={handleWarehouseSearch}
-            onDownloadManualXlsxTemplate={handleDownloadManualXlsxTemplate}
           />
 
           {currentSnapshotId && currentTaskId && (

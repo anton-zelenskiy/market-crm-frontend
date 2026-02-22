@@ -83,7 +83,6 @@ export type SupplyCalculationStrategy =
   | 'average_sales'
   | 'average_sales_with_localization'
   | 'dynamic_percentages'
-  | 'manual_xlsx'
 
 export interface ClusterData {
   cluster_name: string
@@ -224,21 +223,11 @@ export interface DraftCluster {
 }
 
 export interface DraftStorageWarehouse {
-  bundle_id?: string
-  restricted_bundle_id?: string
   storage_warehouse?: {
     address?: string
     name: string
     warehouse_id: number
   }
-  availability_status?: {
-    invalid_reason?: string
-    state?: WarehouseAvailabilityState | string
-  }
-  total_rank?: number
-  total_score?: number
-  travel_time_days?: number
-  supply_tags?: string[]
   state?: WarehouseAvailabilityState
   products?: DraftProductInfo[]
 }
@@ -271,7 +260,6 @@ export interface Timeslot {
   to_in_timezone: string
 }
 
-// V2 API interfaces
 export interface SelectedClusterWarehouse {
   macrolocal_cluster_id: number
   storage_warehouse_id: number
@@ -379,23 +367,15 @@ export const suppliesApi = {
 
   createSnapshot: async (
     connectionId: number,
-    config: CreateSnapshotConfig,
-    supply_data_file?: File
+    config: CreateSnapshotConfig
   ): Promise<CreateSnapshotResponse> => {
     if (!config?.drop_off_warehouse) {
       throw new Error('drop_off_warehouse is required')
     }
-    
+
     const formData = new FormData()
-    
-    // Send config as a single JSON object
     formData.append('config', JSON.stringify(config))
-    
-    // Add file if provided
-    if (supply_data_file) {
-      formData.append('supply_data_file', supply_data_file)
-    }
-    
+
     const response = await api.post(
       `/supplies/connection/${connectionId}/snapshot/create`,
       formData,
@@ -621,19 +601,6 @@ export const suppliesApi = {
     return response.data
   },
 
-  downloadManualXlsxTemplate: async (
-    connectionId: number,
-    request: { cluster_ids?: number[]; offer_ids?: string[] }
-  ): Promise<Blob> => {
-    const response = await api.post(
-      `/supplies/connection/${connectionId}/manual-xlsx-template`,
-      request,
-      {
-        responseType: 'blob',
-      }
-    )
-    return response.data
-  },
 }
 
 export async function saveSupplySnapshot(

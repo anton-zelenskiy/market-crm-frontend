@@ -4,14 +4,10 @@ import {
   Form,
   Select,
   Checkbox,
-  Button,
   Spin,
   Empty,
-  Upload,
   Alert,
 } from 'antd'
-import type { UploadFile } from 'antd/es/upload/interface'
-import { FileExcelOutlined } from '@ant-design/icons'
 import type { SupplyCalculationStrategy } from '../api/supplies'
 import type { OzonCluster } from '../api/clusters'
 import type { OzonProduct } from '../api/products'
@@ -20,7 +16,6 @@ import {
   DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION,
   AVERAGE_SALES_STRATEGY_DESCRIPTION,
   AVERAGE_SALES_WITH_LOCALIZATION_STRATEGY_DESCRIPTION,
-  MANUAL_XLSX_STRATEGY_DESCRIPTION,
 } from '../constants'
 
 const { Option } = Select
@@ -43,7 +38,6 @@ export interface SupplyConfigFormValues {
   cluster_ids?: number[]
   offer_ids?: string[]
   drop_off_warehouse_id?: number
-  supply_data_file?: UploadFile[]
 }
 
 export interface SupplyConfigModalProps {
@@ -63,10 +57,6 @@ export interface SupplyConfigModalProps {
   loadingProducts: boolean
   warehouseLoading: boolean
   onWarehouseSearch: (value: string) => void
-  onDownloadManualXlsxTemplate?: (values: {
-    cluster_ids?: number[]
-    offer_ids?: string[]
-  }) => void
 }
 
 const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
@@ -86,7 +76,6 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
   loadingProducts,
   warehouseLoading,
   onWarehouseSearch,
-  onDownloadManualXlsxTemplate,
 }) => {
   const [form] = Form.useForm<SupplyConfigFormValues>()
   const initialValuesRef = useRef(initialValues)
@@ -147,9 +136,6 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
               По средним продажам с локализацией
             </Option>
             <Option value="dynamic_percentages">Динамические проценты</Option>
-            {mode === 'create' && (
-              <Option value="manual_xlsx">Загрузить вручную</Option>
-            )}
           </Select>
         </Form.Item>
 
@@ -173,9 +159,6 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
               case 'average_sales_with_localization':
                 strategyDescription =
                   AVERAGE_SALES_WITH_LOCALIZATION_STRATEGY_DESCRIPTION
-                break
-              case 'manual_xlsx':
-                strategyDescription = MANUAL_XLSX_STRATEGY_DESCRIPTION
                 break
             }
             return (
@@ -276,59 +259,6 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
             </Form.Item>
           )}
         </Form.Item>
-
-        {mode === 'create' && (
-          <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) =>
-              prevValues.supply_calculation_strategy !==
-              currentValues.supply_calculation_strategy
-            }
-          >
-            {({ getFieldValue }) => {
-              const strategy = getFieldValue('supply_calculation_strategy')
-              if (strategy !== 'manual_xlsx') return null
-              return (
-                <>
-                  <Form.Item label="XLSX шаблон">
-                    <Button
-                      icon={<FileExcelOutlined />}
-                      onClick={() => {
-                        const v = form.getFieldsValue([
-                          'cluster_ids',
-                          'offer_ids',
-                        ])
-                        onDownloadManualXlsxTemplate?.({
-                          cluster_ids: v.cluster_ids,
-                          offer_ids: v.offer_ids,
-                        })
-                      }}
-                    >
-                      Скачать XLSX шаблон
-                    </Button>
-                  </Form.Item>
-                  <Form.Item
-                    name="supply_data_file"
-                    label="Загрузите заполненный XLSX файл"
-                    rules={[{ required: true, message: 'Загрузите XLSX файл' }]}
-                    valuePropName="fileList"
-                    getValueFromEvent={(e) =>
-                      Array.isArray(e) ? e : e?.fileList
-                    }
-                  >
-                    <Upload
-                      accept=".xlsx"
-                      maxCount={1}
-                      beforeUpload={() => false}
-                    >
-                      <Button>Выбрать файл</Button>
-                    </Upload>
-                  </Form.Item>
-                </>
-              )
-            }}
-          </Form.Item>
-        )}
 
         <Form.Item
           name="drop_off_warehouse_id"
