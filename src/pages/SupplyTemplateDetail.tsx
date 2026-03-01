@@ -38,7 +38,6 @@ import {
   suppliesApi,
   type SupplySnapshotResponse,
   type SupplyDataItem,
-  type SupplyCalculationStrategy,
   type Warehouse,
   type CreateCrossdockDraftRequest,
   type SupplyDraft,
@@ -62,26 +61,7 @@ import SupplyConfigModal, {
 const { Title, Text } = Typography
 const { Option } = Select
 
-// Strategy labels and column names
-const STRATEGY_LABELS: Record<SupplyCalculationStrategy, string> = {
-  average_sales: 'По средним продажам',
-  average_sales_with_localization: 'По средним продажам с локализацией',
-  dynamic_percentages: 'Динамические проценты',
-}
-
-const VENDOR_STOCKS_COLUMN_LABELS: Record<SupplyCalculationStrategy, string> = {
-  average_sales: 'Остатки на заводе',
-  average_sales_with_localization: 'Остатки на заводе',
-  dynamic_percentages: 'План поставок',
-}
-
-const getStrategyLabel = (strategy: SupplyCalculationStrategy | null | undefined): string => {
-  return strategy ? STRATEGY_LABELS[strategy] : STRATEGY_LABELS.average_sales
-}
-
-const getVendorStocksColumnLabel = (strategy: SupplyCalculationStrategy | null | undefined): string => {
-  return strategy ? VENDOR_STOCKS_COLUMN_LABELS[strategy] : VENDOR_STOCKS_COLUMN_LABELS.average_sales
-}
+const VENDOR_STOCKS_COLUMN_LABEL = 'Остатки на заводе'
 
 // Map warehouse types to human-readable Russian text
 const getWarehouseTypeLabel = (warehouseType: string | undefined): string => {
@@ -134,8 +114,9 @@ const ClusterHeaderComponent = (params: any) => {
   // Get cluster name from displayName (which respects headerValueGetter)
   const clusterName = params.displayName || params.columnGroup?.getColGroupDef()?.headerName
   
-  // Get custom params (clusterName and onCreateDraft) from headerGroupComponentParams
+  // Get custom params (clusterName, isNeighborCluster, and onCreateDraft) from headerGroupComponentParams
   // These are merged into the params object directly
+  const isNeighborCluster = params.isNeighborCluster || params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.isNeighborCluster
   const onCreateDraft = params.onCreateDraft || params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.onCreateDraft
   
   if (!clusterName) {
@@ -145,6 +126,11 @@ const ClusterHeaderComponent = (params: any) => {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', height: '100%', padding: '4px', width: '100%' }}>
       <span>{clusterName}</span>
+      {isNeighborCluster && (
+        <Tooltip title="Соседний кластер">
+          <span style={{ fontSize: '16px', color: '#1890ff', cursor: 'help' }}>🔗</span>
+        </Tooltip>
+      )}
       {onCreateDraft && (
         <Button
           size="small"
@@ -192,18 +178,14 @@ const SupplyTemplateDetail: React.FC = () => {
   ])
   const [visibleSubColumns, setVisibleSubColumns] = useState<string[]>([
     'marketplace_stocks_count',
-    'orders_count',
-    'avg_orders_leverage',
+    'avg_orders_count',
     'available_quantity',
-    'initial_to_supply',
     'to_supply'
   ])
   const searchTimeoutRef = useRef<number | null>(null)
 
-  const logisticsDistance = settings?.logistics_distance || 45
-  const avgOrdersLabel = `Ср. кол-во заказов (${logisticsDistance}д)`
-
-
+  const logisticsDistance = settings?.logistics_distance
+  const avgOrdersLabel = `Ср. кол-во заказов (1д)`
 
   // Settings modal state
   const [settingsModalVisible, setSettingsModalVisible] = useState(false)
@@ -213,7 +195,7 @@ const SupplyTemplateDetail: React.FC = () => {
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
 
-  const vendorStocksLabel = getVendorStocksColumnLabel(snapshot?.supply_calculation_strategy)
+  const vendorStocksLabel = VENDOR_STOCKS_COLUMN_LABEL
 
   const columnSettingsContent = (
     <div style={{ padding: '8px', minWidth: '250px' }}>
@@ -239,10 +221,8 @@ const SupplyTemplateDetail: React.FC = () => {
           <Checkbox.Group
             options={[
               { label: 'Остатки на маркетплейсе', value: 'marketplace_stocks_count' },
-              { label: 'Заказы (мес.)', value: 'orders_count' },
-              { label: avgOrdersLabel, value: 'avg_orders_leverage' },
+              { label: avgOrdersLabel, value: 'avg_orders_count' },
               { label: 'Доступное кол-во', value: 'available_quantity' },
-              { label: 'Расчётное кол-во', value: 'initial_to_supply' },
               { label: 'К поставке', value: 'to_supply' },
             ]}
             value={visibleSubColumns}
@@ -273,7 +253,7 @@ const SupplyTemplateDetail: React.FC = () => {
       if (toSupply > 0) {
         items.push({
           offer_id: item.offer_id,
-          sku: item.sku,
+          sku: typeof item.sku === 'string' ? parseInt(item.sku, 10) : item.sku,
           quantity: toSupply,
         })
       }
@@ -451,8 +431,6 @@ const SupplyTemplateDetail: React.FC = () => {
     setSavingSettings(true)
     try {
       const config: RefreshSnapshotConfig = {
-        supply_calculation_strategy:
-          values.supply_calculation_strategy as SupplyCalculationStrategy,
         supply_products_to_neighbor_cluster:
           values.supply_products_to_neighbor_cluster ?? false,
         fetch_availability: values.fetch_availability ?? true,
@@ -734,20 +712,13 @@ const SupplyTemplateDetail: React.FC = () => {
               return cluster
             })
 
-            // Recalculate totals for to_supply if it was changed
             if (fieldName === 'to_supply' && updated.totals) {
               const newToSupplyTotal = updated.clusters.reduce((sum, cluster) => {
                 return sum + (cluster.to_supply || 0)
               }, 0)
-
-              // Recalculate deficit based on new total to_supply and vendor stocks
-              const vendorStocks = updated.vendor_stocks_count || 0
-              const newDeficit = Math.max(0, newToSupplyTotal - vendorStocks)
-
               updated.totals = {
                 ...updated.totals,
                 to_supply: newToSupplyTotal,
-                deficit: newDeficit
               }
             }
           }
@@ -923,7 +894,7 @@ const SupplyTemplateDetail: React.FC = () => {
       },
       {
         field: 'vendor_stocks_count',
-        headerName: getVendorStocksColumnLabel(snapshot.supply_calculation_strategy),
+        headerName: VENDOR_STOCKS_COLUMN_LABEL,
         width: 120,
         type: 'numericColumn',
         pinned: 'left' as const,
@@ -932,15 +903,41 @@ const SupplyTemplateDetail: React.FC = () => {
 
     // Get all unique cluster names from all items' clusters arrays
     // This ensures neighbor clusters that only appear in some items are included
-    const allClusterNames = new Set<string>()
+    const allClusterNamesMap = new Map<string, { isNeighbor: boolean }>()
     snapshot.data.forEach((item) => {
       item.clusters.forEach((cluster) => {
         if (cluster.cluster_name) {
-          allClusterNames.add(cluster.cluster_name)
+          if (!allClusterNamesMap.has(cluster.cluster_name)) {
+            allClusterNamesMap.set(cluster.cluster_name, {
+              isNeighbor: cluster.is_neighbor_cluster ?? false
+            })
+          }
         }
       })
     })
-    let clusterNames = Array.from(allClusterNames)
+
+    // Filter out neighbor clusters if supply_products_to_neighbor_cluster is false
+    // and the sum of to_supply for that cluster is 0
+    const shouldShowCluster = (clusterName: string) => {
+      const clusterInfo = allClusterNamesMap.get(clusterName)
+      if (!clusterInfo?.isNeighbor) return true
+      
+      // If neighbor cluster and supply_products_to_neighbor_cluster is false
+      if (snapshot.supply_products_to_neighbor_cluster === false) {
+        // Calculate sum of to_supply for this cluster across all products
+        const totalToSupply = snapshot.data.reduce((sum, item) => {
+          const cluster = item.clusters.find(c => c.cluster_name === clusterName)
+          return sum + (cluster?.to_supply ?? 0)
+        }, 0)
+        
+        // Don't show if sum is 0
+        if (totalToSupply === 0) return false
+      }
+      
+      return true
+    }
+
+    let clusterNames = Array.from(allClusterNamesMap.keys()).filter(shouldShowCluster)
 
     // Filter clusters by name if search input is not empty
     if (clusterFilter) {
@@ -951,6 +948,8 @@ const SupplyTemplateDetail: React.FC = () => {
 
     // Add cluster columns with nested headers
     clusterNames.forEach((clusterName) => {
+      const clusterInfo = allClusterNamesMap.get(clusterName)
+      const isNeighborCluster = clusterInfo?.isNeighbor ?? false
       const children: ColDef[] = []
       
       if (visibleSubColumns.includes('marketplace_stocks_count')) {
@@ -970,32 +969,15 @@ const SupplyTemplateDetail: React.FC = () => {
         })
       }
 
-      if (visibleSubColumns.includes('orders_count')) {
+      if (visibleSubColumns.includes('avg_orders_count')) {
         children.push({
-          field: `${clusterName}_orders_count`,
-          headerName: 'Заказы (30д.)',
-          width: 90,
-          type: 'numericColumn',
-          valueGetter: (params) => {
-            const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
-            return cluster?.orders_count ?? 0
-          },
-          valueFormatter: (params) => {
-            const value = params.value !== undefined && params.value !== null ? params.value : 0
-            return String(value)
-          },
-        })
-      }
-
-      if (visibleSubColumns.includes('avg_orders_leverage')) {
-        children.push({
-          field: `${clusterName}_avg_orders_leverage`,
+          field: `${clusterName}_avg_orders_count`,
           headerName: avgOrdersLabel,
           width: 90,
           type: 'numericColumn',
           valueGetter: (params) => {
             const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
-            return cluster?.avg_orders_leverage ?? 0
+            return cluster?.avg_orders_count ?? 0
           },
           valueFormatter: (params) => {
             const value = params.value !== undefined && params.value !== null ? params.value : 0
@@ -1020,24 +1002,6 @@ const SupplyTemplateDetail: React.FC = () => {
         })
       }
 
-
-      if (visibleSubColumns.includes('initial_to_supply')) {
-        children.push({
-          field: `${clusterName}_initial_to_supply`,
-          headerName: 'Расчётное кол-во к поставке',
-          width: 90,
-          type: 'numericColumn',
-          valueGetter: (params) => {
-            const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
-            return cluster?.initial_to_supply ?? 0
-          },
-          valueFormatter: (params) => {
-            const value = params.value !== undefined && params.value !== null ? params.value : 0
-            return String(value)
-          },
-          cellStyle: { backgroundColor: '#f5f5f5' },
-        })
-      }
 
       if (visibleSubColumns.includes('to_supply')) {
         children.push({
@@ -1080,18 +1044,6 @@ const SupplyTemplateDetail: React.FC = () => {
             }
 
             let tooltipContent: string | null = null
-            
-/*             const restrictedQuantity = cluster?.restricted_quantity || 0
-            const isNeighborRedirect = cluster?.is_neighbor_redirect || false
-            
-            if (restrictedQuantity > 0) {
-              tooltipContent = `Не отгружено из-за ограничений: ${restrictedQuantity}`
-              if (isNeighborRedirect) {
-                tooltipContent += `\nЧасть товара перенаправлена в соседний кластер`
-              }
-            } else if (isNeighborRedirect) {
-              tooltipContent = 'Часть товара перенаправлена в соседний кластер'
-            } */
             
             // Default background color for cells with value 0 (soft green)
             const defaultBgColor = '#f0f9f4'
@@ -1144,6 +1096,7 @@ const SupplyTemplateDetail: React.FC = () => {
           headerGroupComponent: ClusterHeaderComponent,
           headerGroupComponentParams: {
             clusterName,
+            isNeighborCluster,
             onCreateDraft: handleCreateDraft,
           },
           children,
@@ -1166,45 +1119,14 @@ const SupplyTemplateDetail: React.FC = () => {
         })
       }
 
-      if (visibleSubColumns.includes('orders_count')) {
+      if (visibleSubColumns.includes('avg_orders_count')) {
         children.push({
-          field: 'totals_orders_count',
-          headerName: 'Заказы',
-          width: 90,
-          type: 'numericColumn',
-          valueGetter: (params) => params.data?.totals?.orders_count ?? 0,
-          valueFormatter: (params) => String(params.value ?? 0),
-        })
-      }
-
-      if (visibleSubColumns.includes('avg_orders_leverage')) {
-        children.push({
-          field: 'totals_avg_orders_leverage',
+          field: 'totals_avg_orders_count',
           headerName: 'Сред. кол-во заказов',
           width: 90,
           type: 'numericColumn',
-          valueGetter: (params) => params.data?.totals?.avg_orders_leverage ?? 0,
+          valueGetter: (params) => params.data?.totals?.avg_orders_count ?? 0,
           valueFormatter: (params) => String(params.value ?? 0),
-        })
-      }
-
-      if (visibleSubColumns.includes('initial_to_supply')) {
-        children.push({
-          field: 'totals_initial_to_supply',
-          headerName: 'Расчётное кол-во к поставке',
-          width: 90,
-          type: 'numericColumn',
-          valueGetter: (params) => {
-            const clusters = params.data?.clusters || []
-            return clusters.reduce((sum: number, cluster: ClusterData) => {
-              return sum + (cluster.initial_to_supply ?? 0)
-            }, 0)
-          },
-          valueFormatter: (params) => {
-            const value = params.value ?? 0
-            return String(value)
-          },
-          cellStyle: { backgroundColor: '#f5f5f5' }
         })
       }
 
@@ -1219,22 +1141,6 @@ const SupplyTemplateDetail: React.FC = () => {
           cellStyle: { fontWeight: 'bold' }
         })
       }
-
-      children.push({
-        field: 'totals_deficit',
-        headerName: 'Дефицит',
-        width: 90,
-        type: 'numericColumn',
-        valueGetter: (params) => params.data?.totals?.deficit ?? 0,
-        valueFormatter: (params) => String(params.value ?? 0),
-        cellStyle: (params) => {
-          const value = params.value || 0
-          return { 
-            fontWeight: 'bold', 
-            color: value > 0 ? '#ff4d4f' : 'inherit' 
-          }
-        }
-      })
 
       if (children.length > 0) {
         baseHeaders.push({
@@ -1312,27 +1218,12 @@ const SupplyTemplateDetail: React.FC = () => {
             <Title level={2} style={{ margin: 0 }}>
               Формирование поставки - {company?.name || ''}
             </Title>
-            {snapshot && (
-              <Tag color="blue">
-                {getStrategyLabel(snapshot.supply_calculation_strategy)}
-              </Tag>
-            )}
           </Space>
 
           <Space>
-            <Button
-              icon={<FileExcelOutlined />}
-              loading={downloadLoading}
-              onClick={handleDownloadFullXlsx}
-            >
-              Скачать таблицу (XLSX)
-            </Button>
-          </Space>
-          <Space>
-          <Input
+            <Input
               placeholder="Введите имя кластера..."
               allowClear
-              size="large"
               prefix={<SearchOutlined />}
               value={clusterFilter}
               onChange={(e) => setClusterFilter(e.target.value)}
@@ -1346,11 +1237,18 @@ const SupplyTemplateDetail: React.FC = () => {
             >
               <Button
                 icon={<SettingOutlined />}
-                size="large"
               >
                 Настроить столбцы
               </Button>
             </Popover>
+            <Button
+              icon={<FileExcelOutlined />}
+              loading={downloadLoading}
+              onClick={handleDownloadFullXlsx}
+            >
+              Скачать таблицу (XLSX)
+            </Button>
+            <Space><Text type="warning">Логистическое плечо: {logisticsDistance} дней</Text></Space>
           </Space>
 
           {!snapshot ? (
@@ -1580,12 +1478,9 @@ const SupplyTemplateDetail: React.FC = () => {
         initialValues={
           snapshot
             ? {
-                supply_calculation_strategy:
-                  (snapshot.supply_calculation_strategy as SupplyCalculationStrategy) ||
-                  'average_sales',
                 supply_products_to_neighbor_cluster:
                   snapshot.supply_products_to_neighbor_cluster ?? false,
-                fetch_availability: false,
+                fetch_availability: true,
                 cluster_ids: snapshot.cluster_ids || [],
                 offer_ids: snapshot.offer_ids || [],
                 drop_off_warehouse_id:

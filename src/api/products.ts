@@ -36,6 +36,7 @@ export interface OzonProduct {
   vendor_offer_id: string | null
   created_at: string
   updated_at: string
+  vendor_quantity: number
 }
 
 export interface OzonProductCreate {

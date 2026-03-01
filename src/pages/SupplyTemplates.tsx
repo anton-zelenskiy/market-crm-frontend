@@ -18,7 +18,6 @@ import {
 import {
   suppliesApi,
   type SupplySnapshotResponse,
-  type SupplyCalculationStrategy,
   type CreateSnapshotConfig,
   type Warehouse,
 } from '../api/supplies'
@@ -159,8 +158,6 @@ const SupplyTemplates: React.FC = () => {
           name: selectedWarehouse.name,
           address: selectedWarehouse.address || null,
         },
-        supply_calculation_strategy:
-          values.supply_calculation_strategy as SupplyCalculationStrategy,
         supply_products_to_neighbor_cluster:
           values.supply_products_to_neighbor_cluster ?? false,
         fetch_availability: values.fetch_availability ?? true,
@@ -202,19 +199,6 @@ const SupplyTemplates: React.FC = () => {
     }
   }
 
-  const getStrategyLabel = (strategy: SupplyCalculationStrategy | null) => {
-    switch (strategy) {
-      case 'average_sales':
-        return 'По средним продажам'
-      case 'dynamic_percentages':
-        return 'Динамические проценты'
-      case 'average_sales_with_localization':
-        return 'По средним продажам с локализацией'
-      default:
-        return '-'
-    }
-  }
-
   const columns = [
     {
       title: '№',
@@ -229,13 +213,6 @@ const SupplyTemplates: React.FC = () => {
           <Space>Поставка №{record.id} от {new Date(record.updated_at).toLocaleDateString('ru-RU')}</Space>
         </Button>        
       ),
-    },
-    {
-      title: 'Стратегия',
-      dataIndex: 'supply_calculation_strategy',
-      key: 'strategy',
-      width: 180,
-      render: (strategy: SupplyCalculationStrategy | null) => getStrategyLabel(strategy),
     },
     {
       title: 'Кол-во товаров',
@@ -305,9 +282,8 @@ const SupplyTemplates: React.FC = () => {
             onCancel={() => setModalVisible(false)}
             mode="create"
             initialValues={{
-              supply_calculation_strategy: 'average_sales',
               supply_products_to_neighbor_cluster: false,
-              fetch_availability: false,
+              fetch_availability: true,
               cluster_ids: [],
               offer_ids: [],
             }}

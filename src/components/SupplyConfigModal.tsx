@@ -8,15 +8,9 @@ import {
   Empty,
   Alert,
 } from 'antd'
-import type { SupplyCalculationStrategy } from '../api/supplies'
 import type { OzonCluster } from '../api/clusters'
 import type { OzonProduct } from '../api/products'
 import type { Warehouse } from '../api/supplies'
-import {
-  DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION,
-  AVERAGE_SALES_STRATEGY_DESCRIPTION,
-  AVERAGE_SALES_WITH_LOCALIZATION_STRATEGY_DESCRIPTION,
-} from '../constants'
 
 const { Option } = Select
 
@@ -32,7 +26,6 @@ const getWarehouseTypeLabel = (warehouseType: string | undefined): string => {
 }
 
 export interface SupplyConfigFormValues {
-  supply_calculation_strategy: SupplyCalculationStrategy
   supply_products_to_neighbor_cluster: boolean
   fetch_availability: boolean
   cluster_ids?: number[]
@@ -84,7 +77,6 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
   useEffect(() => {
     if (visible) {
       form.setFieldsValue({
-        supply_calculation_strategy: 'average_sales',
         supply_products_to_neighbor_cluster: false,
         fetch_availability: true,
         cluster_ids: [],
@@ -120,65 +112,10 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
         form={form}
         layout="vertical"
         initialValues={{
-          supply_calculation_strategy: 'average_sales' as SupplyCalculationStrategy,
           supply_products_to_neighbor_cluster: false,
           fetch_availability: true,
         }}
       >
-        <Form.Item
-          name="supply_calculation_strategy"
-          label="Стратегия расчёта поставки"
-          initialValue="average_sales"
-        >
-          <Select>
-            <Option value="average_sales">По средним продажам</Option>
-            <Option value="average_sales_with_localization">
-              По средним продажам с локализацией
-            </Option>
-            <Option value="dynamic_percentages">Динамические проценты</Option>
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          noStyle
-          shouldUpdate={(prevValues, currentValues) =>
-            prevValues.supply_calculation_strategy !==
-            currentValues.supply_calculation_strategy
-          }
-        >
-          {({ getFieldValue }) => {
-            const strategy = getFieldValue('supply_calculation_strategy')
-            let strategyDescription = ''
-            switch (strategy) {
-              case 'dynamic_percentages':
-                strategyDescription = DYNAMIC_PERCENTAGES_STRATEGY_DESCRIPTION
-                break
-              case 'average_sales':
-                strategyDescription = AVERAGE_SALES_STRATEGY_DESCRIPTION
-                break
-              case 'average_sales_with_localization':
-                strategyDescription =
-                  AVERAGE_SALES_WITH_LOCALIZATION_STRATEGY_DESCRIPTION
-                break
-            }
-            return (
-              <div
-                style={{
-                  background: '#f5f5f5',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  marginBottom: '16px',
-                }}
-              >
-                <div
-                  style={{ color: 'rgba(0, 0, 0, 0.65)' }}
-                  dangerouslySetInnerHTML={{ __html: strategyDescription }}
-                />
-              </div>
-            )
-          }}
-        </Form.Item>
-
         <Form.Item
           name="supply_products_to_neighbor_cluster"
           valuePropName="checked"
@@ -190,74 +127,55 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
 
         <Form.Item name="fetch_availability" valuePropName="checked">
           <Checkbox>
-            Проверять доступность складов (фазы B и C). Если снять — будет
-            рассчитан только базовый план (фаза A).
+            Проверять доступность складов. Если снять — будет
+            рассчитан только базовый план.
           </Checkbox>
         </Form.Item>
 
         <Form.Item
-          noStyle
-          shouldUpdate={(prevValues, currentValues) =>
-            prevValues.supply_calculation_strategy !==
-            currentValues.supply_calculation_strategy
-          }
+          name="cluster_ids"
+          label="Кластеры (если не выбрано — все)"
         >
-          {() => (
-            <Form.Item
-              name="cluster_ids"
-              label="Кластеры (если не выбрано — все)"
-            >
-              <Select
-                mode="multiple"
-                allowClear
-                placeholder="Выберите кластеры"
-                loading={loadingClusters}
-                optionFilterProp="children"
-                showSearch
-              >
-                {clusters
-                  .sort((a, b) => a.priority - b.priority)
-                  .map((cluster) => (
-                    <Option
-                      key={cluster.cluster_id}
-                      value={cluster.cluster_id}
-                    >
-                      {cluster.name}
-                    </Option>
-                  ))}
-              </Select>
-            </Form.Item>
-          )}
+          <Select
+            mode="multiple"
+            allowClear
+            placeholder="Выберите кластеры"
+            loading={loadingClusters}
+            optionFilterProp="children"
+            showSearch
+          >
+            {clusters
+              .sort((a, b) => a.priority - b.priority)
+              .map((cluster) => (
+                <Option
+                  key={cluster.cluster_id}
+                  value={cluster.cluster_id}
+                >
+                  {cluster.name}
+                </Option>
+              ))}
+          </Select>
         </Form.Item>
 
         <Form.Item
-          noStyle
-          shouldUpdate={(prevValues, currentValues) =>
-            prevValues.supply_calculation_strategy !==
-            currentValues.supply_calculation_strategy
-          }
+          name="offer_ids"
+          label="Товары (если не выбрано — все)"
         >
-          {() => (
-            <Form.Item
-              name="offer_ids"
-              label="Товары (если не выбрано — все)"
-            >
-              <Select
-                mode="multiple"
-                allowClear
-                placeholder="Выберите товары"
-                loading={loadingProducts}
-                optionFilterProp="children"
-                showSearch
-              >
-                {products.map((product) => (
-                  <Option key={product.offer_id} value={product.offer_id}>
-                    {product.offer_id} — {product.name}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          )}
+          <Select
+            mode="multiple"
+            allowClear
+            placeholder="Выберите товары"
+            loading={loadingProducts}
+            optionFilterProp="children"
+            showSearch
+          >
+            {/* sort products by vendor_quantity in descending order, then by offer_id in ascending order */}
+            {products.sort((a, b) => (b.vendor_quantity || 0) - (a.vendor_quantity || 0) || a.offer_id.localeCompare(b.offer_id)).map((product) => (
+              <Option key={product.offer_id} value={product.offer_id}>
+                {product.offer_id} ({product.vendor_quantity} шт.) — {product.name}
+              </Option>
+            ))}
+          </Select>
         </Form.Item>
 
         <Form.Item

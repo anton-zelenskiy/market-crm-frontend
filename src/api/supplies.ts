@@ -79,42 +79,34 @@ export interface DownloadDocumentsRequest {
   external_order_id?: string | null
 }
 
-export type SupplyCalculationStrategy =
-  | 'average_sales'
-  | 'average_sales_with_localization'
-  | 'dynamic_percentages'
-
 export interface ClusterData {
   cluster_name: string
   cluster_id: number
   macrolocal_cluster_id: number | null
+  is_neighbor_cluster?: boolean
+  neighbor_macrolocal_cluster_id?: number | null
   marketplace_stocks_count: number
-  orders_count: number
-  avg_orders_leverage: number
+  avg_orders_count: number
   to_supply: number
   restricted_quantity?: number
   available_quantity?: number
-  warehouse_availability?: Record<string, any>
-  is_neighbor_redirect?: boolean
-  initial_to_supply?: number  // Computed on load: to_supply + restricted_quantity
+}
+
+export interface SupplyDataTotals {
+  marketplace_stocks_count: number
+  avg_orders_count: number
+  to_supply: number
+  available_quantity?: number | null
 }
 
 export interface SupplyDataItem {
   offer_id: string
-  sku: number
+  sku: number | string
   name: string
   box_count: number
   vendor_stocks_count: number
   clusters: ClusterData[]
-  totals: {
-    marketplace_stocks_count: number
-    orders_count: number
-    avg_orders_leverage: number
-    vendor_stocks_count: number
-    to_supply: number
-    available_quantity: number
-    deficit: number
-  }
+  totals: SupplyDataTotals
 }
 
 export interface SupplySnapshotResponse {
@@ -122,10 +114,8 @@ export interface SupplySnapshotResponse {
   connection_id: number
   data: SupplyDataItem[]
   updated_at: string
-  // Configuration fields
   cluster_ids: number[] | null
   offer_ids: string[] | null
-  supply_calculation_strategy: SupplyCalculationStrategy | null
   supply_products_to_neighbor_cluster: boolean | null
   drop_off_warehouse: DropOffWarehouse | null
 }
@@ -133,7 +123,6 @@ export interface SupplySnapshotResponse {
 export interface CreateSnapshotConfig {
   cluster_ids?: number[]
   offer_ids?: string[]
-  supply_calculation_strategy?: SupplyCalculationStrategy
   supply_products_to_neighbor_cluster?: boolean
   fetch_availability?: boolean
   drop_off_warehouse?: DropOffWarehouse
@@ -147,7 +136,6 @@ export interface CreateSnapshotResponse {
 export interface RefreshSnapshotConfig {
   cluster_ids?: number[] | null
   offer_ids?: string[] | null
-  supply_calculation_strategy?: SupplyCalculationStrategy | null
   supply_products_to_neighbor_cluster?: boolean | null
   fetch_availability?: boolean | null
   drop_off_warehouse?: DropOffWarehouse
