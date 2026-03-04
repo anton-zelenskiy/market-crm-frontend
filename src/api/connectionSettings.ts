@@ -5,11 +5,13 @@ export interface ConnectionSettings {
   connection_id: number
   logistics_distance: number
   auto_create_cargoes: boolean
+  floor_to_box_count: boolean
 }
 
 export interface ConnectionSettingsUpdate {
   logistics_distance?: number
   auto_create_cargoes?: boolean
+  floor_to_box_count?: boolean
 }
 
 export const connectionSettingsApi = {

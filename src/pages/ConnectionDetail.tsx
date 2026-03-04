@@ -79,7 +79,7 @@ const ConnectionDetail: React.FC = () => {
     }
   }
 
-  const handleUpdateSettings = async (values: { logistics_distance: number; auto_create_cargoes: boolean }) => {
+  const handleUpdateSettings = async (values: { logistics_distance: number; auto_create_cargoes: boolean; floor_to_box_count: boolean }) => {
     if (!connectionId || !connection) return
 
     setSavingSettings(true)
@@ -87,6 +87,7 @@ const ConnectionDetail: React.FC = () => {
       const updated = await connectionSettingsApi.update(parseInt(connectionId), {
         logistics_distance: values.logistics_distance,
         auto_create_cargoes: values.auto_create_cargoes,
+        floor_to_box_count: values.floor_to_box_count,
       })
       setSettings(updated)
       message.success('Настройки успешно сохранены')
@@ -247,6 +248,7 @@ const ConnectionDetail: React.FC = () => {
               initialValues={{ 
                 logistics_distance: settings.logistics_distance,
                 auto_create_cargoes: settings.auto_create_cargoes,
+                floor_to_box_count: settings.floor_to_box_count,
               }}
             >
               <Form.Item
@@ -260,6 +262,14 @@ const ConnectionDetail: React.FC = () => {
                 name="auto_create_cargoes"
                 label="Автоматически создавать грузоместа"
                 valuePropName="checked"
+              >
+                <Switch />
+              </Form.Item>
+              <Form.Item
+                name="floor_to_box_count"
+                label="Округлять до кратности"
+                valuePropName="checked"
+                tooltip="Округлять количество товаров к поставке до кратности упаковки"
               >
                 <Switch />
               </Form.Item>

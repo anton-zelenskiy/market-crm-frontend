@@ -77,6 +77,7 @@ const SupplyDraftDetail: React.FC = () => {
   const [productsModalVisible, setProductsModalVisible] = useState(false)
 
   const isExpired = Boolean(draft?.is_expired)
+  const isDirectSupply = draft?.supply_type === 'DIRECT'
   
 
   const loadDraftInfo = useCallback(async () => {
@@ -108,8 +109,11 @@ const SupplyDraftDetail: React.FC = () => {
       return
     }
 
+    const isDirect = draft.supply_type === 'DIRECT'
     const selectedWarehouse = warehouseId || selectedWarehouseId
-    if (!selectedWarehouse) {
+    
+    // For DIRECT supply type, warehouse selection is required
+    if (isDirect && !selectedWarehouse) {
       message.error('Выберите склад размещения')
       return
     }
@@ -125,19 +129,23 @@ const SupplyDraftDetail: React.FC = () => {
       // Store it for later use
       setMacrolocalClusterId(macrolocalId)
 
-      const storageWarehouseId = selectedWarehouse
-
       const today = new Date()
       const dateTo = new Date(today)
       dateTo.setDate(dateTo.getDate() + 27)
 
+      // For DIRECT supply type, include storage_warehouse_id
+      // For other types (CROSSDOCK, MULTI_CLUSTER), don't include it
+      const clusterWarehouse: { macrolocal_cluster_id: number; storage_warehouse_id?: number } = {
+        macrolocal_cluster_id: macrolocalId,
+      }
+      if (isDirect && selectedWarehouse) {
+        clusterWarehouse.storage_warehouse_id = selectedWarehouse
+      }
+
       const timeslotResponse = await suppliesApi.getDraftTimeslotsV2(parseInt(draftId!), {
         date_from: today.toISOString().split('T')[0],
         date_to: dateTo.toISOString().split('T')[0],
-        selected_cluster_warehouses: [{
-          macrolocal_cluster_id: macrolocalId,
-          storage_warehouse_id: storageWarehouseId,
-        }],
+        selected_cluster_warehouses: [clusterWarehouse],
       })
 
       setTimeslots(timeslotResponse)
@@ -150,38 +158,56 @@ const SupplyDraftDetail: React.FC = () => {
     }
   }, [draft, selectedWarehouseId, draftId])
 
-  // Autoselect warehouse if there's only one warehouse with FULL_AVAILABLE state
+  // Autoselect warehouse if there's only one warehouse with FULL_AVAILABLE state (for DIRECT)
+  // Or auto-load timeslots for non-DIRECT supply types
   useEffect(() => {
-    if (!draft || !draft.storage_warehouses) return
-
-    const availableWarehouses = draft.storage_warehouses || []
+    if (!draft) return
     
-    // Check if there's exactly one warehouse with FULL_AVAILABLE state
-    if (availableWarehouses.length === 1) {
-      const warehouse = availableWarehouses[0]
-      if (warehouse.state === 'FULL_AVAILABLE' && warehouse.storage_warehouse?.warehouse_id) {
-        const warehouseId = warehouse.storage_warehouse.warehouse_id
-        // Only autoselect if not already selected
-        if (selectedWarehouseId !== warehouseId) {
-          setSelectedWarehouseId(warehouseId)
-          // Auto-load timeslots for the selected warehouse
-          if (!draft.is_expired) {
-            handleLoadTimeslots(warehouseId)
+    const isDirect = draft.supply_type === 'DIRECT'
+    
+    // For non-DIRECT supply types, auto-load timeslots without warehouse selection
+    if (!isDirect && !draft.is_expired && !timeslots && !loadingTimeslots) {
+      handleLoadTimeslots()
+      return
+    }
+
+    // For DIRECT supply type, auto-select warehouse if there's only one with FULL_AVAILABLE state
+    if (isDirect) {
+      const availableWarehouses = draft.storage_warehouses || []
+      
+      if (availableWarehouses.length === 1) {
+        const warehouse = availableWarehouses[0]
+        if (warehouse.state === 'FULL_AVAILABLE' && warehouse.storage_warehouse?.warehouse_id) {
+          const warehouseId = warehouse.storage_warehouse.warehouse_id
+          // Only autoselect if not already selected
+          if (selectedWarehouseId !== warehouseId) {
+            setSelectedWarehouseId(warehouseId)
+            // Auto-load timeslots for the selected warehouse
+            if (!draft.is_expired) {
+              handleLoadTimeslots(warehouseId)
+            }
           }
         }
       }
     }
-  }, [draft, selectedWarehouseId, handleLoadTimeslots])
+  }, [draft, selectedWarehouseId, handleLoadTimeslots, timeslots, loadingTimeslots])
 
   const handleCreateSupply = async () => {
     if (!draft) return
 
-    const draftWarehouseId = selectedWarehouseId
+    const isDirect = draft.supply_type === 'DIRECT'
+    // For DIRECT supplies, use selectedWarehouseId; for non-DIRECT, storage_warehouse_id is not needed
+    const draftWarehouseId = isDirect ? selectedWarehouseId : undefined
     const draftSelectedTimeslot = selectedTimeslot
     const macrolocalId = macrolocalClusterId
+    // For DIRECT supply type, warehouse selection is required
+    if (isDirect && !draftWarehouseId) {
+      message.error('Выберите склад размещения')
+      return
+    }
 
-    if (!draftWarehouseId || !draftSelectedTimeslot) {
-      message.error('Выберите склад и таймслот')
+    if (!draftSelectedTimeslot) {
+      message.error('Выберите таймслот')
       return
     }
 
@@ -197,11 +223,17 @@ const SupplyDraftDetail: React.FC = () => {
 
     setCreatingSupply(true)
     try {
+      // For DIRECT supply type, include storage_warehouse_id
+      // For other types, don't include it
+      const clusterWarehouse: { macrolocal_cluster_id: number; storage_warehouse_id?: number } = {
+        macrolocal_cluster_id: macrolocalId,
+      }
+      if (isDirect && draftWarehouseId) {
+        clusterWarehouse.storage_warehouse_id = draftWarehouseId
+      }
+
       const createRequest: CreateSupplyFromDraftV2Request = {
-        selected_cluster_warehouses: [{
-          macrolocal_cluster_id: macrolocalId,
-          storage_warehouse_id: draftWarehouseId,
-        }],
+        selected_cluster_warehouses: [clusterWarehouse],
         timeslot: draftSelectedTimeslot,
       }
 
@@ -265,18 +297,26 @@ const SupplyDraftDetail: React.FC = () => {
   }
 
   const availableWarehouses = draft.storage_warehouses || []
-  const selectedWarehouse = selectedWarehouseId
-    ? availableWarehouses.find(
-        (w) => w.storage_warehouse?.warehouse_id === selectedWarehouseId
-      )
-    : null
-  const selectedWarehouseProducts = selectedWarehouse?.products || []
+  
+  // For DIRECT: use selectedWarehouseId, for non-DIRECT: use the single storage warehouse
+  const effectiveWarehouse = isDirectSupply
+    ? (selectedWarehouseId
+        ? availableWarehouses.find(
+            (w) => w.storage_warehouse?.warehouse_id === selectedWarehouseId
+          )
+        : null)
+    : (availableWarehouses.length === 1 ? availableWarehouses[0] : null)
+  
+  const selectedWarehouseProducts = effectiveWarehouse?.products || []
   const hasSelectedWarehouseMismatch = selectedWarehouseProducts.some(
     (p) => p.quantity !== p.expected_quantity
   )
+  
+  // For non-DIRECT supplies, check if unexpected multiple storage warehouses returned
+  const hasUnexpectedMultipleWarehouses = !isDirectSupply && availableWarehouses.length > 1
 
-  // Show "Нет доступных складов" if no warehouses available
-  if (availableWarehouses.length === 0) {
+  // Show "Нет доступных складов" only for DIRECT supply type if no warehouses available
+  if (isDirectSupply && availableWarehouses.length === 0) {
     return (
       <Card>
         <Space orientation="vertical" style={{ width: '100%' }}>
@@ -383,12 +423,21 @@ const SupplyDraftDetail: React.FC = () => {
             Назад к шаблону поставки
           </Button>
 
-          <Title level={2}>Детали черновика поставки</Title>
+          <Title level={2}>Черновик поставки</Title>
 
           {/* Supply not created, expired draft alert */}
           {isExpired && !supplyCreateInfo?.order_id && (
             <Alert
               title="Черновик устарел, черновики, созданные через api доступны 30 минут с момента создания. Пожалуйста, пересоздайте черновик для данного кластера."
+              type="warning"
+              showIcon
+            />
+          )}
+
+          {/* Warning for unexpected multiple storage warehouses in non-DIRECT supplies */}
+          {hasUnexpectedMultipleWarehouses && (
+            <Alert
+              title={`Unexpected response: multiple storage warehouses (${availableWarehouses.length}) returned`}
               type="warning"
               showIcon
             />
@@ -462,91 +511,127 @@ const SupplyDraftDetail: React.FC = () => {
           {!supplyCreateInfo?.order_id && (
             <div style={{ padding: '24px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
               <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-                {/* Warehouse selection */}
-                <div>
-                  <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '16px' }}>
-                    1. Выберите склад размещения:
-                  </Text>
-                  <Radio.Group
-                    value={selectedWarehouseId}
-                    onChange={async (e) => {
-                      const warehouseId = e.target.value
-                      setSelectedWarehouseId(warehouseId)
-                      // Clear timeslot and date when warehouse changes
-                      setSelectedTimeslot(null)
-                      setSelectedDate(null)
-                      // Auto-load timeslots when warehouse is selected
-                      if (!isExpired) {
-                        await handleLoadTimeslots(warehouseId)
-                      }
-                    }}
-                    style={{ width: '100%' }}
-                  >
-                    <Row gutter={[16, 16]}>
-                      {availableWarehouses.map((warehouse) => {
-                        const warehouseData = warehouse.storage_warehouse
-                        if (!warehouseData) {
-                          return null
-                        }
-                        return (
-                          <Col span={10} key={warehouseData.warehouse_id}>
-                            <Radio.Button
-                              value={warehouseData.warehouse_id}
-                              style={{
-                                width: '100%',
-                                height: 'auto',
-                                padding: '12px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'flex-start',
-                                borderRadius: '8px',
-                                border: selectedWarehouseId === warehouseData.warehouse_id ? '2px solid #1890ff' : '1px solid #d9d9d9'
-                              }}
-                            >
-                              <Space
-                                size="small"
-                                style={{ width: '100%', justifyContent: 'space-between' }}
-                              >
-                                <Text strong>{warehouseData.name}</Text>
-                                {warehouse.state && (
-                                  <Tag
-                                    color={
-                                      warehouse.state === 'FULL_AVAILABLE'
-                                        ? 'green'
-                                        : warehouse.state === 'PARTIAL_AVAILABLE'
-                                          ? 'orange'
-                                          : 'default'
-                                    }
+                {/* Warehouse selection - only for DIRECT supply type */}
+                {isDirectSupply && (
+                  <>
+                    <div>
+                      <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '16px' }}>
+                        1. Выберите склад размещения:
+                      </Text>
+                      <Radio.Group
+                        value={selectedWarehouseId}
+                        onChange={async (e) => {
+                          const warehouseId = e.target.value
+                          setSelectedWarehouseId(warehouseId)
+                          // Clear timeslot and date when warehouse changes
+                          setSelectedTimeslot(null)
+                          setSelectedDate(null)
+                          // Auto-load timeslots when warehouse is selected
+                          if (!isExpired) {
+                            await handleLoadTimeslots(warehouseId)
+                          }
+                        }}
+                        style={{ width: '100%' }}
+                      >
+                        <Row gutter={[16, 16]}>
+                          {availableWarehouses.map((warehouse) => {
+                            const warehouseData = warehouse.storage_warehouse
+                            if (!warehouseData) {
+                              return null
+                            }
+                            return (
+                              <Col span={10} key={warehouseData.warehouse_id}>
+                                <Radio.Button
+                                  value={warehouseData.warehouse_id}
+                                  style={{
+                                    width: '100%',
+                                    height: 'auto',
+                                    padding: '12px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'flex-start',
+                                    borderRadius: '8px',
+                                    border: selectedWarehouseId === warehouseData.warehouse_id ? '2px solid #1890ff' : '1px solid #d9d9d9'
+                                  }}
+                                >
+                                  <Space
+                                    size="small"
+                                    style={{ width: '100%', justifyContent: 'space-between' }}
                                   >
-                                    {WAREHOUSE_AVAILABILITY_STATE_DESCRIPTION[warehouse.state]}
-                                  </Tag>
-                                )}
-                              </Space>
-                            </Radio.Button>
-                          </Col>
-                        )
-                      })}
-                    </Row>
-                  </Radio.Group>
-                </div>
+                                    <Text strong>{warehouseData.name}</Text>
+                                    {warehouse.state && (
+                                      <Tag
+                                        color={
+                                          warehouse.state === 'FULL_AVAILABLE'
+                                            ? 'green'
+                                            : warehouse.state === 'PARTIAL_AVAILABLE'
+                                              ? 'orange'
+                                              : 'default'
+                                        }
+                                      >
+                                        {WAREHOUSE_AVAILABILITY_STATE_DESCRIPTION[warehouse.state]}
+                                      </Tag>
+                                    )}
+                                  </Space>
+                                </Radio.Button>
+                              </Col>
+                            )
+                          })}
+                        </Row>
+                      </Radio.Group>
+                    </div>
 
-                <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-                  <Row gutter={[16, 16]}>
-                    <Col span={4}>
-                      {selectedWarehouseProducts.length > 0 && (
+                    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+                      <Row gutter={[16, 16]}>
+                        <Col span={4}>
+                          {selectedWarehouseProducts.length > 0 && (
+                            <Button type="primary" onClick={() => setProductsModalVisible(true)}>
+                              Показать товары
+                            </Button>
+                          )}
+                        </Col>
+                      </Row>
+                    </Space>
+                  </>
+                )}
+
+                {/* Cluster info and products button for non-DIRECT supply types (CROSSDOCK, MULTI_CLUSTER) */}
+                {!isDirectSupply && effectiveWarehouse && (
+                  <div>
+                    <Space
+                      size="small"
+                      style={{ marginBottom: '16px' }}
+                    >
+                      <Text strong>Склад отгрузки: {draft.drop_off_warehouse?.name} &nbsp;&nbsp;&nbsp; кластер размещения: {draft.cluster.cluster_name}</Text>
+                      {effectiveWarehouse.state && (
+                        <Tag
+                          color={
+                            effectiveWarehouse.state === 'FULL_AVAILABLE'
+                              ? 'green'
+                              : effectiveWarehouse.state === 'PARTIAL_AVAILABLE'
+                                ? 'orange'
+                                : 'default'
+                          }
+                        >
+                          {WAREHOUSE_AVAILABILITY_STATE_DESCRIPTION[effectiveWarehouse.state]}
+                        </Tag>
+                      )}
+                    </Space>
+                    {selectedWarehouseProducts.length > 0 && (
+                      <div>
                         <Button type="primary" onClick={() => setProductsModalVisible(true)}>
                           Показать товары
                         </Button>
-                      )}
-                    </Col>
-                  </Row>
-                </Space>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Date and Time selection */}
-                {selectedWarehouseId && (
+                {(isDirectSupply ? selectedWarehouseId : true) && (
                   <div>
                     <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '16px' }}>
-                      2. Выберите дату и время отгрузки:
+                      {isDirectSupply ? '2. ' : ''}Выберите дату и время отгрузки:
                     </Text>
                     {loadingTimeslots ? (
                       <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '8px' }}>
@@ -656,7 +741,7 @@ const SupplyDraftDetail: React.FC = () => {
                 )}
 
                 {/* Confirmation section */}
-                {selectedWarehouseId && selectedTimeslot && (
+                {(isDirectSupply ? selectedWarehouseId && selectedTimeslot : selectedTimeslot) && (
                   <div style={{
                     marginTop: '8px',
                     padding: '24px',
@@ -672,7 +757,7 @@ const SupplyDraftDetail: React.FC = () => {
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <Text type="secondary">Время:</Text>
                         <Text strong>
-                          {dayjs(selectedDate).format('dddd, D MMMM')}, {formatTime(selectedTimeslot.from_in_timezone)} - {formatTime(selectedTimeslot.to_in_timezone)}
+                          {dayjs(selectedDate).format('dddd, D MMMM')}, {selectedTimeslot && formatTime(selectedTimeslot.from_in_timezone)} - {selectedTimeslot && formatTime(selectedTimeslot.to_in_timezone)}
                         </Text>
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>

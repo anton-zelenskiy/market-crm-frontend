@@ -189,6 +189,8 @@ export type WarehouseAvailabilityState =
   | 'NOT_AVAILABLE'
   | 'UNSPECIFIED'
 
+export type SupplyType = 'CROSSDOCK' | 'DIRECT' | 'MULTI_CLUSTER'
+
 export const WAREHOUSE_AVAILABILITY_STATE_DESCRIPTION: Record<WarehouseAvailabilityState, string> = {
   FULL_AVAILABLE: 'Примет все товары',
   PARTIAL_AVAILABLE: 'Примет часть товаров',
@@ -233,6 +235,7 @@ export interface SupplyDraft {
   connection_id: number
   draft_id: number | null
   cluster: DraftCluster
+  supply_type: SupplyType
   is_expired?: boolean
   status: string | null
   errors: any[] | null
@@ -251,7 +254,7 @@ export interface Timeslot {
 
 export interface SelectedClusterWarehouse {
   macrolocal_cluster_id: number
-  storage_warehouse_id: number
+  storage_warehouse_id?: number
 }
 
 export interface DraftTimeslotRequestV2 {
