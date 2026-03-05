@@ -35,8 +35,9 @@ export interface ReportRunRequest {
 }
 
 export const reportsApi = {
-  getAll: async (): Promise<Report[]> => {
-    const response = await api.get('/reports/')
+  getAll: async (dataSourceName?: string): Promise<Report[]> => {
+    const params = dataSourceName ? { data_source_name: dataSourceName } : {}
+    const response = await api.get('/reports/', { params })
     return response.data
   },
 

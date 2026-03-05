@@ -68,9 +68,10 @@ const ConnectionDetail: React.FC = () => {
       const companyData = await companiesApi.getById(conn.company_id)
       setCompany(companyData)
 
-      // Load all reports and filter by connection's data source
-      const allReports = await reportsApi.getAll()
-      setReports(allReports.filter(r => r.data_source_id === conn.data_source_id))
+      // Load reports filtered by data source name
+      const dataSourceName = conn.data_source?.name
+      const filteredReports = await reportsApi.getAll(dataSourceName)
+      setReports(filteredReports)
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка загрузки данных подключения')
       navigate('/connections')
