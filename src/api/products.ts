@@ -115,6 +115,11 @@ export const vendorProductsApi = {
     link.remove()
     window.URL.revokeObjectURL(url)
   },
+
+  resetStocks: async (companyId: number): Promise<{ message: string; products_updated: number }> => {
+    const response = await api.post(`/products/vendor/${companyId}/reset-stocks`)
+    return response.data
+  },
 }
 
 // Ozon Products API

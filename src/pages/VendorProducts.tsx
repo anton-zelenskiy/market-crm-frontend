@@ -22,6 +22,8 @@ import {
   DeleteOutlined,
   UploadOutlined,
   DownloadOutlined,
+  ClearOutlined,
+  SearchOutlined,
 } from '@ant-design/icons'
 import { vendorProductsApi, type VendorProduct, type VendorProductCreate, type VendorProductUpdate } from '../api/products'
 import { companiesApi } from '../api/companies'
@@ -37,6 +39,7 @@ const VendorProducts: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<VendorProduct | null>(null)
   const [form] = Form.useForm()
   const [companyName, setCompanyName] = useState<string>('')
+  const [searchText, setSearchText] = useState('')
 
   useEffect(() => {
     if (companyId) {
@@ -137,6 +140,18 @@ const VendorProducts: React.FC = () => {
     }
   }
 
+  const handleResetStocks = async () => {
+    if (!companyId) return
+
+    try {
+      const result = await vendorProductsApi.resetStocks(parseInt(companyId))
+      message.success(result.message || `Обнулены остатки для ${result.products_updated} товаров`)
+      loadData()
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка обнуления остатков')
+    }
+  }
+
   const columns = [
     {
       title: 'Артикул',
@@ -184,6 +199,14 @@ const VendorProducts: React.FC = () => {
     },
   ]
 
+  const filteredProducts = products.filter((product) => {
+    const searchLower = searchText.toLowerCase()
+    return (
+      product.offer_id.toLowerCase().includes(searchLower) ||
+      product.name.toLowerCase().includes(searchLower)
+    )
+  })
+
   return (
     <div>
       <Card>
@@ -198,6 +221,19 @@ const VendorProducts: React.FC = () => {
               </Button>
             </Space>
             <Space>
+              <Popconfirm
+                title="Обнулить остатки?"
+                description="Количество на складе будет установлено в 0 для всех товаров"
+                onConfirm={handleResetStocks}
+                okText="Да"
+                cancelText="Нет"
+              >
+                <Tooltip title="Обнулить остатки для всех товаров">
+                  <Button icon={<ClearOutlined />} danger>
+                    Обнулить остатки
+                  </Button>
+                </Tooltip>
+              </Popconfirm>
               <Tooltip title="Скачать CSV шаблон с артикулами для заполнения">
                 <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
                   Скачать шаблон CSV
@@ -224,9 +260,18 @@ const VendorProducts: React.FC = () => {
             Товары поставщика: {companyName}
           </Title>
 
+          <Input
+            placeholder="Поиск по артикулу или названию"
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            allowClear
+            style={{ width: 350 }}
+          />
+
           <Table
             columns={columns}
-            dataSource={products}
+            dataSource={filteredProducts}
             rowKey="id"
             loading={loading}
             size='small'

@@ -339,13 +339,13 @@ const OzonProducts: React.FC = () => {
           </Title>
 
           <Input
-              placeholder="Поиск по артикулу, SKU или названию"
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              allowClear
-              style={{ width: 350 }}
-            />
+            placeholder="Поиск по артикулу, SKU или названию"
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            allowClear
+            style={{ width: 350 }}
+          />
 
           <Table
             columns={columns}
