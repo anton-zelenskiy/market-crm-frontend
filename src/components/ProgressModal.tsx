@@ -84,10 +84,10 @@ export const ProgressModal: React.FC<ProgressModalProps> = ({
   const getStageLabel = (stage: string): string => {
     const labels: Record<string, string> = {
       initializing: 'Инициализация',
+      metrics: 'Загрузка данных для расчета поставки',
       creating_draft: 'Создание черновика',
-      polling_draft: 'Ожидание обработки черновика',
-      fetching_bundles: 'Получение данных о складах',
-      calculating: 'Расчет данных',
+      fetching_bundles: 'Получение данных о доступности кластеров',
+      calculating: 'Расчет количества товаров к поставке',
       completed: 'Завершено',
       failed: 'Ошибка',
     }
