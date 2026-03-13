@@ -59,16 +59,20 @@ interface SupplyActionsProps {
   connection: Connection
   onCreateCargoes: (supply: SupplyOrder, deleteCurrentVersion: boolean) => Promise<void>
   onDownloadDocuments: (supply: SupplyOrder, externalOrderId: string) => Promise<void>
+  onDownloadCargoLabels: (supply: SupplyOrder) => Promise<void>
   isCreating: boolean
   isDownloading: boolean
+  isDownloadingLabels: boolean
 }
 
 const SupplyActions: React.FC<SupplyActionsProps> = ({
   supply,
   onCreateCargoes,
   onDownloadDocuments,
+  onDownloadCargoLabels,
   isCreating,
   isDownloading,
+  isDownloadingLabels,
 }) => {
   const [cargoForm] = Form.useForm()
   const [docForm] = Form.useForm()
@@ -106,6 +110,18 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
           </Button>
         </Form.Item>
       </Form>
+
+      <Divider />
+
+      <Typography.Title level={5}>Скачать ярлыки грузомест</Typography.Title>
+      <Button
+        type="primary"
+        loading={isDownloadingLabels}
+        onClick={() => onDownloadCargoLabels(supply)}
+        block
+      >
+        Скачать PDF
+      </Button>
 
       <Divider />
 
@@ -149,6 +165,7 @@ const Supplies: React.FC = () => {
   const [connection, setConnection] = useState<Connection | null>(null)
   const [creatingCargoes, setCreatingCargoes] = useState<Record<string, boolean>>({})
   const [downloadingDocs, setDownloadingDocs] = useState<Record<string, boolean>>({})
+  const [downloadingCargoLabels, setDownloadingCargoLabels] = useState<Record<string, boolean>>({})
   const [downloadingSummaryXlsx, setDownloadingSummaryXlsx] = useState(false)
   const [stateGroupId, setStateGroupId] = useState<SupplyStateGroupId>('PREPARATION')
   const selectedStates =
@@ -331,6 +348,37 @@ const Supplies: React.FC = () => {
     }
   }
 
+  const handleDownloadCargoLabels = async (supply: SupplyOrder) => {
+    if (!connection) return
+
+    const supplyId = supply.supply_id
+    setDownloadingCargoLabels((prev) => ({ ...prev, [supplyId]: true }))
+
+    try {
+      const blob = await suppliesApi.downloadCargoLabels(supplyId, {
+        connection_id: connection.id,
+      })
+
+      const filename = `${supplyId} Ярлыки.pdf`
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      message.success('Ярлыки грузомест успешно скачаны')
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка скачивания ярлыков грузомест'
+      )
+    } finally {
+      setDownloadingCargoLabels((prev) => ({ ...prev, [supplyId]: false }))
+    }
+  }
+
 
   const columns: ColumnsType<SupplyOrder> = [
     // {
@@ -428,6 +476,7 @@ const Supplies: React.FC = () => {
         const supplyId = record.supply_id
         const isCreating = creatingCargoes[supplyId] || false
         const isDownloading = downloadingDocs[supplyId] || false
+        const isDownloadingLabels = downloadingCargoLabels[supplyId] || false
 
         return (
           <Popover
@@ -437,8 +486,10 @@ const Supplies: React.FC = () => {
                 connection={connection}
                 onCreateCargoes={handleCreateCargoes}
                 onDownloadDocuments={handleDownloadDocuments}
+                onDownloadCargoLabels={handleDownloadCargoLabels}
                 isCreating={isCreating}
                 isDownloading={isDownloading}
+                isDownloadingLabels={isDownloadingLabels}
               />
             }
             trigger="click"

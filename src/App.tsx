@@ -3,7 +3,7 @@ import { Layout, Menu, Button, theme, ConfigProvider } from 'antd'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  UploadOutlined,
+  // UploadOutlined,
   DatabaseOutlined,
   ShopOutlined,
   LinkOutlined,
@@ -86,18 +86,18 @@ const DashboardLayout: React.FC = () => {
       icon: <ShopOutlined />,
       label: <Link to="/companies">Компании</Link>,
     },
-    {
-      key: '/data-sources',
-      icon: <DatabaseOutlined />,
-      label: <Link to="/data-sources">Источники данных</Link>,
-      adminOnly: true,
-    },
-    {
-      key: '/reports',
-      icon: <UploadOutlined />,
-      label: <Link to="/reports">Отчеты</Link>,
-      adminOnly: true,
-    },
+    // {
+    //   key: '/data-sources',
+    //   icon: <DatabaseOutlined />,
+    //   label: <Link to="/data-sources">Источники данных</Link>,
+    //   adminOnly: true,
+    // },
+    // {
+    //   key: '/reports',
+    //   icon: <UploadOutlined />,
+    //   label: <Link to="/reports">Отчеты</Link>,
+    //   adminOnly: true,
+    // },
     {
       key: '/clusters',
       icon: <DatabaseOutlined />,
@@ -111,7 +111,9 @@ const DashboardLayout: React.FC = () => {
     },
   ]
 
-  const menuItems = allMenuItems.filter((item) => !item.adminOnly || isAdmin)
+  const menuItems = allMenuItems.filter(
+    (item) => !('adminOnly' in item) || isAdmin
+  )
 
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key === 'logout') {

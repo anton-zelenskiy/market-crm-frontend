@@ -79,6 +79,10 @@ export interface DownloadDocumentsRequest {
   external_order_id?: string | null
 }
 
+export interface DownloadCargoLabelsRequest {
+  connection_id: number
+}
+
 export interface ClusterData {
   cluster_name: string
   cluster_id: number
@@ -329,6 +333,19 @@ export const suppliesApi = {
       params.append('external_order_id', request.external_order_id)
     }
     const response = await api.get(`/supplies/${supplyId}/documents?${params}`, {
+      responseType: 'blob',
+    })
+    return response.data
+  },
+
+  downloadCargoLabels: async (
+    supplyId: string,
+    request: DownloadCargoLabelsRequest
+  ): Promise<Blob> => {
+    const params = new URLSearchParams({
+      connection_id: request.connection_id.toString(),
+    })
+    const response = await api.get(`/supplies/${supplyId}/cargo-labels?${params}`, {
       responseType: 'blob',
     })
     return response.data
