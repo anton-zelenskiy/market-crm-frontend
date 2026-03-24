@@ -1,27 +1,22 @@
-# Stage 1: Build the application
 FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
 
 RUN npm install husky -g && npm install -g typescript
 
 # Install dependencies with memory limit
-# Use --max-old-space-size to limit Node.js memory usage
-RUN NODE_OPTIONS="--max-old-space-size=650" npm ci --only=production
+RUN NODE_OPTIONS="--max-old-space-size=650" npm ci
 
-# Copy source code
 COPY . .
 
-# Build arguments for environment variables
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
-# Build the application with memory limit (512MB for Node.js)
-# This leaves ~500MB for the system and Docker
 RUN NODE_OPTIONS="--max-old-space-size=650" npm run build
+
+RUN npm prune --production
 
 # Stage 2: Serve static files with a simple HTTP server
 FROM node:24-alpine
