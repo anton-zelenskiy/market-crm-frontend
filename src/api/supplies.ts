@@ -177,6 +177,60 @@ export interface BundleItem {
   quantity: number
 }
 
+export interface RunSupplyPlanningRequest {
+  plan_id: number
+}
+
+export interface SupplyPlanningRunResponse {
+  created: boolean
+  running: boolean
+  job_id: string
+}
+
+export interface SupplyPlanningTaskStatusResponse {
+  running: boolean
+  job_id: string | null
+}
+
+export interface WBSupplyPlan {
+  id: number
+  user_id: number
+  connection_id: number | null
+  company_name: string
+  preorder_id: number | null
+  supply_id: string | null
+  warehouse_name: string
+  is_active: boolean
+  date_from: string | null
+  date_to: string | null
+  coefficient: number
+  created_at: string
+  updated_at: string
+  task_running: boolean
+  task_job_id: string | null
+}
+
+export interface CreateWBSupplyPlanRequest {
+  connection_id: number
+  company_name: string
+  preorder_id: number
+  date_from: string
+  date_to: string
+  warehouse_name?: string
+  coefficient?: number
+  is_active?: boolean
+}
+
+export interface UpdateWBSupplyPlanRequest {
+  company_name?: string
+  preorder_id?: number
+  date_from?: string
+  date_to?: string
+  warehouse_name?: string
+  coefficient?: number
+  is_active?: boolean
+}
+
 // V2 API interfaces
 export interface CreateCrossdockDraftRequest {
   connection_id: number
@@ -606,6 +660,70 @@ export const suppliesApi = {
       {
         responseType: 'blob',
       }
+    )
+    return response.data
+  },
+
+  createWBSupplyPlan: async (
+    request: CreateWBSupplyPlanRequest
+  ): Promise<WBSupplyPlan> => {
+    const response = await api.post('/supplies/wildberries/supply-plans/', request)
+    return response.data
+  },
+
+  listWBSupplyPlans: async (connectionId: number): Promise<WBSupplyPlan[]> => {
+    const response = await api.get(
+      `/supplies/wildberries/supply-plans/?connection_id=${connectionId}`
+    )
+    return response.data
+  },
+
+  updateWBSupplyPlan: async (
+    planId: number,
+    request: UpdateWBSupplyPlanRequest
+  ): Promise<WBSupplyPlan> => {
+    const response = await api.put(
+      `/supplies/wildberries/supply-plans/${planId}`,
+      request
+    )
+    return response.data
+  },
+
+  deleteWBSupplyPlan: async (planId: number): Promise<void> => {
+    await api.delete(`/supplies/wildberries/supply-plans/${planId}`)
+  },
+
+  runSupplyPlanning: async (
+    request: RunSupplyPlanningRequest
+  ): Promise<SupplyPlanningRunResponse> => {
+    const response = await api.post(
+      `/supplies/wildberries/supply-plans/${request.plan_id}/run`
+    )
+    return response.data
+  },
+
+  getSupplyPlanningStatus: async (
+    planId: number
+  ): Promise<SupplyPlanningTaskStatusResponse> => {
+    const response = await api.get(`/supplies/wildberries/supply-plans/${planId}`)
+    return {
+      running: Boolean(response.data?.task_running),
+      job_id: response.data?.task_job_id ?? null,
+    }
+  },
+
+  cancelSupplyPlanning: async (planId: number): Promise<{ cancelled: boolean }> => {
+    const response = await api.delete(
+      `/supplies/wildberries/supply-plans/${planId}/run`
+    )
+    return response.data
+  },
+
+  toggleSupplyPlan: async (
+    planId: number
+  ): Promise<SupplyPlanningRunResponse> => {
+    const response = await api.post(
+      `/supplies/wildberries/supply-plans/${planId}/toggle-active`
     )
     return response.data
   },

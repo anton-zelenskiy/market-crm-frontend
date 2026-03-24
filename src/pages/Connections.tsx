@@ -219,7 +219,7 @@ const Connections: React.FC = () => {
       title: 'Источник данных',
       key: 'data_source',
       render: (_: any, record: Connection) => (
-        <Tag color="blue">
+        <Tag color={record.data_source?.name === "ozon" ? "blue" : "purple"}>
           {record.data_source?.title || `ID: ${record.data_source_id}`}
         </Tag>
       ),

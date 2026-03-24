@@ -30,6 +30,7 @@ import Supplies from './pages/Supplies'
 import SupplyTemplates from './pages/SupplyTemplates'
 import SupplyTemplateDetail from './pages/SupplyTemplateDetail'
 import SupplyDraftDetail from './pages/SupplyDraftDetail'
+import SupplyPlanningRunner from './pages/SupplyPlanningRunner'
 
 const { Header, Sider, Content } = Layout
 
@@ -198,6 +199,10 @@ const DashboardLayout: React.FC = () => {
               }
             />
             <Route path="/clusters" element={<Clusters />} />
+            <Route
+              path="/connections/:connectionId/wb-supply-plans"
+              element={<SupplyPlanningRunner />}
+            />
             <Route
               path="/reports"
               element={

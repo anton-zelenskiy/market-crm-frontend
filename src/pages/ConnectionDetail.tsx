@@ -194,6 +194,7 @@ const ConnectionDetail: React.FC = () => {
 
           {connection.data_source?.name === 'ozon' && (
             <Card size="small">
+              <Title level={5}>Действия Ozon</Title>
               <List
                 itemLayout="horizontal"
                 dataSource={[
@@ -228,6 +229,39 @@ const ConnectionDetail: React.FC = () => {
                       <Button type="primary" onClick={item.onClick} style={{ width: 140 }}>
                         {item.buttonText}
                       </Button>
+                    ]}
+                  >
+                    <List.Item.Meta
+                      title={<strong>{item.title}</strong>}
+                      description={item.description}
+                    />
+                  </List.Item>
+                )}
+              />
+            </Card>
+          )}
+
+          {connection.data_source?.name === 'wildberries' && (
+            <Card size="small">
+              <Title level={5}>Действия Wildberries</Title>
+              <List
+                itemLayout="horizontal"
+                dataSource={[
+                  {
+                    title: 'WB Supply planning',
+                    description:
+                      'Создавайте и запускайте планы поставок Wildberries для выбранного подключения.',
+                    buttonText: 'Supply plans',
+                    onClick: () =>
+                      navigate(`/connections/${connection.id}/wb-supply-plans`),
+                  },
+                ]}
+                renderItem={(item) => (
+                  <List.Item
+                    actions={[
+                      <Button type="primary" onClick={item.onClick} style={{ width: 140 }}>
+                        {item.buttonText}
+                      </Button>,
                     ]}
                   >
                     <List.Item.Meta

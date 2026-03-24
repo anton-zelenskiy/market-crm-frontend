@@ -118,7 +118,7 @@ const Companies: React.FC = () => {
       render: (_: any, record: Company) => (
         <div>
           {record.connections?.map((connection) => (
-            <Tag color="blue" key={connection.data_source?.name}>{connection.data_source?.name}</Tag>
+            <Tag color={connection.data_source?.name === "ozon" ? "blue" : "purple"} key={connection.data_source?.name}>{connection.data_source?.name}</Tag>
           ))}
         </div>
       ),
