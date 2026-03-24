@@ -6,7 +6,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-RUN npm install husky -g
+RUN npm install husky -g && npm install -g typescript
 
 # Install dependencies with memory limit
 # Use --max-old-space-size to limit Node.js memory usage
