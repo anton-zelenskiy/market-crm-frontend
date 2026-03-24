@@ -6,6 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+RUN npm install husky -g
+
 # Install dependencies with memory limit
 # Use --max-old-space-size to limit Node.js memory usage
 RUN NODE_OPTIONS="--max-old-space-size=650" npm ci --omit=dev
