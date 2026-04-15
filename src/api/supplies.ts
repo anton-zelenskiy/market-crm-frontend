@@ -9,6 +9,8 @@ export interface SupplyOrder {
   timeslot?: string | null
   storage_warehouse_name: string | null
   cargoes_count: number | null
+  products_count?: number | null
+  cargoes_products_count?: number | null
   errors: string[] | null
   external_order_id?: string | null
   default_external_order_id?: number | null

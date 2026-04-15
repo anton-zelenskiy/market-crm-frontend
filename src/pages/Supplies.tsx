@@ -458,6 +458,18 @@ const Supplies: React.FC = () => {
       },
     },
     {
+      title: 'Кол-во товара: в заявке / в грузоместах',
+      dataIndex: 'products_count',
+      key: 'products_count',
+      width: 110,
+      render: (_: any, record: SupplyOrder) => {
+        if (record.products_count == null) {
+          return '-'
+        }
+        return <span>{record.products_count} / {record.cargoes_products_count}</span>
+      },
+    },
+    {
       title: 'Номер внешнего заказа',
       dataIndex: 'external_order_id',
       key: 'external_order_id',
