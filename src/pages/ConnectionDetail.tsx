@@ -274,6 +274,35 @@ const ConnectionDetail: React.FC = () => {
             </Card>
           )}
 
+          <Card size="small" title="Финансы">
+            <List
+              itemLayout="horizontal"
+              dataSource={[
+                {
+                  title: 'Банковские операции',
+                  description:
+                    'Загрузка выписок (XLSX), просмотр, фильтры, ручное добавление и экспорт.',
+                  buttonText: 'Открыть',
+                  onClick: () => navigate(`/connections/${connection.id}/bookkeeping`),
+                },
+              ]}
+              renderItem={(item) => (
+                <List.Item
+                  actions={[
+                    <Button type="primary" onClick={item.onClick} style={{ width: 140 }}>
+                      {item.buttonText}
+                    </Button>,
+                  ]}
+                >
+                  <List.Item.Meta
+                    title={<strong>{item.title}</strong>}
+                    description={item.description}
+                  />
+                </List.Item>
+              )}
+            />
+          </Card>
+
           <Card title="Настройки поставки" size="small">
             <Form
               key={`${connection.id}-${settings.id}`}
