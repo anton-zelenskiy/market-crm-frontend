@@ -21,6 +21,7 @@ import {
 } from '@ant-design/icons'
 import { dataSourcesApi } from '../api/dataSources'
 import type { DataSource, DataSourceCreate, CredentialFieldDefinition } from '../api/dataSources'
+import { PageToolbar } from '../components/PageToolbar'
 
 const { Title } = Typography
 const { Option } = Select
@@ -164,20 +165,25 @@ const DataSources: React.FC = () => {
   return (
     <div>
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <Title level={2} style={{ margin: 0 }}>
-            <DatabaseOutlined /> Источники данных
-          </Title>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            Создать источник данных
-          </Button>
-        </div>
+        <PageToolbar
+          title={
+            <Title level={2} style={{ margin: 0 }}>
+              <DatabaseOutlined /> Источники данных
+            </Title>
+          }
+          actions={
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+              Создать источник данных
+            </Button>
+          }
+        />
 
         <Table
           columns={columns}
           dataSource={dataSources}
           rowKey="id"
           loading={loading}
+          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Всего ${total} записей` }}
         />
       </Card>
@@ -212,12 +218,15 @@ const DataSources: React.FC = () => {
           </Form.Item>
 
           <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Title level={5}>Поля учетных данных</Title>
-              <Button type="dashed" onClick={addCredentialField}>
-                Добавить поле
-              </Button>
-            </div>
+            <PageToolbar
+              marginBottom={8}
+              title={<Title level={5}>Поля учетных данных</Title>}
+              actions={
+                <Button type="dashed" onClick={addCredentialField}>
+                  Добавить поле
+                </Button>
+              }
+            />
 
             {credentialFields.map((field, index) => (
               <Card

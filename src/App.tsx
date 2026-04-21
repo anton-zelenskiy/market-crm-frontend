@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
-import { Layout, Menu, Button, theme, ConfigProvider } from 'antd'
+import React, { useEffect, useState } from 'react'
+import { Layout, Menu, Button, theme, ConfigProvider, Drawer, Grid } from 'antd'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  MenuOutlined,
   // UploadOutlined,
   DatabaseOutlined,
   ShopOutlined,
@@ -65,12 +66,25 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 }
 
 const DashboardLayout: React.FC = () => {
+  const screens = Grid.useBreakpoint()
+  const isDesktopNav = screens.md ?? true
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken()
   const { logout, isAdmin } = useAuth()
   const location = useLocation()
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (isDesktopNav) {
+      setMobileMenuOpen(false)
+    }
+  }, [isDesktopNav])
 
   const allMenuItems = [
     {
@@ -146,24 +160,69 @@ const DashboardLayout: React.FC = () => {
 
   const selectedKey = getSelectedKey()
 
+  const navMenu = (
+    <Menu
+      theme="dark"
+      mode="inline"
+      selectedKeys={[selectedKey]}
+      items={menuItems}
+      onClick={handleMenuClick}
+    />
+  )
+
+  const logoBlock = (
+    <div
+      className="demo-logo-vertical"
+      style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.3)' }}
+    />
+  )
+
+  const contentMargin = isDesktopNav ? '24px 16px' : '12px 8px'
+  const contentPadding = isDesktopNav ? '32px' : '16px'
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider trigger={null} collapsible collapsed={collapsed}>
-        <div className="demo-logo-vertical" style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.3)' }} />
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          items={menuItems}
-          onClick={handleMenuClick}
-        />
-      </Sider>
-      <Layout>
+      {isDesktopNav ? (
+        <Sider trigger={null} collapsible collapsed={collapsed}>
+          {logoBlock}
+          {navMenu}
+        </Sider>
+      ) : (
+        <Drawer
+          title={null}
+          placement="left"
+          closable
+          onClose={() => setMobileMenuOpen(false)}
+          open={mobileMenuOpen}
+          styles={{ body: { padding: 0, background: '#001529' } }}
+          width={280}
+        >
+          {logoBlock}
+          {navMenu}
+        </Drawer>
+      )}
+      <Layout className="crm-dashboard-inner">
         <Header style={{ padding: 0, background: colorBgContainer }}>
           <Button
             type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
+            icon={
+              isDesktopNav ? (
+                collapsed ? (
+                  <MenuUnfoldOutlined />
+                ) : (
+                  <MenuFoldOutlined />
+                )
+              ) : (
+                <MenuOutlined />
+              )
+            }
+            onClick={() => {
+              if (isDesktopNav) {
+                setCollapsed(!collapsed)
+              } else {
+                setMobileMenuOpen(true)
+              }
+            }}
             style={{
               fontSize: '16px',
               width: 64,
@@ -172,12 +231,14 @@ const DashboardLayout: React.FC = () => {
           />
         </Header>
         <Content
+          className="crm-dashboard-content"
           style={{
-            margin: '24px 16px',
-            padding: '32px',
+            margin: contentMargin,
+            padding: contentPadding,
             minHeight: 280,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
+            maxWidth: '100%',
           }}
         >
           <Routes>

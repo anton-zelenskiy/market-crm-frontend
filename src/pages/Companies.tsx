@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons'
 import { companiesApi } from '../api/companies'
 import type { Company, CompanyCreate } from '../api/companies'
+import { PageToolbar } from '../components/PageToolbar'
 
 const { Title } = Typography
 
@@ -159,20 +160,25 @@ const Companies: React.FC = () => {
   return (
     <div>
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <Title level={2} style={{ margin: 0 }}>
-            <ShopOutlined /> Компании
-          </Title>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            Создать компанию
-          </Button>
-        </div>
+        <PageToolbar
+          title={
+            <Title level={2} style={{ margin: 0 }}>
+              <ShopOutlined /> Компании
+            </Title>
+          }
+          actions={
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+              Создать компанию
+            </Button>
+          }
+        />
 
         <Table
           columns={columns}
           dataSource={companies}
           rowKey="id"
           loading={loading}
+          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Всего ${total} записей` }}
         />
       </Card>

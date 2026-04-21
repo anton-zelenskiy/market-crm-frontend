@@ -295,43 +295,45 @@ const OzonProducts: React.FC = () => {
     <div>
       <Card>
         <Space orientation="vertical" style={{ width: '100%', gap: '24px' }} size="large">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Space>
+          <div className="crm-split-header">
+            <div className="crm-split-header__start">
               <Button
                 icon={<ArrowLeftOutlined />}
                 onClick={() => navigate(`/connections/${connectionId}`)}
               >
                 Назад
               </Button>
-            </Space>
-            <Space>
-              <Button
-                icon={<SyncOutlined />}
-                loading={syncing}
-                onClick={handleSyncFromAPI}
-              >
-                Синхронизировать с Ozon
-              </Button>
-              <Tooltip title="Скачать CSV шаблон с артикулами для заполнения">
-                <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
-                  Скачать шаблон CSV
+            </div>
+            <div className="crm-split-header__end">
+              <Space wrap>
+                <Button
+                  icon={<SyncOutlined />}
+                  loading={syncing}
+                  onClick={handleSyncFromAPI}
+                >
+                  Синхронизировать с Ozon
                 </Button>
-              </Tooltip>
-              <Upload
-                accept=".csv"
-                beforeUpload={handleCSVUpload}
-                showUploadList={false}
-              >
-                <Tooltip title="Загрузите csv с колонками: 'Артикул', 'Количество в коробке', 'Артикул продавца'">
-                  <Button icon={<UploadOutlined />}>
-                    Обновить из CSV
+                <Tooltip title="Скачать CSV шаблон с артикулами для заполнения">
+                  <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
+                    Скачать шаблон CSV
                   </Button>
                 </Tooltip>
-              </Upload>
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                Добавить товар
-              </Button>
-            </Space>
+                <Upload
+                  accept=".csv"
+                  beforeUpload={handleCSVUpload}
+                  showUploadList={false}
+                >
+                  <Tooltip title="Загрузите csv с колонками: 'Артикул', 'Количество в коробке', 'Артикул продавца'">
+                    <Button icon={<UploadOutlined />}>
+                      Обновить из CSV
+                    </Button>
+                  </Tooltip>
+                </Upload>
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+                  Добавить товар
+                </Button>
+              </Space>
+            </div>
           </div>
 
           <Title level={2} style={{ margin: 0 }}>
@@ -344,7 +346,7 @@ const OzonProducts: React.FC = () => {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             allowClear
-            style={{ width: 350 }}
+            style={{ width: '100%', maxWidth: 420 }}
           />
 
           <Table

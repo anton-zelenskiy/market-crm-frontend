@@ -22,6 +22,7 @@ import { reportsApi } from '../api/reports'
 import type { Report, ReportCreate, ReportType } from '../api/reports'
 import { dataSourcesApi } from '../api/dataSources'
 import type { DataSource } from '../api/dataSources'
+import { PageToolbar } from '../components/PageToolbar'
 
 const { Title } = Typography
 const { Option } = Select
@@ -208,20 +209,25 @@ const Reports: React.FC = () => {
   return (
     <div>
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <Title level={2} style={{ margin: 0 }}>
-            <FileTextOutlined /> Отчеты
-          </Title>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            Создать отчет
-          </Button>
-        </div>
+        <PageToolbar
+          title={
+            <Title level={2} style={{ margin: 0 }}>
+              <FileTextOutlined /> Отчеты
+            </Title>
+          }
+          actions={
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+              Создать отчет
+            </Button>
+          }
+        />
 
         <Table
           columns={columns}
           dataSource={reports}
           rowKey="id"
           loading={loading}
+          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Всего ${total} записей` }}
         />
       </Card>

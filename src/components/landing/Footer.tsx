@@ -18,9 +18,9 @@ const Footer: React.FC = () => {
 
   return (
     <AntFooter
+      className="landing-footer"
       style={{
         background: '#263238',
-        padding: '60px 80px 40px',
         marginTop: 'auto',
       }}
     >

@@ -16,6 +16,7 @@ import {
   SyncOutlined,
 } from '@ant-design/icons'
 import { ozonClustersApi, type OzonCluster } from '../api/clusters'
+import { PageToolbar } from '../components/PageToolbar'
 
 const { Title } = Typography
 const { Option } = Select
@@ -139,25 +140,30 @@ const Clusters: React.FC = () => {
   return (
     <div>
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <Title level={2} style={{ margin: 0 }}>
-            <ClusterOutlined /> Кластеры Ozon
-          </Title>
-          <Button
-            type="primary"
-            icon={<SyncOutlined spin={syncing} />}
-            onClick={handleSync}
-            loading={syncing}
-          >
-            Синхронизировать
-          </Button>
-        </div>
+        <PageToolbar
+          title={
+            <Title level={2} style={{ margin: 0 }}>
+              <ClusterOutlined /> Кластеры Ozon
+            </Title>
+          }
+          actions={
+            <Button
+              type="primary"
+              icon={<SyncOutlined spin={syncing} />}
+              onClick={handleSync}
+              loading={syncing}
+            >
+              Синхронизировать
+            </Button>
+          }
+        />
 
         <Table
           columns={columns}
           dataSource={clusters}
           rowKey="id"
           loading={loading}
+          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (total) => `Всего ${total} записей` }}
         />
       </Card>

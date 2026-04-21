@@ -530,14 +530,8 @@ const Supplies: React.FC = () => {
           style={{ width: '100%', gap: '24px' }}
           size="large"
         >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <Space>
+          <div className="crm-split-header">
+            <div className="crm-split-header__start">
               <Button
                 icon={<ArrowLeftOutlined />}
                 onClick={() => navigate(`/connections/${connectionId}`)}
@@ -547,9 +541,9 @@ const Supplies: React.FC = () => {
               <Title level={2} style={{ margin: 0 }}>
                 Поставки - {company?.name || ''}
               </Title>
-            </Space>
+            </div>
 
-            <Space>
+            <div className="crm-split-header__end">
               <Button
                 type="primary"
                 loading={downloadingSummaryXlsx}
@@ -570,7 +564,7 @@ const Supplies: React.FC = () => {
                   </Option>
                 ))}
               </Select>
-            </Space>
+            </div>
           </div>
 
           {!connection ? (

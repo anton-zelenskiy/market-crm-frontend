@@ -287,6 +287,7 @@ const SupplyPlanningRunner: React.FC = () => {
           dataSource={plans}
           rowKey="id"
           pagination={false}
+          scroll={{ x: 'max-content' }}
         />
       </Space>
     </Card>

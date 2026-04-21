@@ -248,14 +248,8 @@ const SupplyTemplates: React.FC = () => {
     <div>
       <Card>
         <Space orientation="vertical" style={{ width: '100%' }} size="large">
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <Space>
+          <div className="crm-split-header">
+            <div className="crm-split-header__start">
               <Button
                 icon={<ArrowLeftOutlined />}
                 onClick={() => navigate(`/connections/${connectionId}`)}
@@ -265,15 +259,17 @@ const SupplyTemplates: React.FC = () => {
               <Title level={2} style={{ margin: 0 }}>
                 <FileTextOutlined /> Поставки - {company?.name} ({connection?.data_source?.title})
               </Title>
-            </Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleOpenModal}
-              loading={creating}
-            >
-              Сформировать поставку
-            </Button>
+            </div>
+            <div className="crm-split-header__end">
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleOpenModal}
+                loading={creating}
+              >
+                Сформировать поставку
+              </Button>
+            </div>
           </div>
 
           <SupplyConfigModal
@@ -324,6 +320,7 @@ const SupplyTemplates: React.FC = () => {
             dataSource={snapshots}
             rowKey="id"
             loading={loading}
+            scroll={{ x: 'max-content' }}
             pagination={{
               pageSize: 10,
               showSizeChanger: true,

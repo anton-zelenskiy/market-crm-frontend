@@ -1414,17 +1414,21 @@ const SupplyTemplateDetail: React.FC = () => {
 
           {previewItems.length > 0 && (
             <div style={{ marginTop: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <Text strong>Товары в поставке ({previewItems.length}):</Text>
-                <Button
-                  type="default"
-                  icon={<FileExcelOutlined />}
-                  onClick={handleDownloadBundleXlsx}
-                  loading={downloadingBundle}
-                  size="small"
-                >
-                  Скачать XLSX
-                </Button>
+              <div className="crm-split-header" style={{ marginBottom: 8 }}>
+                <div className="crm-split-header__start">
+                  <Text strong>Товары в поставке ({previewItems.length}):</Text>
+                </div>
+                <div className="crm-split-header__end">
+                  <Button
+                    type="default"
+                    icon={<FileExcelOutlined />}
+                    onClick={handleDownloadBundleXlsx}
+                    loading={downloadingBundle}
+                    size="small"
+                  >
+                    Скачать XLSX
+                  </Button>
+                </div>
               </div>
               <Table
                 dataSource={previewItems}

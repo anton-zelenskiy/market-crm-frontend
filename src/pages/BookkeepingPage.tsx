@@ -400,34 +400,28 @@ const BookkeepingPage: React.FC = () => {
     <div>
       <Card>
         <Space orientation="vertical" style={{ width: '100%' }} size="middle">
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 8,
-            }}
-          >
-            <Space>
+          <div className="crm-split-header">
+            <div className="crm-split-header__start">
               <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/connections/${cid}`)}>
                 Назад
               </Button>
               <Title level={3} style={{ margin: 0 }}>
                 Банковские операции
               </Title>
-            </Space>
-            <Space wrap>
-              <Upload accept=".xlsx" showUploadList={false} beforeUpload={handleUpload}>
-                <Button icon={<UploadOutlined />}>Загрузить XLSX</Button>
-              </Upload>
-              <Button icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>
-                Экспорт XLSX
-              </Button>
-              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                Добавить
-              </Button>
-            </Space>
+            </div>
+            <div className="crm-split-header__end">
+              <Space wrap>
+                <Upload accept=".xlsx" showUploadList={false} beforeUpload={handleUpload}>
+                  <Button icon={<UploadOutlined />}>Загрузить XLSX</Button>
+                </Upload>
+                <Button icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>
+                  Экспорт XLSX
+                </Button>
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+                  Добавить
+                </Button>
+              </Space>
+            </div>
           </div>
 
           <Space wrap align="center">

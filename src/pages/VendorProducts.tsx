@@ -211,49 +211,51 @@ const VendorProducts: React.FC = () => {
     <div>
       <Card>
         <Space orientation="vertical" style={{ width: '100%', gap: '24px' }} size="large">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Space>
+          <div className="crm-split-header">
+            <div className="crm-split-header__start">
               <Button
                 icon={<ArrowLeftOutlined />}
                 onClick={() => navigate(-1 as any)}
               >
                 Назад
               </Button>
-            </Space>
-            <Space>
-              <Popconfirm
-                title="Обнулить остатки?"
-                description="Количество на складе будет установлено в 0 для всех товаров"
-                onConfirm={handleResetStocks}
-                okText="Да"
-                cancelText="Нет"
-              >
-                <Tooltip title="Обнулить остатки для всех товаров">
-                  <Button icon={<ClearOutlined />} danger>
-                    Обнулить остатки
+            </div>
+            <div className="crm-split-header__end">
+              <Space wrap>
+                <Popconfirm
+                  title="Обнулить остатки?"
+                  description="Количество на складе будет установлено в 0 для всех товаров"
+                  onConfirm={handleResetStocks}
+                  okText="Да"
+                  cancelText="Нет"
+                >
+                  <Tooltip title="Обнулить остатки для всех товаров">
+                    <Button icon={<ClearOutlined />} danger>
+                      Обнулить остатки
+                    </Button>
+                  </Tooltip>
+                </Popconfirm>
+                <Tooltip title="Скачать CSV шаблон с артикулами для заполнения">
+                  <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
+                    Скачать шаблон CSV
                   </Button>
                 </Tooltip>
-              </Popconfirm>
-              <Tooltip title="Скачать CSV шаблон с артикулами для заполнения">
-                <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
-                  Скачать шаблон CSV
+                <Upload
+                  accept=".csv"
+                  beforeUpload={handleCSVUpload}
+                  showUploadList={false}
+                >
+                  <Tooltip title="Загрузите csv с колонками: 'Артикул', 'Наименование', 'Количество на складе'">
+                    <Button icon={<UploadOutlined />}>
+                      Загрузить из CSV
+                    </Button>
+                  </Tooltip>
+                </Upload>
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+                  Добавить товар
                 </Button>
-              </Tooltip>
-              <Upload
-                accept=".csv"
-                beforeUpload={handleCSVUpload}
-                showUploadList={false}
-              >
-                <Tooltip title="Загрузите csv с колонками: 'Артикул', 'Наименование', 'Количество на складе'">
-                  <Button icon={<UploadOutlined />}>
-                    Загрузить из CSV
-                  </Button>
-                </Tooltip>
-              </Upload>
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                Добавить товар
-              </Button>
-            </Space>
+              </Space>
+            </div>
           </div>
 
           <Title level={2} style={{ margin: 0 }}>
@@ -266,7 +268,7 @@ const VendorProducts: React.FC = () => {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             allowClear
-            style={{ width: 350 }}
+            style={{ width: '100%', maxWidth: 420 }}
           />
 
           <Table
@@ -274,6 +276,7 @@ const VendorProducts: React.FC = () => {
             dataSource={filteredProducts}
             rowKey="id"
             loading={loading}
+            scroll={{ x: 'max-content' }}
             size='small'
             pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (total) => `Всего ${total} товаров` }}
           />

@@ -68,8 +68,8 @@ const CompanyDetail: React.FC = () => {
     <div>
       <Card>
         <Space orientation="vertical" style={{ width: '100%', gap: '24px' }} size="large">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Space>
+          <div className="crm-page-lead">
+            <Space wrap size="small">
               <Button
                 icon={<ArrowLeftOutlined />}
                 onClick={() => navigate('/companies')}
@@ -109,6 +109,7 @@ const CompanyDetail: React.FC = () => {
               />
             ) : (
               <Table
+                scroll={{ x: 'max-content' }}
                 columns={[
                   {
                     title: 'Источник данных',

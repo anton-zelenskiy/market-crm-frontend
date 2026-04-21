@@ -1,12 +1,17 @@
-import React from 'react'
-import { Layout, Typography, Space, Button, Dropdown, theme } from 'antd'
+import React, { useEffect, useState } from 'react'
+import { Layout, Typography, Space, Button, Dropdown, theme, Drawer, Grid } from 'antd'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { RightOutlined, UserOutlined, CrownOutlined } from '@ant-design/icons'
+import {
+  RightOutlined,
+  UserOutlined,
+  CrownOutlined,
+  MenuOutlined,
+} from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { useAuth } from '../../context/AuthContext'
 
 const { Header: AntHeader } = Layout
-const { Title } = Typography
+const { Title, Text } = Typography
 
 const navLinkStyle: React.CSSProperties = {
   textDecoration: 'none',
@@ -22,9 +27,22 @@ const isActivePath = (pathname: string, to: string): boolean => {
 
 const Header: React.FC = () => {
   const { token } = theme.useToken()
+  const screens = Grid.useBreakpoint()
+  const isDesktopNav = screens.md ?? true
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
+
+  useEffect(() => {
+    setDrawerOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    if (isDesktopNav) {
+      setDrawerOpen(false)
+    }
+  }, [isDesktopNav])
 
   const activeNavLinkStyle: React.CSSProperties = {
     ...navLinkStyle,
@@ -35,78 +53,159 @@ const Header: React.FC = () => {
   }
 
   const sub = user?.active_subscription
-  const tariffLabel = sub ? `${sub.tariff.slug} · ${sub.tariff_variant.period} мес.` : 'Нет подписки'
+  const tariffLabel = sub
+    ? `${sub.tariff.slug} · ${sub.tariff_variant.period} мес.`
+    : 'Нет подписки'
   const userMenuItems: MenuProps['items'] = [
     { key: 'email', label: user?.email ?? '', disabled: true },
     { type: 'divider' },
     { key: 'tariff', icon: <CrownOutlined />, label: tariffLabel, disabled: true },
     { type: 'divider' },
-    { key: 'crm', icon: <RightOutlined />, label: 'CRM', onClick: () => navigate('/connections') },
+    {
+      key: 'crm',
+      icon: <RightOutlined />,
+      label: 'CRM',
+      onClick: () => navigate('/connections'),
+    },
   ]
 
-  return (
-    <AntHeader
-      style={{
-        background: '#ffffff',
-        padding: '0 80px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        height: '80px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 1000,
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
-      }}
-    >
-      <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div
-          style={{
-            width: '32px',
-            height: '32px',
-            background: 'linear-gradient(135deg, #1a1a1a 0%, #45a049 100%)',
-            borderRadius: '6px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 'bold',
-            color: '#ffffff',
-            fontSize: '18px',
-          }}
-        >
-          M
-        </div>
-        <Title level={3} style={{ margin: 0, fontWeight: 700, color: '#1a1a1a', fontSize: '24px' }}>
-          Market CRM
-        </Title>
-      </Link>
+  const closeDrawer = () => setDrawerOpen(false)
 
-      <Space size="large" style={{ fontSize: '15px' }}>
-        <Link to="/" style={isActivePath(pathname, '/') ? activeNavLinkStyle : navLinkStyle}>
-          Главная
+  const drawerLink = (to: string, label: string) => (
+    <Link
+      to={to}
+      onClick={closeDrawer}
+      className={`landing-drawer-link${isActivePath(pathname, to) ? ' landing-drawer-link--active' : ''}`}
+    >
+      {label}
+    </Link>
+  )
+
+  return (
+    <>
+      <AntHeader className="landing-header">
+        <Link to="/" className="landing-header__brand" onClick={closeDrawer}>
+          <div className="landing-header__logo">M</div>
+          <Title level={3} className="landing-header__title">
+            Market CRM
+          </Title>
         </Link>
-        <Link to="/instruction" style={isActivePath(pathname, '/instruction') ? activeNavLinkStyle : navLinkStyle}>
-          Инструкция
-        </Link>
-        <Link to="/tariffs" style={isActivePath(pathname, '/tariffs') ? activeNavLinkStyle : navLinkStyle}>
-          Тарифы
-        </Link>
-        {isAuthenticated ? (
-          <>
-            <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomRight">
-              <Button type="text" icon={<UserOutlined />} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {user?.email ?? ''}
-                <CrownOutlined style={{ fontSize: '12px', color: '#8c8c8c' }} />
+
+        {isDesktopNav ? (
+          <Space size="large" className="landing-header__nav-desktop" style={{ fontSize: '15px' }}>
+            <Link
+              to="/"
+              style={isActivePath(pathname, '/') ? activeNavLinkStyle : navLinkStyle}
+            >
+              Главная
+            </Link>
+            <Link
+              to="/instruction"
+              style={
+                isActivePath(pathname, '/instruction') ? activeNavLinkStyle : navLinkStyle
+              }
+            >
+              Инструкция
+            </Link>
+            <Link
+              to="/tariffs"
+              style={isActivePath(pathname, '/tariffs') ? activeNavLinkStyle : navLinkStyle}
+            >
+              Тарифы
+            </Link>
+            {isAuthenticated ? (
+              <Dropdown
+                menu={{ items: userMenuItems }}
+                trigger={['click']}
+                placement="bottomRight"
+              >
+                <Button
+                  type="text"
+                  icon={<UserOutlined />}
+                  className="landing-header__user-btn"
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  {user?.email ?? ''}
+                  <CrownOutlined style={{ fontSize: '12px', color: '#8c8c8c' }} />
+                </Button>
+              </Dropdown>
+            ) : (
+              <Button type="primary" onClick={() => navigate('/login')} icon={<RightOutlined />}>
+                Войти
               </Button>
-            </Dropdown>
-          </>
+            )}
+          </Space>
         ) : (
-          <Button type="primary" onClick={() => navigate('/login')} icon={<RightOutlined />}>
-            Войти
-          </Button>
+          <div className="landing-header__mobile-actions">
+            {isAuthenticated ? (
+              <Dropdown
+                menu={{ items: userMenuItems }}
+                trigger={['click']}
+                placement="bottomRight"
+              >
+                <Button type="text" icon={<UserOutlined />} aria-label="Аккаунт" />
+              </Dropdown>
+            ) : (
+              <Button type="primary" size="small" onClick={() => navigate('/login')}>
+                Войти
+              </Button>
+            )}
+            <Button
+              type="text"
+              icon={<MenuOutlined />}
+              aria-label="Открыть меню"
+              onClick={() => setDrawerOpen(true)}
+            />
+          </div>
         )}
-      </Space>
-    </AntHeader>
+      </AntHeader>
+
+      <Drawer
+        title="Меню"
+        placement="right"
+        width={280}
+        onClose={() => setDrawerOpen(false)}
+        open={drawerOpen}
+        className="landing-nav-drawer"
+      >
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+          {drawerLink('/', 'Главная')}
+          {drawerLink('/instruction', 'Инструкция')}
+          {drawerLink('/tariffs', 'Тарифы')}
+          {isAuthenticated ? (
+            <>
+              <Text type="secondary" style={{ wordBreak: 'break-all' }}>
+                {user?.email}
+              </Text>
+              <Text type="secondary">{tariffLabel}</Text>
+              <Button
+                type="primary"
+                block
+                icon={<RightOutlined />}
+                onClick={() => {
+                  navigate('/connections')
+                  closeDrawer()
+                }}
+              >
+                CRM
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="primary"
+              block
+              icon={<RightOutlined />}
+              onClick={() => {
+                navigate('/login')
+                closeDrawer()
+              }}
+            >
+              Войти
+            </Button>
+          )}
+        </Space>
+      </Drawer>
+    </>
   )
 }
 

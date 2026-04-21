@@ -6,12 +6,149 @@
   display: flex;
   flex-direction: column;
   background: #fafafa;
+  min-width: 0;
+}
+
+.landing-header {
+  background: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  height: 56px;
+  line-height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.landing-header__brand {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.landing-header__logo {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #1a1a1a 0%, #45a049 100%);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.landing-header__title {
+  margin: 0 !important;
+  font-weight: 700 !important;
+  color: #1a1a1a !important;
+  font-size: 18px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.landing-header__nav-desktop {
+  flex-shrink: 0;
+}
+
+.landing-header__mobile-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.landing-header__user-btn {
+  max-width: 220px;
+}
+
+.landing-header__user-btn .ant-btn-icon {
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .landing-header {
+    padding: 0 40px;
+    height: 80px;
+    line-height: normal;
+  }
+
+  .landing-header__title {
+    font-size: 24px !important;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .landing-header__user-btn {
+    max-width: 320px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .landing-header {
+    padding: 0 80px;
+  }
+}
+
+.landing-drawer-link {
+  display: block;
+  padding: 10px 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.88);
+  text-decoration: none;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.landing-drawer-link:hover {
+  color: #1677ff;
+}
+
+.landing-drawer-link--active {
+  color: #1677ff;
+  font-weight: 600;
+}
+
+.landing-footer {
+  padding: 40px 20px 32px !important;
+}
+
+@media (min-width: 768px) {
+  .landing-footer {
+    padding: 48px 40px 36px !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .landing-footer {
+    padding: 60px 80px 40px !important;
+  }
 }
 
 .landing-content {
-  padding: 80px 24px;
+  padding: 40px 16px;
   background: #fafafa;
   flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .landing-content {
+    padding: 80px 24px;
+  }
 }
 
 .landing-container {
@@ -41,6 +178,27 @@
   color: #1a1a1a;
   font-weight: 700;
   margin-bottom: 24px;
+  font-size: 28px !important;
+  line-height: 1.25 !important;
+}
+
+@media (min-width: 768px) {
+  .landing-title-large {
+    font-size: 38px !important;
+    line-height: 1.23 !important;
+  }
+}
+
+.landing-container-center > .ant-btn.ant-btn-lg {
+  width: 100%;
+  max-width: 360px;
+}
+
+@media (min-width: 480px) {
+  .landing-container-center > .ant-btn.ant-btn-lg {
+    width: auto;
+    max-width: none;
+  }
 }
 
 .landing-subtitle {
@@ -106,7 +264,9 @@
 }
 
 .auth-card {
-  width: 400px;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 16px;
 }
 
 .auth-header {

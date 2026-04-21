@@ -178,8 +178,8 @@ const ConnectionDetail: React.FC = () => {
     <div>
       <Card>
         <Space orientation="vertical" style={{ width: '100%' }} size="large">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Space>
+          <div className="crm-page-lead">
+            <Space wrap size="small">
               <Button
                 icon={<ArrowLeftOutlined />}
                 onClick={() => navigate('/connections')}
@@ -187,7 +187,10 @@ const ConnectionDetail: React.FC = () => {
                 Назад
               </Button>
               <Title level={2} style={{ margin: 0 }}>
-                <LinkOutlined /> API Подключение: {company ? `${company.name} (${connection.data_source?.title})`: connection.data_source?.title}
+                <LinkOutlined /> API Подключение:{' '}
+                {company
+                  ? `${company.name} (${connection.data_source?.title})`
+                  : connection.data_source?.title}
               </Title>
             </Space>
           </div>
@@ -351,8 +354,10 @@ const ConnectionDetail: React.FC = () => {
           </Card>
 
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Title level={4} style={{ margin: 0 }}>Доступные отчеты</Title>
+            <div className="crm-detail-toolbar">
+              <Title level={4} className="crm-detail-toolbar__title" style={{ margin: 0 }}>
+                Доступные отчеты
+              </Title>
               <Select
                 value={encoding}
                 onChange={(value) => setEncoding(value)}
@@ -369,6 +374,7 @@ const ConnectionDetail: React.FC = () => {
               dataSource={reports}
               rowKey="id"
               pagination={false}
+              scroll={{ x: 'max-content' }}
               locale={{ emptyText: 'Нет доступных отчетов для этого источника данных' }}
             />
           </div>
