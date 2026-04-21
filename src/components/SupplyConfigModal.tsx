@@ -7,6 +7,7 @@ import {
   Spin,
   Empty,
   Alert,
+  DatePicker,
 } from 'antd'
 import type { OzonCluster } from '../api/clusters'
 import type { OzonProduct } from '../api/products'
@@ -31,6 +32,7 @@ export interface SupplyConfigFormValues {
   cluster_ids?: number[]
   offer_ids?: string[]
   drop_off_warehouse_id?: number
+  planned_supply_date?: any
 }
 
 export interface SupplyConfigModalProps {
@@ -130,6 +132,18 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
             Проверять доступность складов. Если снять — будет
             рассчитан только базовый план.
           </Checkbox>
+        </Form.Item>
+
+        <Form.Item
+          name="planned_supply_date"
+          label="Планируемая дата отгрузки"
+          rules={
+            mode === 'create'
+              ? [{ required: true, message: 'Укажите планируемую дату отгрузки' }]
+              : undefined
+          }
+        >
+          <DatePicker style={{ width: '100%' }} />
         </Form.Item>
 
         <Form.Item

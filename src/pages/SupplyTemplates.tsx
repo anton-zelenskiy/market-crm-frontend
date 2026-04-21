@@ -9,6 +9,7 @@ import {
   Card,
   Typography,
 } from 'antd'
+import dayjs from 'dayjs'
 import {
   ArrowLeftOutlined,
   PlusOutlined,
@@ -158,6 +159,9 @@ const SupplyTemplates: React.FC = () => {
           name: selectedWarehouse.name,
           address: selectedWarehouse.address || null,
         },
+        planned_supply_date: values.planned_supply_date
+          ? dayjs(values.planned_supply_date).format('YYYY-MM-DD')
+          : null,
         supply_products_to_neighbor_cluster:
           values.supply_products_to_neighbor_cluster ?? false,
         fetch_availability: values.fetch_availability ?? true,

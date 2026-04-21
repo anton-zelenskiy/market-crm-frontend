@@ -120,6 +120,7 @@ export interface SupplySnapshotResponse {
   connection_id: number
   data: SupplyDataItem[]
   updated_at: string
+  planned_supply_date?: string | null
   cluster_ids: number[] | null
   offer_ids: string[] | null
   supply_products_to_neighbor_cluster: boolean | null
@@ -132,6 +133,7 @@ export interface CreateSnapshotConfig {
   supply_products_to_neighbor_cluster?: boolean
   fetch_availability?: boolean
   drop_off_warehouse?: DropOffWarehouse
+  planned_supply_date?: string | null
 }
 
 export interface CreateSnapshotResponse {
@@ -145,6 +147,7 @@ export interface RefreshSnapshotConfig {
   supply_products_to_neighbor_cluster?: boolean | null
   fetch_availability?: boolean | null
   drop_off_warehouse?: DropOffWarehouse
+  planned_supply_date?: string | null
 }
 
 export interface RefreshSnapshotResponse {

@@ -34,6 +34,7 @@ import type { ColDef, ColGroupDef, CellValueChangedEvent } from 'ag-grid-communi
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule])
 import { debounce } from 'throttle-debounce'
+import dayjs from 'dayjs'
 import {
   suppliesApi,
   type SupplySnapshotResponse,
@@ -443,6 +444,9 @@ const SupplyTemplateDetail: React.FC = () => {
           name: selectedWarehouse.name,
           address: selectedWarehouse.address || null,
         },
+        planned_supply_date: values.planned_supply_date
+          ? dayjs(values.planned_supply_date).format('YYYY-MM-DD')
+          : snapshot?.planned_supply_date ?? null,
       }
 
       const response = await suppliesApi.refreshSnapshot(
@@ -1485,6 +1489,9 @@ const SupplyTemplateDetail: React.FC = () => {
                 offer_ids: snapshot.offer_ids || [],
                 drop_off_warehouse_id:
                   snapshot.drop_off_warehouse?.warehouse_id,
+                planned_supply_date: snapshot.planned_supply_date
+                  ? dayjs(snapshot.planned_supply_date)
+                  : undefined,
               }
             : undefined
         }
