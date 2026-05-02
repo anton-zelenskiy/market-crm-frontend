@@ -175,8 +175,7 @@ export const ozonProductsApi = {
     const response = await api.get(`/products/ozon/${connectionId}/sync-csv-template`, {
       responseType: 'blob',
     })
-    
-    // Create a download link and trigger download
+
     const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
@@ -185,6 +184,69 @@ export const ozonProductsApi = {
     link.click()
     link.remove()
     window.URL.revokeObjectURL(url)
+  },
+}
+
+export interface WbProduct {
+  id: number
+  connection_id: number
+  nm_id: number
+  vendor_code: string
+  name: string
+  barcodes: string[]
+  box_quantity: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WbProductCreate {
+  nm_id: number
+  vendor_code: string
+  name: string
+  barcodes: string[]
+  box_quantity?: number | null
+}
+
+export interface WbProductUpdate {
+  nm_id?: number
+  vendor_code?: string
+  name?: string
+  barcodes?: string[]
+  box_quantity?: number | null
+}
+
+export const wbProductsApi = {
+  getAll: async (connectionId: number): Promise<WbProduct[]> => {
+    const response = await api.get(`/products/wb/${connectionId}`)
+    return response.data
+  },
+
+  getById: async (connectionId: number, wbProductId: number): Promise<WbProduct> => {
+    const response = await api.get(`/products/wb/${connectionId}/${wbProductId}`)
+    return response.data
+  },
+
+  create: async (connectionId: number, data: WbProductCreate): Promise<WbProduct> => {
+    const response = await api.post(`/products/wb/${connectionId}`, data)
+    return response.data
+  },
+
+  update: async (
+    connectionId: number,
+    wbProductId: number,
+    data: WbProductUpdate
+  ): Promise<WbProduct> => {
+    const response = await api.put(`/products/wb/${connectionId}/${wbProductId}`, data)
+    return response.data
+  },
+
+  delete: async (connectionId: number, wbProductId: number): Promise<void> => {
+    await api.delete(`/products/wb/${connectionId}/${wbProductId}`)
+  },
+
+  syncFromAPI: async (connectionId: number): Promise<{ message: string; result: unknown }> => {
+    const response = await api.post(`/products/wb/${connectionId}/sync`)
+    return response.data
   },
 }
 

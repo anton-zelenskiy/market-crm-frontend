@@ -324,7 +324,7 @@ const Supplies: React.FC = () => {
       })
 
       const displayOrderId = externalOrderId || supply.default_external_order_id?.toString() || supplyId
-      const filename = `${displayOrderId} ${supply.storage_warehouse_name}.zip`
+      const filename = `${displayOrderId} ${supply.macrolocal_cluster_name ?? supply.storage_warehouse_name ?? ''}.zip`
 
       // Create download link using constructed filename
       const url = window.URL.createObjectURL(blob)
@@ -401,12 +401,14 @@ const Supplies: React.FC = () => {
     //   width: 150,
     // },
     {
-      title: 'Склад хранения',
-      dataIndex: 'storage_warehouse_name',
-      key: 'storage_warehouse_name',
+      title: 'Кластер',
+      dataIndex: 'macrolocal_cluster_name',
+      key: 'macrolocal_cluster_name',
       width: 120,
       fixed: 'left' as const,
-      render: (name: string | null) => name || '-',
+      render: (_: any, record: SupplyOrder) => {
+        return record.macrolocal_cluster_name ?? record.storage_warehouse_name ?? ''
+      },
     },
     {
       title: 'Статус',

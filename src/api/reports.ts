@@ -66,5 +66,12 @@ export const reportsApi = {
     })
     return response.data
   },
+
+  runWb: async (request: ReportRunRequest): Promise<Blob> => {
+    const response = await api.post('/reports/wb/run', request, {
+      responseType: 'blob',
+    })
+    return response.data
+  },
 }
 

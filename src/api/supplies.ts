@@ -8,6 +8,7 @@ export interface SupplyOrder {
   created_date: string
   timeslot?: string | null
   storage_warehouse_name: string | null
+  macrolocal_cluster_name: string | null
   cargoes_count: number | null
   products_count?: number | null
   cargoes_products_count?: number | null

@@ -27,6 +27,7 @@ import Clusters from './pages/Clusters'
 import Reports from './pages/Reports'
 import VendorProducts from './pages/VendorProducts'
 import OzonProducts from './pages/OzonProducts'
+import WbProducts from './pages/WbProducts'
 import Supplies from './pages/Supplies'
 import SupplyTemplates from './pages/SupplyTemplates'
 import SupplyTemplateDetail from './pages/SupplyTemplateDetail'
@@ -248,6 +249,7 @@ const DashboardLayout: React.FC = () => {
             <Route path="/connections" element={<Connections />} />
             <Route path="/connections/:connectionId" element={<ConnectionDetail />} />
             <Route path="/connections/:connectionId/ozon-products" element={<OzonProducts />} />
+            <Route path="/connections/:connectionId/wb-products" element={<WbProducts />} />
             <Route path="/connections/:connectionId/supplies" element={<Supplies />} />
             <Route path="/connections/:connectionId/bookkeeping" element={<BookkeepingPage />} />
             <Route path="/connections/:connectionId/supply-templates" element={<SupplyTemplates />} />

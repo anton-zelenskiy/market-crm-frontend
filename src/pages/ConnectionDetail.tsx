@@ -104,7 +104,10 @@ const ConnectionDetail: React.FC = () => {
 
     setRunningReportId(report.id)
     try {
-      const blob = await reportsApi.run({
+      const runFn =
+        connection.data_source?.name === 'wildberries' ? reportsApi.runWb : reportsApi.run
+
+      const blob = await runFn({
         connection_id: connection.id,
         report_type: report.report_type,
         encoding,
@@ -143,7 +146,7 @@ const ConnectionDetail: React.FC = () => {
       title: 'Тип отчета',
       dataIndex: 'report_type',
       key: 'report_type',
-      render: (type: string) => <Tag color="blue">{type}</Tag>,
+      render: (_: any, record: Report) => <Tag color={record.data_source?.name === "ozon" ? "blue" : "purple"}>{record.report_type}</Tag>,
     },
     {
       title: 'Действия',
@@ -251,9 +254,16 @@ const ConnectionDetail: React.FC = () => {
                 itemLayout="horizontal"
                 dataSource={[
                   {
-                    title: 'WB Supply planning',
+                    title: 'Товары Wildberries',
                     description:
-                      'Создавайте и запускайте планы поставок Wildberries для выбранного подключения.',
+                      'Синхронизация карточек по тегу «В работе» и заполнение кратности (короба).',
+                    buttonText: 'Товары WB',
+                    onClick: () => navigate(`/connections/${connection.id}/wb-products`),
+                  },
+                  {
+                    title: 'Запланировать поставку',
+                    description:
+                      'Забронировать дату поставки (небезопасно)',
                     buttonText: 'Supply plans',
                     onClick: () =>
                       navigate(`/connections/${connection.id}/wb-supply-plans`),
