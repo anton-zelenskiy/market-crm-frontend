@@ -180,6 +180,7 @@ const SupplyTemplateDetail: React.FC = () => {
   const [visibleSubColumns, setVisibleSubColumns] = useState<string[]>([
     'marketplace_stocks_count',
     'avg_orders_count',
+    'stock_in_days',
     'available_quantity',
     'to_supply'
   ])
@@ -223,6 +224,7 @@ const SupplyTemplateDetail: React.FC = () => {
             options={[
               { label: 'Остатки на маркетплейсе', value: 'marketplace_stocks_count' },
               { label: avgOrdersLabel, value: 'avg_orders_count' },
+              { label: 'На сколько дней хватит товара', value: 'stock_in_days' },
               { label: 'Доступное кол-во', value: 'available_quantity' },
               { label: 'К поставке', value: 'to_supply' },
             ]}
@@ -986,6 +988,26 @@ const SupplyTemplateDetail: React.FC = () => {
           valueFormatter: (params) => {
             const value = params.value !== undefined && params.value !== null ? params.value : 0
             return String(value)
+          },
+        })
+      }
+
+      if (visibleSubColumns.includes('stock_in_days')) {
+        children.push({
+          field: `${clusterName}_stock_in_days`,
+          headerName: 'На сколько дней хватит товара',
+          width: 120,
+          type: 'numericColumn',
+          valueGetter: (params) => {
+            const cluster = params.data?.clusters?.find((c: ClusterData) => c.cluster_name === clusterName)
+            return cluster?.stock_in_days ?? null
+          },
+          valueFormatter: (params) => {
+            const value = params.value
+            if (value === undefined || value === null) return '-'
+            const num = Number(value)
+            if (!Number.isFinite(num)) return '-'
+            return num.toFixed(1)
           },
         })
       }

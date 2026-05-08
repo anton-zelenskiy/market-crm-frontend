@@ -94,6 +94,7 @@ export interface ClusterData {
   neighbor_macrolocal_cluster_id?: number | null
   marketplace_stocks_count: number
   avg_orders_count: number
+  stock_in_days?: number | null
   to_supply: number
   restricted_quantity?: number
   available_quantity?: number
