@@ -22,6 +22,7 @@ import {
   ShopOutlined,
 } from '@ant-design/icons'
 import { companiesApi } from '../api/companies'
+import { formatDate } from '../lib/dayjs'
 import type { Company, CompanyCreate } from '../api/companies'
 import { PageToolbar } from '../components/PageToolbar'
 
@@ -128,7 +129,7 @@ const Companies: React.FC = () => {
       title: 'Дата создания',
       dataIndex: 'created_at',
       key: 'created_at',
-      render: (date: string) => new Date(date).toLocaleDateString('ru-RU'),
+      render: (date: string) => formatDate(date),
     },
     {
       title: 'Действия',

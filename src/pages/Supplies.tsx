@@ -19,6 +19,7 @@ import {
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { ArrowLeftOutlined, MoreOutlined } from '@ant-design/icons'
+import { formatDate, formatDateTime } from '../lib/dayjs'
 import {
   suppliesApi,
   type SupplyOrder,
@@ -430,8 +431,7 @@ const Supplies: React.FC = () => {
         return aTime - bTime
       },
       sortDirections: ['ascend', 'descend'] as Array<'ascend' | 'descend'>,
-      render: (date: string) =>
-        date ? new Date(date).toLocaleDateString('ru-RU') : '-',
+      render: (date: string) => formatDate(date),
     },
     {
       title: 'Дата отгрузки',
@@ -444,8 +444,7 @@ const Supplies: React.FC = () => {
         return aTime - bTime
       },
       sortDirections: ['ascend', 'descend'] as Array<'ascend' | 'descend'>,
-      render: (date: string) =>
-        date ? new Date(date).toLocaleString('ru-RU') : '-',
+      render: (date: string) => formatDateTime(date),
     },
     {
       title: 'Грузоместа',

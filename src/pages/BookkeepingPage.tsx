@@ -17,7 +17,7 @@ import {
   Select,
   Spin,
 } from 'antd'
-import dayjs, { Dayjs } from 'dayjs'
+import dayjs, { type Dayjs, DATE_FORMAT } from '../lib/dayjs'
 import {
   ArrowLeftOutlined,
   PlusOutlined,
@@ -426,7 +426,7 @@ const BookkeepingPage: React.FC = () => {
 
           <Space wrap align="center">
             <span>Период:</span>
-            <RangePicker value={dateRange} onChange={(v) => setDateRange(v)} allowEmpty={[true, true]} />
+            <RangePicker value={dateRange} onChange={(v) => setDateRange(v)} allowEmpty={[true, true]} format={DATE_FORMAT} />
             <span>Банк</span>
             <Select
               allowClear
@@ -493,7 +493,7 @@ const BookkeepingPage: React.FC = () => {
             <Input placeholder="ozon / sber / tochka" />
           </Form.Item>
           <Form.Item name="operation_date" label="Дата" rules={[{ required: true }]}>
-            <DatePicker style={{ width: '100%' }} />
+            <DatePicker style={{ width: '100%' }} format={DATE_FORMAT} />
           </Form.Item>
           <Form.Item name="amount" label="Сумма" rules={[{ required: true }]}>
             <InputNumber min={0.01} style={{ width: '100%' }} />

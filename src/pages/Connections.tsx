@@ -20,6 +20,7 @@ import {
   LinkOutlined,
 } from '@ant-design/icons'
 import { connectionsApi } from '../api/connections'
+import { formatDate } from '../lib/dayjs'
 import type { Connection, ConnectionCreate } from '../api/connections'
 import { companiesApi } from '../api/companies'
 import type { Company } from '../api/companies'
@@ -229,7 +230,7 @@ const Connections: React.FC = () => {
       title: 'Создано',
       dataIndex: 'created_at',
       key: 'created_at',
-      render: (date: string) => new Date(date).toLocaleDateString('ru-RU'),
+      render: (date: string) => formatDate(date),
     },
     {
       title: 'Действия',

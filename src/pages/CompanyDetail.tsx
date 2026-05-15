@@ -18,6 +18,7 @@ import {
   LinkOutlined,
 } from '@ant-design/icons'
 import { companiesApi } from '../api/companies'
+import { formatDate, formatDateTime } from '../lib/dayjs'
 import type { Company } from '../api/companies'
 import type { Connection } from '../api/connections'
 
@@ -87,7 +88,7 @@ const CompanyDetail: React.FC = () => {
               {company.name}
             </Descriptions.Item>
             <Descriptions.Item label="Создано">
-              {new Date(company.created_at).toLocaleString('ru-RU')}
+              {formatDateTime(company.created_at)}
             </Descriptions.Item>
           </Descriptions>
 
@@ -124,7 +125,7 @@ const CompanyDetail: React.FC = () => {
                     title: 'Создано',
                     dataIndex: 'created_at',
                     key: 'created_at',
-                    render: (date: string) => new Date(date).toLocaleDateString(),
+                    render: (date: string) => formatDate(date),
                   },
                   {
                     title: 'Действия',

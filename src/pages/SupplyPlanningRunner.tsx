@@ -15,8 +15,7 @@ import {
   Popconfirm,
   Switch,
 } from 'antd'
-import type { Dayjs } from 'dayjs'
-import dayjs from 'dayjs'
+import dayjs, { type Dayjs, DATE_FORMAT } from '../lib/dayjs'
 
 import { suppliesApi } from '../api/supplies'
 
@@ -257,7 +256,7 @@ const SupplyPlanningRunner: React.FC = () => {
               label="Дата поставки (от)"
               rules={[{ required: true, message: 'Выберите дату от' }]}
             >
-              <DatePicker format="YYYY-MM-DD" />
+              <DatePicker format={DATE_FORMAT} />
             </Form.Item>
 
             <Form.Item
@@ -265,7 +264,7 @@ const SupplyPlanningRunner: React.FC = () => {
               label="Дата поставки (до)"
               rules={[{ required: true, message: 'Выберите дату до' }]}
             >
-              <DatePicker format="YYYY-MM-DD" />
+              <DatePicker format={DATE_FORMAT} />
             </Form.Item>
           </Space>
 

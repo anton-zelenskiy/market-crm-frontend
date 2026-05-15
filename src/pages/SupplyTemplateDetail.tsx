@@ -34,7 +34,7 @@ import type { ColDef, ColGroupDef, CellValueChangedEvent } from 'ag-grid-communi
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule])
 import { debounce } from 'throttle-debounce'
-import dayjs from 'dayjs'
+import dayjs, { formatDateTime } from '../lib/dayjs'
 import {
   suppliesApi,
   type SupplySnapshotResponse,
@@ -1227,7 +1227,7 @@ const SupplyTemplateDetail: React.FC = () => {
             <Space>
               {snapshot && (
                 <Text type="secondary">
-                  Обновлено: {new Date(snapshot.updated_at).toLocaleString('ru-RU')}
+                  Обновлено: {formatDateTime(snapshot.updated_at)}
                 </Text>
               )}
               
@@ -1354,7 +1354,7 @@ const SupplyTemplateDetail: React.FC = () => {
                     title: 'Дата создания',
                     dataIndex: 'created_at',
                     key: 'created_at',
-                    render: (date: string) => new Date(date).toLocaleString('ru-RU'),
+                    render: (date: string) => formatDateTime(date),
                   },
                   {
                     title: 'Действия',

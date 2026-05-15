@@ -12,6 +12,7 @@ import {
 import type { OzonCluster } from '../api/clusters'
 import type { OzonProduct } from '../api/products'
 import type { Warehouse } from '../api/supplies'
+import { DATE_FORMAT } from '../lib/dayjs'
 
 const { Option } = Select
 
@@ -143,7 +144,7 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
               : undefined
           }
         >
-          <DatePicker style={{ width: '100%' }} />
+          <DatePicker style={{ width: '100%' }} format={DATE_FORMAT} />
         </Form.Item>
 
         <Form.Item

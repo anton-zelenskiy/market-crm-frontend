@@ -19,6 +19,7 @@ import {
   FileTextOutlined,
 } from '@ant-design/icons'
 import { reportsApi } from '../api/reports'
+import { formatDate } from '../lib/dayjs'
 import type { Report, ReportCreate, ReportType } from '../api/reports'
 import { dataSourcesApi } from '../api/dataSources'
 import type { DataSource } from '../api/dataSources'
@@ -176,7 +177,7 @@ const Reports: React.FC = () => {
       title: 'Создано',
       dataIndex: 'created_at',
       key: 'created_at',
-      render: (date: string) => new Date(date).toLocaleDateString('ru-RU'),
+      render: (date: string) => formatDate(date),
     },
     {
       title: 'Действия',

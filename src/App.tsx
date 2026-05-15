@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Layout, Menu, Button, theme, ConfigProvider, Drawer, Grid } from 'antd'
+import ruRU from 'antd/locale/ru_RU'
+import './lib/dayjs'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -310,7 +312,7 @@ const softTheme = {
 
 const App: React.FC = () => {
   return (
-    <ConfigProvider theme={softTheme}>
+    <ConfigProvider theme={softTheme} locale={ruRU}>
       <AuthProvider>
         <Router>
           <Routes>

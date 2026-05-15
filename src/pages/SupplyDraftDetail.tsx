@@ -14,16 +14,10 @@ import {
   Col,
   Empty,
   Tag,
-  ConfigProvider,
   Modal,
   Table,
 } from 'antd'
-import ruRU from 'antd/locale/ru_RU'
-import type { Dayjs } from 'dayjs'
-import dayjs from 'dayjs'
-import 'dayjs/locale/ru'
-import localeData from 'dayjs/plugin/localeData'
-import updateLocale from 'dayjs/plugin/updateLocale'
+import dayjs, { type Dayjs } from '../lib/dayjs'
 import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
@@ -38,14 +32,6 @@ import {
   type SupplyCreateInfo,
   WAREHOUSE_AVAILABILITY_STATE_DESCRIPTION,
 } from '../api/supplies'
-
-dayjs.extend(localeData)
-dayjs.extend(updateLocale)
-dayjs.locale('ru')
-// Set Monday as the first day of the week (0 = Sunday, 1 = Monday)
-dayjs.updateLocale('ru', {
-  weekStart: 1,
-})
 
 const { Title, Text } = Typography
 
@@ -642,35 +628,33 @@ const SupplyDraftDetail: React.FC = () => {
                         {/* Left side: Calendar */}
                         <Col span={10}>
                           <div style={{ border: '1px solid #f0f0f0', borderRadius: '12px', padding: '16px', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                            <ConfigProvider locale={ruRU}>
-                              <Calendar
-                                fullscreen={false}
-                                headerRender={({ value, onChange }) => {
-                                  const localeData = value.localeData();
-                                  const year = value.year();
-                                  return (
-                                    <div style={{ padding: '8px 0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                      <Text strong style={{ fontSize: '16px' }}>{localeData.months(value)} {year}</Text>
-                                      <Space>
-                                        <Button
-                                          size="small"
-                                          icon={<span style={{ fontSize: '12px' }}>&lt;</span>}
-                                          onClick={() => onChange(value.clone().subtract(1, 'month'))}
-                                        />
-                                        <Button
-                                          size="small"
-                                          icon={<span style={{ fontSize: '12px' }}>&gt;</span>}
-                                          onClick={() => onChange(value.clone().add(1, 'month'))}
-                                        />
-                                      </Space>
-                                    </div>
-                                  );
-                                }}
-                                value={selectedDate ? dayjs(selectedDate) : undefined}
-                                onSelect={onDateSelect}
-                                cellRender={dateCellRender}
-                              />
-                            </ConfigProvider>
+                            <Calendar
+                              fullscreen={false}
+                              headerRender={({ value, onChange }) => {
+                                const localeData = value.localeData();
+                                const year = value.year();
+                                return (
+                                  <div style={{ padding: '8px 0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Text strong style={{ fontSize: '16px' }}>{localeData.months(value)} {year}</Text>
+                                    <Space>
+                                      <Button
+                                        size="small"
+                                        icon={<span style={{ fontSize: '12px' }}>&lt;</span>}
+                                        onClick={() => onChange(value.clone().subtract(1, 'month'))}
+                                      />
+                                      <Button
+                                        size="small"
+                                        icon={<span style={{ fontSize: '12px' }}>&gt;</span>}
+                                        onClick={() => onChange(value.clone().add(1, 'month'))}
+                                      />
+                                    </Space>
+                                  </div>
+                                );
+                              }}
+                              value={selectedDate ? dayjs(selectedDate) : undefined}
+                              onSelect={onDateSelect}
+                              cellRender={dateCellRender}
+                            />
                           </div>
                         </Col>
                         {/* Right side: Timeslots */}

@@ -9,7 +9,7 @@ import {
   Card,
   Typography,
 } from 'antd'
-import dayjs from 'dayjs'
+import dayjs, { formatDate } from '../lib/dayjs'
 import {
   ArrowLeftOutlined,
   PlusOutlined,
@@ -214,7 +214,7 @@ const SupplyTemplates: React.FC = () => {
           type="link"
           onClick={() => navigate(`/connections/${connectionId}/supply-templates/${record.id}`)}
         >
-          <Space>Поставка №{record.id} от {new Date(record.updated_at).toLocaleDateString('ru-RU')}</Space>
+          <Space>Поставка №{record.id} от {formatDate(record.updated_at)}</Space>
         </Button>        
       ),
     },
