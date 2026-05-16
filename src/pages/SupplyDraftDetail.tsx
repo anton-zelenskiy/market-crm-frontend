@@ -152,7 +152,7 @@ const SupplyDraftDetail: React.FC = () => {
     const isDirect = draft.supply_type === 'DIRECT'
     
     // For non-DIRECT supply types, auto-load timeslots without warehouse selection
-    if (!isDirect && !draft.is_expired && !timeslots && !loadingTimeslots) {
+    if (!isDirect && !draft.is_expired && !timeslots && !loadingTimeslots && !supplyCreateInfo?.order_id) {
       handleLoadTimeslots()
       return
     }
