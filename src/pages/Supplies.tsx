@@ -16,6 +16,7 @@ import {
   Checkbox,
   Divider,
   Select,
+  Popconfirm,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { ArrowLeftOutlined, MoreOutlined } from '@ant-design/icons'
@@ -61,9 +62,13 @@ interface SupplyActionsProps {
   onCreateCargoes: (supply: SupplyOrder, deleteCurrentVersion: boolean) => Promise<void>
   onDownloadDocuments: (supply: SupplyOrder, externalOrderId: string) => Promise<void>
   onDownloadCargoLabels: (supply: SupplyOrder) => Promise<void>
+  onCreateKaitenCard: (supply: SupplyOrder) => Promise<void>
+  onLinkExistingKaitenCard: (supply: SupplyOrder) => Promise<void>
   isCreating: boolean
   isDownloading: boolean
   isDownloadingLabels: boolean
+  isCreatingKaiten: boolean
+  isLinkingKaiten: boolean
 }
 
 const SupplyActions: React.FC<SupplyActionsProps> = ({
@@ -71,9 +76,13 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
   onCreateCargoes,
   onDownloadDocuments,
   onDownloadCargoLabels,
+  onCreateKaitenCard,
+  onLinkExistingKaitenCard,
   isCreating,
   isDownloading,
   isDownloadingLabels,
+  isCreatingKaiten,
+  isLinkingKaiten,
 }) => {
   const [cargoForm] = Form.useForm()
   const [docForm] = Form.useForm()
@@ -153,6 +162,33 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
           </Button>
         </Form.Item>
       </Form>
+
+      <Divider />
+
+      <Typography.Title level={5}>Kaiten</Typography.Title>
+      <Button
+        type="primary"
+        loading={isCreatingKaiten}
+        disabled={!!supply.kaiten_card_id || supply.cargoes_count === null || supply.cargoes_count === 0}
+        onClick={() => onCreateKaitenCard(supply)}
+        block
+      >
+        Создать задачу в Kaiten
+      </Button>
+      <Button
+        style={{ marginTop: 8 }}
+        loading={isLinkingKaiten}
+        disabled={!!supply.kaiten_card_id || supply.cargoes_count === null || supply.cargoes_count === 0}
+        onClick={() => onLinkExistingKaitenCard(supply)}
+        block
+      >
+        Привязать существующую карточку и прикрепить файлы
+      </Button>
+      {supply.kaiten_card_id && (
+        <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+          Карточка уже привязана
+        </Typography.Text>
+      )}
     </div>
   )
 }
@@ -167,6 +203,9 @@ const Supplies: React.FC = () => {
   const [creatingCargoes, setCreatingCargoes] = useState<Record<string, boolean>>({})
   const [downloadingDocs, setDownloadingDocs] = useState<Record<string, boolean>>({})
   const [downloadingCargoLabels, setDownloadingCargoLabels] = useState<Record<string, boolean>>({})
+  const [creatingKaiten, setCreatingKaiten] = useState<Record<string, boolean>>({})
+  const [linkingKaiten, setLinkingKaiten] = useState<Record<string, boolean>>({})
+  const [deletingKaiten, setDeletingKaiten] = useState<Record<string, boolean>>({})
   const [downloadingSummaryXlsx, setDownloadingSummaryXlsx] = useState(false)
   const [stateGroupId, setStateGroupId] = useState<SupplyStateGroupId>('PREPARATION')
   const selectedStates =
@@ -349,6 +388,71 @@ const Supplies: React.FC = () => {
     }
   }
 
+  const handleLinkExistingKaitenCard = async (supply: SupplyOrder) => {
+    if (!connection) return
+
+    const supplyId = supply.supply_id
+    setLinkingKaiten((prev) => ({ ...prev, [supplyId]: true }))
+
+    try {
+      await suppliesApi.linkExistingKaitenCard(
+        supplyId,
+        connection.id,
+        supply.order_id.toString()
+      )
+      message.success('Карточка Kaiten найдена, файлы прикреплены')
+      await loadSupplies(selectedStates)
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка привязки карточки Kaiten'
+      )
+    } finally {
+      setLinkingKaiten((prev) => ({ ...prev, [supplyId]: false }))
+    }
+  }
+
+  const handleCreateKaitenCard = async (supply: SupplyOrder) => {
+    if (!connection) return
+
+    const supplyId = supply.supply_id
+    setCreatingKaiten((prev) => ({ ...prev, [supplyId]: true }))
+
+    try {
+      await suppliesApi.createKaitenCard(
+        supplyId,
+        connection.id,
+        supply.order_id.toString()
+      )
+      message.success('Задача в Kaiten создана')
+      await loadSupplies(selectedStates)
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка создания задачи в Kaiten'
+      )
+    } finally {
+      setCreatingKaiten((prev) => ({ ...prev, [supplyId]: false }))
+    }
+  }
+
+  const handleDeleteKaitenCard = async (supply: SupplyOrder) => {
+    if (!connection) return
+
+    const supplyId = supply.supply_id
+    setDeletingKaiten((prev) => ({ ...prev, [supplyId]: true }))
+
+    try {
+      await suppliesApi.deleteKaitenCard(supplyId, connection.id)
+      message.success('Карточка Kaiten удалена')
+      await loadSupplies(selectedStates)
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка удаления карточки Kaiten'
+      )
+    } finally {
+      setDeletingKaiten((prev) => ({ ...prev, [supplyId]: false }))
+    }
+  }
+
   const handleDownloadCargoLabels = async (supply: SupplyOrder) => {
     if (!connection) return
 
@@ -490,6 +594,8 @@ const Supplies: React.FC = () => {
         const isCreating = creatingCargoes[supplyId] || false
         const isDownloading = downloadingDocs[supplyId] || false
         const isDownloadingLabels = downloadingCargoLabels[supplyId] || false
+        const isCreatingKaiten = creatingKaiten[supplyId] || false
+        const isLinkingKaiten = linkingKaiten[supplyId] || false
 
         return (
           <Popover
@@ -500,9 +606,13 @@ const Supplies: React.FC = () => {
                 onCreateCargoes={handleCreateCargoes}
                 onDownloadDocuments={handleDownloadDocuments}
                 onDownloadCargoLabels={handleDownloadCargoLabels}
+                onCreateKaitenCard={handleCreateKaitenCard}
+                onLinkExistingKaitenCard={handleLinkExistingKaitenCard}
                 isCreating={isCreating}
                 isDownloading={isDownloading}
                 isDownloadingLabels={isDownloadingLabels}
+                isCreatingKaiten={isCreatingKaiten}
+                isLinkingKaiten={isLinkingKaiten}
               />
             }
             trigger="click"
@@ -598,29 +708,69 @@ const Supplies: React.FC = () => {
               }}
               expandable={{
                 expandedRowRender: (record: SupplyOrder) => {
-                  if (!record.errors || record.errors.length === 0) {
+                  const hasErrors = !!(record.errors && record.errors.length > 0)
+                  const hasKaiten = !!record.kaiten_card_id
+                  if (!hasErrors && !hasKaiten) {
                     return null
                   }
                   return (
                     <div style={{ padding: '16px' }}>
-                      <Typography.Title level={5} style={{ marginBottom: '12px' }}>
-                        Ошибки при создании грузомест:
-                      </Typography.Title>
-                      <Space orientation="vertical" style={{ width: '100%' }}>
-                        {record.errors.map((error, index) => (
-                          <Alert
-                            key={index}
-                            title={formatErrorReason(error)}
-                            type="error"
-                            showIcon
-                          />
-                        ))}
-                      </Space>
+                      {hasKaiten && (
+                        <div style={{ marginBottom: hasErrors ? 16 : 0 }}>
+                          <Typography.Title level={5} style={{ marginBottom: '12px' }}>
+                            Kaiten
+                          </Typography.Title>
+                          {record.kaiten_card_url && (
+                            <Typography.Paragraph>
+                              <a
+                                href={record.kaiten_card_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                Открыть карточку в Kaiten
+                              </a>
+                            </Typography.Paragraph>
+                          )}
+                          <Popconfirm
+                            title="Удалить карточку в Kaiten?"
+                            onConfirm={() => handleDeleteKaitenCard(record)}
+                            okText="Удалить"
+                            cancelText="Отмена"
+                          >
+                            <Button
+                              danger
+                              loading={deletingKaiten[record.supply_id] || false}
+                            >
+                              Удалить карточку в Kaiten
+                            </Button>
+                          </Popconfirm>
+                        </div>
+                      )}
+                      {hasErrors && (
+                        <>
+                          <Typography.Title level={5} style={{ marginBottom: '12px' }}>
+                            Ошибки при создании грузомест:
+                          </Typography.Title>
+                          <Space orientation="vertical" style={{ width: '100%' }}>
+                            {record.errors!.map((error, index) => (
+                              <Alert
+                                key={index}
+                                title={formatErrorReason(error)}
+                                type="error"
+                                showIcon
+                              />
+                            ))}
+                          </Space>
+                        </>
+                      )}
                     </div>
                   )
                 },
                 rowExpandable: (record: SupplyOrder) => {
-                  return !!(record.errors && record.errors.length > 0)
+                  return (
+                    !!(record.errors && record.errors.length > 0) ||
+                    !!record.kaiten_card_id
+                  )
                 },
               }}
             />

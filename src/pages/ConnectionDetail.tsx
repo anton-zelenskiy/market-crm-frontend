@@ -29,6 +29,7 @@ import { reportsApi } from '../api/reports'
 import type { Report } from '../api/reports'
 import { companiesApi } from '../api/companies'
 import type { Company } from '../api/companies'
+import KaitenIntegrationForm from '../components/KaitenIntegrationForm'
 
 const { Title } = Typography
 const { Option } = Select
@@ -315,6 +316,10 @@ const ConnectionDetail: React.FC = () => {
               )}
             />
           </Card>
+
+          {connection.data_source?.name === 'ozon' && connectionId && (
+            <KaitenIntegrationForm connectionId={parseInt(connectionId)} />
+          )}
 
           <Card title="Настройки поставки" size="small">
             <Form

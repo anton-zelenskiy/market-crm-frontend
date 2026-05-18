@@ -15,6 +15,8 @@ export interface SupplyOrder {
   errors: string[] | null
   external_order_id?: string | null
   default_external_order_id?: number | null
+  kaiten_card_id?: number | null
+  kaiten_card_url?: string | null
 }
 
 export interface SupplyOrdersResponse {
@@ -397,6 +399,39 @@ export const suppliesApi = {
       responseType: 'blob',
     })
     return response.data
+  },
+
+  createKaitenCard: async (
+    supplyId: string,
+    connectionId: number,
+    orderId: string
+  ) => {
+    const params = new URLSearchParams({
+      connection_id: connectionId.toString(),
+      order_id: orderId,
+    })
+    const response = await api.post(`/supplies/${supplyId}/kaiten/card?${params}`)
+    return response.data
+  },
+
+  linkExistingKaitenCard: async (
+    supplyId: string,
+    connectionId: number,
+    orderId: string
+  ) => {
+    const params = new URLSearchParams({
+      connection_id: connectionId.toString(),
+      order_id: orderId,
+    })
+    const response = await api.post(`/supplies/${supplyId}/kaiten/card/link?${params}`)
+    return response.data
+  },
+
+  deleteKaitenCard: async (supplyId: string, connectionId: number) => {
+    const params = new URLSearchParams({
+      connection_id: connectionId.toString(),
+    })
+    await api.delete(`/supplies/${supplyId}/kaiten/card?${params}`)
   },
 
   downloadCargoLabels: async (
