@@ -23,7 +23,6 @@ const KaitenIntegrationForm: React.FC<KaitenIntegrationFormProps> = ({ connectio
   const [savingCredentials, setSavingCredentials] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
   const [integration, setIntegration] = useState<KaitenIntegrationResponse | null>(null)
-  const [ephemeralSpaceId, setEphemeralSpaceId] = useState<number | null>(null)
   const [spaces, setSpaces] = useState<KaitenSelectOption[]>([])
   const [boards, setBoards] = useState<KaitenSelectOption[]>([])
   const [lanes, setLanes] = useState<KaitenSelectOption[]>([])
@@ -44,6 +43,7 @@ const KaitenIntegrationForm: React.FC<KaitenIntegrationFormProps> = ({ connectio
       })
       settingsForm.setFieldsValue({
         enabled: data.enabled,
+        space_id: data.settings?.space_id,
         board_id: data.settings?.board_id,
         lane_id: data.settings?.lane_id,
         column_id: data.settings?.column_id,
@@ -51,6 +51,9 @@ const KaitenIntegrationForm: React.FC<KaitenIntegrationFormProps> = ({ connectio
       })
       if (data.settings?.board_id) {
         setBoardId(data.settings.board_id)
+      }
+      if (data.settings?.space_id) {
+        loadBoards(data.settings.space_id)
       }
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка загрузки интеграции Kaiten')
@@ -141,6 +144,7 @@ const KaitenIntegrationForm: React.FC<KaitenIntegrationFormProps> = ({ connectio
 
   const handleSaveSettings = async (values: {
     enabled: boolean
+    space_id?: number
     board_id: number
     lane_id: number
     column_id: number
@@ -149,6 +153,7 @@ const KaitenIntegrationForm: React.FC<KaitenIntegrationFormProps> = ({ connectio
     setSavingSettings(true)
     try {
       const settings: KaitenIntegrationSettings = {
+        space_id: values.space_id ?? null,
         board_id: values.board_id,
         lane_id: values.lane_id,
         column_id: values.column_id,
@@ -239,16 +244,17 @@ const KaitenIntegrationForm: React.FC<KaitenIntegrationFormProps> = ({ connectio
             <Switch />
           </Form.Item>
 
-          <Form.Item label="Пространство (для выбора доски)">
+          <Form.Item
+            name="space_id"
+            label="Пространство (для выбора доски)"
+          >
             <Select
               placeholder="Выберите пространство"
               allowClear
-              value={ephemeralSpaceId ?? undefined}
               onFocus={() => {
                 if (spaces.length === 0) loadSpaces()
               }}
               onChange={(value) => {
-                setEphemeralSpaceId(value ?? null)
                 setBoards([])
                 settingsForm.setFieldsValue({
                   board_id: undefined,

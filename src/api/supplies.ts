@@ -19,6 +19,13 @@ export interface SupplyOrder {
   kaiten_card_url?: string | null
 }
 
+export interface KaitenCardInfo {
+  card_id: number
+  title: string | null
+  file_names: string[]
+  card_url: string | null
+}
+
 export interface SupplyOrdersResponse {
   orders: SupplyOrder[]
   total: number
@@ -432,6 +439,17 @@ export const suppliesApi = {
       connection_id: connectionId.toString(),
     })
     await api.delete(`/supplies/${supplyId}/kaiten/card?${params}`)
+  },
+
+  getKaitenCardInfo: async (
+    supplyId: string,
+    connectionId: number
+  ): Promise<KaitenCardInfo> => {
+    const params = new URLSearchParams({
+      connection_id: connectionId.toString(),
+    })
+    const response = await api.get(`/supplies/${supplyId}/kaiten/card?${params}`)
+    return response.data
   },
 
   downloadCargoLabels: async (

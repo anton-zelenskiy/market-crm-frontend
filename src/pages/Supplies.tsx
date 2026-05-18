@@ -17,6 +17,7 @@ import {
   Divider,
   Select,
   Popconfirm,
+  Tooltip,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { ArrowLeftOutlined, MoreOutlined } from '@ant-design/icons'
@@ -25,6 +26,7 @@ import {
   suppliesApi,
   type SupplyOrder,
   type SupplyOrderState,
+  type KaitenCardInfo,
   SUPPLY_ORDER_STATE_LABELS,
 } from '../api/supplies'
 import { companiesApi, type Company } from '../api/companies'
@@ -93,7 +95,7 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
   }, [supply.supply_id, supply.external_order_id, supply.default_external_order_id, docForm])
 
   return (
-    <div style={{ padding: '16px', minWidth: '300px' }}>
+    <div style={{ padding: '0 16px 0 16px', minWidth: '250px' }}>
       <Form
         form={cargoForm}
         layout="vertical"
@@ -166,29 +168,159 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
       <Divider />
 
       <Typography.Title level={5}>Kaiten</Typography.Title>
-      <Button
-        type="primary"
-        loading={isCreatingKaiten}
-        disabled={!!supply.kaiten_card_id || supply.cargoes_count === null || supply.cargoes_count === 0}
-        onClick={() => onCreateKaitenCard(supply)}
-        block
-      >
-        Создать задачу в Kaiten
-      </Button>
-      <Button
-        style={{ marginTop: 8 }}
-        loading={isLinkingKaiten}
-        disabled={!!supply.kaiten_card_id || supply.cargoes_count === null || supply.cargoes_count === 0}
-        onClick={() => onLinkExistingKaitenCard(supply)}
-        block
-      >
-        Привязать существующую карточку и прикрепить файлы
-      </Button>
-      {supply.kaiten_card_id && (
-        <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-          Карточка уже привязана
-        </Typography.Text>
+      {(() => {
+        const hasKaitenCard = !!supply.kaiten_card_id
+        const hasCargoes =
+          supply.cargoes_count != null && supply.cargoes_count > 0
+        const canAttachToExistingCard = hasKaitenCard || hasCargoes
+
+        return (
+          <>
+            {!hasKaitenCard && (
+              <Tooltip title="Создать карточку в Kaiten для поставки и прикрепить к ней еобходимые файлы поставки">
+                <Button
+                  type="primary"
+                  loading={isCreatingKaiten}
+                  disabled={!hasCargoes}
+                  onClick={() => onCreateKaitenCard(supply)}
+                  block
+                >
+                  Создать задачу
+                </Button>
+              </Tooltip>
+            )}
+            <Tooltip title="Действие нужно, чтобы прикрепить файлы к карточке, которая уже создана в Kaiten и содержит в названии такой же номер внешнего заказа, как и у поставки">
+              <Button
+                type="primary"
+                style={{ marginTop: hasKaitenCard ? 0 : 8 }}
+                loading={isLinkingKaiten}
+                disabled={!canAttachToExistingCard}
+                onClick={() => onLinkExistingKaitenCard(supply)}
+                block
+              >
+                Прикрепить файлы к карточке
+              </Button>
+            </Tooltip>
+          </>
+        )
+      })()}
+    </div>
+  )
+}
+
+interface SupplyKaitenExpandedSectionProps {
+  supply: SupplyOrder
+  connectionId: number
+  refreshToken?: number
+  onLinkExisting: (supply: SupplyOrder) => void
+  onDelete: (supply: SupplyOrder) => void
+  isLinking: boolean
+  isDeleting: boolean
+}
+
+const SupplyKaitenExpandedSection: React.FC<SupplyKaitenExpandedSectionProps> = ({
+  supply,
+  connectionId,
+  refreshToken = 0,
+  onLinkExisting,
+  onDelete,
+  isLinking,
+  isDeleting,
+}) => {
+  const [cardInfo, setCardInfo] = useState<KaitenCardInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    setCardInfo(null)
+
+    suppliesApi
+      .getKaitenCardInfo(supply.supply_id, connectionId)
+      .then((data) => {
+        if (!cancelled) setCardInfo(data)
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const detail =
+            err &&
+            typeof err === 'object' &&
+            'response' in err &&
+            err.response &&
+            typeof err.response === 'object' &&
+            'data' in err.response &&
+            err.response.data &&
+            typeof err.response.data === 'object' &&
+            'detail' in err.response.data
+              ? String(err.response.data.detail)
+              : 'Не удалось загрузить карточку Kaiten'
+          setError(detail)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [supply.supply_id, connectionId, supply.kaiten_card_id, refreshToken])
+
+  return (
+    <div style={{ marginBottom: 0 }}>
+      <h3>Карточка в Kaiten</h3>
+      {loading && <Spin size="small" />}
+      {error && (
+        <Alert type="error" title={error} showIcon style={{ marginBottom: 12 }} />
       )}
+      {!loading && !error && cardInfo && (
+        <>
+          {cardInfo.title && (
+            <Typography.Paragraph style={{ marginBottom: 8 }}>
+              <Typography.Text type="secondary">Название: </Typography.Text>
+              {cardInfo.title}
+            </Typography.Paragraph>
+          )}
+          {cardInfo.file_names.length > 0 && (
+            <Typography.Paragraph style={{ marginBottom: 8 }}>
+              <Typography.Text type="secondary">Прикреплённые файлы:</Typography.Text>
+              <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
+                {cardInfo.file_names.map((fileName) => (
+                  <li key={fileName}>{fileName}</li>
+                ))}
+              </ul>
+            </Typography.Paragraph>
+          )}
+          {cardInfo.card_url && (
+            <Typography.Paragraph>
+              <a href={cardInfo.card_url} target="_blank" rel="noopener noreferrer">
+                Открыть карточку в Kaiten
+              </a>
+            </Typography.Paragraph>
+          )}
+        </>
+      )}
+      <Space wrap style={{ marginTop: 12 }}>
+        <Button
+          type="primary"
+          loading={isLinking}
+          onClick={() => onLinkExisting(supply)}
+        >
+          Прикрепить файлы к карточке
+        </Button>
+        <Popconfirm
+          title="Удалить карточку в Kaiten?"
+          onConfirm={() => onDelete(supply)}
+          okText="Удалить"
+          cancelText="Отмена"
+        >
+          <Button danger loading={isDeleting}>
+            Удалить карточку в Kaiten
+          </Button>
+        </Popconfirm>
+      </Space>
     </div>
   )
 }
@@ -206,6 +338,7 @@ const Supplies: React.FC = () => {
   const [creatingKaiten, setCreatingKaiten] = useState<Record<string, boolean>>({})
   const [linkingKaiten, setLinkingKaiten] = useState<Record<string, boolean>>({})
   const [deletingKaiten, setDeletingKaiten] = useState<Record<string, boolean>>({})
+  const [kaitenInfoRefresh, setKaitenInfoRefresh] = useState<Record<string, number>>({})
   const [downloadingSummaryXlsx, setDownloadingSummaryXlsx] = useState(false)
   const [stateGroupId, setStateGroupId] = useState<SupplyStateGroupId>('PREPARATION')
   const selectedStates =
@@ -400,7 +533,15 @@ const Supplies: React.FC = () => {
         connection.id,
         supply.order_id.toString()
       )
-      message.success('Карточка Kaiten найдена, файлы прикреплены')
+      message.success(
+        supply.kaiten_card_id
+          ? 'Файлы прикреплены к карточке Kaiten'
+          : 'Карточка Kaiten найдена, файлы прикреплены'
+      )
+      setKaitenInfoRefresh((prev) => ({
+        ...prev,
+        [supplyId]: (prev[supplyId] ?? 0) + 1,
+      }))
       await loadSupplies(selectedStates)
     } catch (error: any) {
       message.error(
@@ -714,36 +855,18 @@ const Supplies: React.FC = () => {
                     return null
                   }
                   return (
-                    <div style={{ padding: '16px' }}>
-                      {hasKaiten && (
+                    <div style={{ padding: '0 16px 0 16px' }}>
+                      {hasKaiten && connection && (
                         <div style={{ marginBottom: hasErrors ? 16 : 0 }}>
-                          <Typography.Title level={5} style={{ marginBottom: '12px' }}>
-                            Kaiten
-                          </Typography.Title>
-                          {record.kaiten_card_url && (
-                            <Typography.Paragraph>
-                              <a
-                                href={record.kaiten_card_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                Открыть карточку в Kaiten
-                              </a>
-                            </Typography.Paragraph>
-                          )}
-                          <Popconfirm
-                            title="Удалить карточку в Kaiten?"
-                            onConfirm={() => handleDeleteKaitenCard(record)}
-                            okText="Удалить"
-                            cancelText="Отмена"
-                          >
-                            <Button
-                              danger
-                              loading={deletingKaiten[record.supply_id] || false}
-                            >
-                              Удалить карточку в Kaiten
-                            </Button>
-                          </Popconfirm>
+                          <SupplyKaitenExpandedSection
+                            supply={record}
+                            connectionId={connection.id}
+                            refreshToken={kaitenInfoRefresh[record.supply_id] ?? 0}
+                            onLinkExisting={handleLinkExistingKaitenCard}
+                            onDelete={handleDeleteKaitenCard}
+                            isLinking={linkingKaiten[record.supply_id] || false}
+                            isDeleting={deletingKaiten[record.supply_id] || false}
+                          />
                         </div>
                       )}
                       {hasErrors && (

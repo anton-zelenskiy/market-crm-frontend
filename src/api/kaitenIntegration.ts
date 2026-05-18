@@ -6,6 +6,7 @@ export interface KaitenIntegrationCredentialsPublic {
 }
 
 export interface KaitenIntegrationSettings {
+  space_id?: number | null
   board_id: number
   lane_id: number
   column_id: number
