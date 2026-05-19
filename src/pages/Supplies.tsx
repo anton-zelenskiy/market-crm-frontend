@@ -62,112 +62,174 @@ interface SupplyActionsProps {
   supply: SupplyOrder
   connection: Connection
   onCreateCargoes: (supply: SupplyOrder, deleteCurrentVersion: boolean) => Promise<void>
-  onDownloadDocuments: (supply: SupplyOrder, externalOrderId: string) => Promise<void>
+  onSetExternalOrderId: (supply: SupplyOrder, externalOrderId: string) => Promise<void>
+  onDownloadDocuments: (supply: SupplyOrder) => Promise<void>
   onDownloadCargoLabels: (supply: SupplyOrder) => Promise<void>
   onCreateKaitenCard: (supply: SupplyOrder) => Promise<void>
   onLinkExistingKaitenCard: (supply: SupplyOrder) => Promise<void>
   isCreating: boolean
+  isSavingExternalOrderId: boolean
   isDownloading: boolean
   isDownloadingLabels: boolean
   isCreatingKaiten: boolean
   isLinkingKaiten: boolean
 }
 
+const supplyActionsSectionTitle: React.CSSProperties = {
+  display: 'block',
+  margin: '0 0 4px',
+  fontSize: 16,
+  lineHeight: 1.6,
+}
+
+const supplyActionsRow: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  width: '100%',
+}
+
+const supplyActionsRowGrow: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+}
+
+const supplyActionsPrimaryButton: React.CSSProperties = {
+  flexShrink: 0,
+  width: 84,
+}
+
+const kaitenButtonStyle: React.CSSProperties = {
+  backgroundColor: 'rgb(156, 39, 176)',
+  borderColor: 'rgb(156, 39, 176)',
+}
+
 const SupplyActions: React.FC<SupplyActionsProps> = ({
   supply,
   onCreateCargoes,
+  onSetExternalOrderId,
   onDownloadDocuments,
   onDownloadCargoLabels,
   onCreateKaitenCard,
   onLinkExistingKaitenCard,
   isCreating,
+  isSavingExternalOrderId,
   isDownloading,
   isDownloadingLabels,
   isCreatingKaiten,
   isLinkingKaiten,
 }) => {
   const [cargoForm] = Form.useForm()
-  const [docForm] = Form.useForm()
+  const [externalOrderForm] = Form.useForm()
+
+  const resolvedExternalOrderId =
+    supply.external_order_id ?? supply.default_external_order_id?.toString() ?? ''
 
   useEffect(() => {
-    const orderId = supply.external_order_id ?? supply.default_external_order_id?.toString() ?? ''
-    docForm.setFieldsValue({ external_order_id: orderId })
-  }, [supply.supply_id, supply.external_order_id, supply.default_external_order_id, docForm])
+    externalOrderForm.setFieldsValue({ external_order_id: resolvedExternalOrderId })
+  }, [supply.supply_id, resolvedExternalOrderId, externalOrderForm])
 
   return (
-    <div style={{ padding: '0 16px 0 16px', minWidth: '250px' }}>
+    <div style={{ padding: '4px 0', minWidth: 280 }}>
       <Form
         form={cargoForm}
-        layout="vertical"
         onFinish={(values) => {
           onCreateCargoes(supply, values.delete_current_version ?? true)
         }}
       >
-        <Typography.Title level={5}>Сгенерировать грузоместа</Typography.Title>
-        <Form.Item
-          name="delete_current_version"
-          valuePropName="checked"
-          initialValue={false}
-        >
-          <Checkbox>Удалить предыдущие грузоместа</Checkbox>
-        </Form.Item>
-        <Form.Item>
+        <Typography.Text strong style={supplyActionsSectionTitle}>
+          Сгенерировать грузоместа
+        </Typography.Text>
+        <div style={supplyActionsRow}>
+          <div style={supplyActionsRowGrow}>
+            <Form.Item
+              name="delete_current_version"
+              valuePropName="checked"
+              initialValue={false}
+              noStyle
+            >
+              <Checkbox style={{ whiteSpace: 'nowrap' }}>
+                Удалить предыдущие грузоместа
+              </Checkbox>
+            </Form.Item>
+          </div>
           <Button
             type="primary"
+            size="middle"
             htmlType="submit"
             loading={isCreating}
-            block
+            style={supplyActionsPrimaryButton}
           >
             Создать
           </Button>
-        </Form.Item>
+        </div>
       </Form>
 
-      <Divider />
-
-      <Typography.Title level={5}>Скачать ярлыки грузомест</Typography.Title>
-      <Button
-        type="primary"
-        loading={isDownloadingLabels}
-        onClick={() => onDownloadCargoLabels(supply)}
-        block
-      >
-        Скачать PDF
-      </Button>
-
-      <Divider />
+      <Divider style={{ margin: '8px 0' }} />
 
       <Form
-        form={docForm}
-        layout="vertical"
+        form={externalOrderForm}
         onFinish={(values) => {
-          onDownloadDocuments(supply, values.external_order_id)
+          onSetExternalOrderId(supply, values.external_order_id)
         }}
       >
-        <Typography.Title level={5}>Скачать документы к поставке</Typography.Title>
-        <Form.Item
-          name="external_order_id"
-          label="Номер внешнего заказа (необязательно)"
-          required={false}
-          initialValue={supply.external_order_id ?? supply.default_external_order_id?.toString() ?? ''}
-        >
-          <Input placeholder="Укажите, если нужно переопределить" />
-        </Form.Item>
-        <Form.Item>
+        <Typography.Text strong style={supplyActionsSectionTitle}>
+          Изменить номер внешнего заказа
+        </Typography.Text>
+        <div style={supplyActionsRow}>
+          <div style={supplyActionsRowGrow}>
+            <Form.Item
+              name="external_order_id"
+              rules={[{ required: true, message: 'Укажите номер внешнего заказа' }]}
+              initialValue={resolvedExternalOrderId}
+              noStyle
+            >
+              <Input size="middle" placeholder="Например, 63" />
+            </Form.Item>
+          </div>
           <Button
             type="primary"
+            size="middle"
             htmlType="submit"
-            loading={isDownloading}
-            block
+            loading={isSavingExternalOrderId}
+            style={supplyActionsPrimaryButton}
           >
-            Скачать
+            Сохранить
           </Button>
-        </Form.Item>
+        </div>
       </Form>
 
-      <Divider />
+      <Divider style={{ margin: '8px 0' }} />
 
-      <Typography.Title level={5}>Kaiten</Typography.Title>
+      <Typography.Text strong style={supplyActionsSectionTitle}>
+        Загрузить документы к поставке
+      </Typography.Text>
+      <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+        <Button
+          type="primary"
+          size="middle"
+          loading={isDownloading}
+          onClick={() => onDownloadDocuments(supply)}
+          block
+        >
+          Скачать комплект документов
+        </Button>
+        <Button
+          type="primary"
+          size="middle"
+          loading={isDownloadingLabels}
+          onClick={() => onDownloadCargoLabels(supply)}
+          block
+        >
+          Скачать ярлыки грузомест
+        </Button>
+      </Space>
+
+      <Divider style={{ margin: '8px 0' }} />
+
+      <Typography.Text strong style={supplyActionsSectionTitle}>
+        Kaiten
+      </Typography.Text>
       {(() => {
         const hasKaitenCard = !!supply.kaiten_card_id
         const hasCargoes =
@@ -175,15 +237,17 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
         const canAttachToExistingCard = hasKaitenCard || hasCargoes
 
         return (
-          <>
+          <Space orientation="vertical" size={8} style={{ width: '100%' }}>
             {!hasKaitenCard && (
-              <Tooltip title="Создать карточку в Kaiten для поставки и прикрепить к ней еобходимые файлы поставки">
+              <Tooltip title="Создать карточку в Kaiten для поставки и прикрепить к ней необходимые файлы поставки">
                 <Button
                   type="primary"
+                  size="middle"
                   loading={isCreatingKaiten}
                   disabled={!hasCargoes}
                   onClick={() => onCreateKaitenCard(supply)}
                   block
+                  style={kaitenButtonStyle}
                 >
                   Создать задачу
                 </Button>
@@ -192,16 +256,17 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
             <Tooltip title="Действие нужно, чтобы прикрепить файлы к карточке, которая уже создана в Kaiten и содержит в названии такой же номер внешнего заказа, как и у поставки">
               <Button
                 type="primary"
-                style={{ marginTop: hasKaitenCard ? 0 : 8 }}
+                size="middle"
                 loading={isLinkingKaiten}
                 disabled={!canAttachToExistingCard}
                 onClick={() => onLinkExistingKaitenCard(supply)}
                 block
+                style={kaitenButtonStyle}
               >
                 Прикрепить файлы к карточке
               </Button>
             </Tooltip>
-          </>
+          </Space>
         )
       })()}
     </div>
@@ -307,6 +372,7 @@ const SupplyKaitenExpandedSection: React.FC<SupplyKaitenExpandedSectionProps> = 
           type="primary"
           loading={isLinking}
           onClick={() => onLinkExisting(supply)}
+          style={kaitenButtonStyle}
         >
           Прикрепить файлы к карточке
         </Button>
@@ -333,6 +399,7 @@ const Supplies: React.FC = () => {
   const [company, setCompany] = useState<Company | null>(null)
   const [connection, setConnection] = useState<Connection | null>(null)
   const [creatingCargoes, setCreatingCargoes] = useState<Record<string, boolean>>({})
+  const [savingExternalOrderId, setSavingExternalOrderId] = useState<Record<string, boolean>>({})
   const [downloadingDocs, setDownloadingDocs] = useState<Record<string, boolean>>({})
   const [downloadingCargoLabels, setDownloadingCargoLabels] = useState<Record<string, boolean>>({})
   const [creatingKaiten, setCreatingKaiten] = useState<Record<string, boolean>>({})
@@ -483,7 +550,32 @@ const Supplies: React.FC = () => {
     }
   }
 
-  const handleDownloadDocuments = async (supply: SupplyOrder, externalOrderId: string) => {
+  const handleSetExternalOrderId = async (
+    supply: SupplyOrder,
+    externalOrderId: string
+  ) => {
+    if (!connection) return
+
+    const supplyId = supply.supply_id
+    setSavingExternalOrderId((prev) => ({ ...prev, [supplyId]: true }))
+
+    try {
+      await suppliesApi.setExternalOrderId(supplyId, {
+        connection_id: connection.id,
+        external_order_id: externalOrderId.trim(),
+      })
+      message.success('Номер внешнего заказа сохранён')
+      await loadSupplies(selectedStates)
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка сохранения номера внешнего заказа'
+      )
+    } finally {
+      setSavingExternalOrderId((prev) => ({ ...prev, [supplyId]: false }))
+    }
+  }
+
+  const handleDownloadDocuments = async (supply: SupplyOrder) => {
     if (!connection) return
 
     const supplyId = supply.supply_id
@@ -493,10 +585,12 @@ const Supplies: React.FC = () => {
       const blob = await suppliesApi.downloadDocuments(supplyId, {
         connection_id: connection.id,
         order_id: supply.order_id.toString(),
-        external_order_id: externalOrderId || null,
       })
 
-      const displayOrderId = externalOrderId || supply.default_external_order_id?.toString() || supplyId
+      const displayOrderId =
+        supply.external_order_id ??
+        supply.default_external_order_id?.toString() ??
+        supplyId
       const filename = `${displayOrderId} ${supply.macrolocal_cluster_name ?? supply.storage_warehouse_name ?? ''}.zip`
 
       // Create download link using constructed filename
@@ -510,8 +604,6 @@ const Supplies: React.FC = () => {
       window.URL.revokeObjectURL(url)
 
       message.success('Документы успешно скачаны')
-
-      await loadSupplies(selectedStates)
     } catch (error: any) {
       message.error(
         error.response?.data?.detail || 'Ошибка скачивания документов'
@@ -733,6 +825,7 @@ const Supplies: React.FC = () => {
         if (!connection) return null
         const supplyId = record.supply_id
         const isCreating = creatingCargoes[supplyId] || false
+        const isSavingExternalOrderId = savingExternalOrderId[supplyId] || false
         const isDownloading = downloadingDocs[supplyId] || false
         const isDownloadingLabels = downloadingCargoLabels[supplyId] || false
         const isCreatingKaiten = creatingKaiten[supplyId] || false
@@ -745,11 +838,13 @@ const Supplies: React.FC = () => {
                 supply={record}
                 connection={connection}
                 onCreateCargoes={handleCreateCargoes}
+                onSetExternalOrderId={handleSetExternalOrderId}
                 onDownloadDocuments={handleDownloadDocuments}
                 onDownloadCargoLabels={handleDownloadCargoLabels}
                 onCreateKaitenCard={handleCreateKaitenCard}
                 onLinkExistingKaitenCard={handleLinkExistingKaitenCard}
                 isCreating={isCreating}
+                isSavingExternalOrderId={isSavingExternalOrderId}
                 isDownloading={isDownloading}
                 isDownloadingLabels={isDownloadingLabels}
                 isCreatingKaiten={isCreatingKaiten}

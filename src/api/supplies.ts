@@ -88,7 +88,11 @@ export interface CreateCargoesResponse {
 export interface DownloadDocumentsRequest {
   connection_id: number
   order_id: string
-  external_order_id?: string | null
+}
+
+export interface SetExternalOrderIdRequest {
+  connection_id: number
+  external_order_id: string
 }
 
 export interface DownloadCargoLabelsRequest {
@@ -399,12 +403,23 @@ export const suppliesApi = {
       connection_id: request.connection_id.toString(),
       order_id: request.order_id,
     })
-    if (request.external_order_id) {
-      params.append('external_order_id', request.external_order_id)
-    }
     const response = await api.get(`/supplies/${supplyId}/documents?${params}`, {
       responseType: 'blob',
     })
+    return response.data
+  },
+
+  setExternalOrderId: async (
+    supplyId: string,
+    request: SetExternalOrderIdRequest
+  ): Promise<CreateCargoesResponse> => {
+    const params = new URLSearchParams({
+      connection_id: request.connection_id.toString(),
+    })
+    const response = await api.patch(
+      `/supplies/${supplyId}/external-order-id?${params}`,
+      { external_order_id: request.external_order_id }
+    )
     return response.data
   },
 
