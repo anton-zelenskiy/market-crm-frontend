@@ -14,6 +14,7 @@ import {
   InputNumber,
   Form,
   Switch,
+  Tabs,
 } from 'antd'
 import {
   ArrowLeftOutlined,
@@ -178,6 +179,190 @@ const ConnectionDetail: React.FC = () => {
     return null
   }
 
+  const renderActionList = (
+    items: { title: string; description: string; buttonText: string; onClick: () => void }[],
+  ) => (
+    <List
+      itemLayout="horizontal"
+      dataSource={items}
+      renderItem={(item) => (
+        <List.Item
+          actions={[
+            <Button type="primary" onClick={item.onClick} style={{ width: 140 }}>
+              {item.buttonText}
+            </Button>,
+          ]}
+        >
+          <List.Item.Meta title={<strong>{item.title}</strong>} description={item.description} />
+        </List.Item>
+      )}
+    />
+  )
+
+  const tabItems = [
+    ...(connection.data_source?.name === 'ozon'
+      ? [
+          {
+            key: 'marketplace',
+            label: 'Товары и поставки',
+            children: renderActionList([
+              {
+                title: 'Формирование поставок',
+                description:
+                  'Планируйте и создавайте поставки на основе остатков и доступности складов',
+                buttonText: 'Поставки',
+                onClick: () => navigate(`/connections/${connection.id}/supply-templates`),
+              },
+              {
+                title: 'Управление товарами поставщика',
+                description:
+                  'Используйте раздел для заполнения остатков товаров на складах поставщика.',
+                buttonText: 'Товары поставщика',
+                onClick: () => navigate(`/companies/${company.id}/vendor-products`),
+              },
+              {
+                title: 'Товары Ozon',
+                description: 'Используйте раздел для заполнения кратности товаров.',
+                buttonText: 'Товары Ozon',
+                onClick: () => navigate(`/connections/${connection.id}/ozon-products`),
+              },
+              {
+                title: 'Поставки Ozon',
+                description:
+                  'Работа с поставками: создание грузомест, формирование документов к поставке.',
+                buttonText: 'Поставки Ozon',
+                onClick: () => navigate(`/connections/${connection.id}/supplies`),
+              },
+            ]),
+          },
+        ]
+      : []),
+    ...(connection.data_source?.name === 'wildberries'
+      ? [
+          {
+            key: 'marketplace',
+            label: 'Действия Wildberries',
+            children: renderActionList([
+              {
+                title: 'Товары Wildberries',
+                description:
+                  'Синхронизация карточек по тегу «В работе» и заполнение кратности (короба).',
+                buttonText: 'Товары WB',
+                onClick: () => navigate(`/connections/${connection.id}/wb-products`),
+              },
+              {
+                title: 'Запланировать поставку',
+                description: 'Забронировать дату поставки (небезопасно)',
+                buttonText: 'Supply plans',
+                onClick: () => navigate(`/connections/${connection.id}/wb-supply-plans`),
+              },
+            ]),
+          },
+        ]
+      : []),
+    {
+      key: 'finance',
+      label: 'Финансы',
+      children: renderActionList([
+        {
+          title: 'Банковские операции',
+          description:
+            'Загрузка выписок (XLSX), просмотр, фильтры, ручное добавление и экспорт.',
+          buttonText: 'Открыть',
+          onClick: () => navigate(`/connections/${connection.id}/bookkeeping`),
+        },
+      ]),
+    },
+    ...(connection.data_source?.name === 'ozon' && connectionId
+      ? [
+          {
+            key: 'kaiten',
+            label: 'Kaiten',
+            children: <KaitenIntegrationForm connectionId={parseInt(connectionId)} />,
+          },
+        ]
+      : []),
+    {
+      key: 'settings',
+      label: 'Настройки поставок',
+      children: (
+        <Form
+          key={`${connection.id}-${settings.id}`}
+          form={form}
+          layout="vertical"
+          onFinish={handleUpdateSettings}
+          initialValues={{
+            logistics_distance: settings.logistics_distance,
+            auto_create_cargoes: settings.auto_create_cargoes,
+            floor_to_box_count: settings.floor_to_box_count,
+          }}
+          style={{ maxWidth: 480 }}
+        >
+          <Form.Item
+            name="logistics_distance"
+            label="Плечо логистики (дней)"
+            rules={[{ required: true, message: 'Введите количество дней' }]}
+          >
+            <InputNumber min={1} max={365} />
+          </Form.Item>
+          <Form.Item
+            name="auto_create_cargoes"
+            label="Автоматически создавать грузоместа"
+            valuePropName="checked"
+          >
+            <Switch />
+          </Form.Item>
+          <Form.Item
+            name="floor_to_box_count"
+            label="Округлять до кратности"
+            valuePropName="checked"
+            tooltip="Округлять количество товаров к поставке до кратности упаковки"
+          >
+            <Switch />
+          </Form.Item>
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<SaveOutlined />}
+              loading={savingSettings}
+            >
+              Сохранить
+            </Button>
+          </Form.Item>
+        </Form>
+      ),
+    },
+    {
+      key: 'reports',
+      label: 'Отчёты',
+      children: (
+        <>
+          <div className="crm-detail-toolbar" style={{ marginBottom: 16 }}>
+            <Select
+              value={encoding}
+              onChange={(value) => setEncoding(value)}
+              style={{ width: 250 }}
+              placeholder="Кодировка CSV"
+            >
+              <Option value="cp1251">CP1251</Option>
+              <Option value="utf-8">UTF-8</Option>
+              <Option value="utf-8-sig">UTF-8-SIG (Windows)</Option>
+            </Select>
+          </div>
+          <Table
+            columns={reportColumns}
+            dataSource={reports}
+            rowKey="id"
+            pagination={false}
+            scroll={{ x: 'max-content' }}
+            locale={{ emptyText: 'Нет доступных отчетов для этого источника данных' }}
+          />
+        </>
+      ),
+    },
+  ]
+
   return (
     <div>
       <Card>
@@ -199,200 +384,8 @@ const ConnectionDetail: React.FC = () => {
             </Space>
           </div>
 
-          {connection.data_source?.name === 'ozon' && (
-            <Card size="small">
-              <Title level={5}>Действия Ozon</Title>
-              <List
-                itemLayout="horizontal"
-                dataSource={[
-                  {
-                    title: 'Формирование поставок',
-                    description: 'Планируйте и создавайте поставки на основе остатков и доступности складов',
-                    buttonText: 'Поставки',
-                    onClick: () => navigate(`/connections/${connection.id}/supply-templates`),
-                  },
-                  {
-                    title: 'Управление товарами поставщика',
-                    description: 'Используйте раздел для заполнения остатков товаров на складах поставщика.',
-                    buttonText: 'Товары поставщика',
-                    onClick: () => navigate(`/companies/${company.id}/vendor-products`),
-                  },
-                  {
-                    title: 'Товары Ozon',
-                    description: 'Используйте раздел для заполнения кратности товаров.',
-                    buttonText: 'Товары Ozon',
-                    onClick: () => navigate(`/connections/${connection.id}/ozon-products`),
-                  },
-                  {
-                    title: 'Поставки Ozon',
-                    description: 'Работа с поставками: создание грузомест, формирование документов к поставке.',
-                    buttonText: 'Поставки Ozon',
-                    onClick: () => navigate(`/connections/${connection.id}/supplies`),
-                  },
-                ]}
-                renderItem={(item) => (
-                  <List.Item
-                    actions={[
-                      <Button type="primary" onClick={item.onClick} style={{ width: 140 }}>
-                        {item.buttonText}
-                      </Button>
-                    ]}
-                  >
-                    <List.Item.Meta
-                      title={<strong>{item.title}</strong>}
-                      description={item.description}
-                    />
-                  </List.Item>
-                )}
-              />
-            </Card>
-          )}
+          <Tabs items={tabItems} />
 
-          {connection.data_source?.name === 'wildberries' && (
-            <Card size="small">
-              <Title level={5}>Действия Wildberries</Title>
-              <List
-                itemLayout="horizontal"
-                dataSource={[
-                  {
-                    title: 'Товары Wildberries',
-                    description:
-                      'Синхронизация карточек по тегу «В работе» и заполнение кратности (короба).',
-                    buttonText: 'Товары WB',
-                    onClick: () => navigate(`/connections/${connection.id}/wb-products`),
-                  },
-                  {
-                    title: 'Запланировать поставку',
-                    description:
-                      'Забронировать дату поставки (небезопасно)',
-                    buttonText: 'Supply plans',
-                    onClick: () =>
-                      navigate(`/connections/${connection.id}/wb-supply-plans`),
-                  },
-                ]}
-                renderItem={(item) => (
-                  <List.Item
-                    actions={[
-                      <Button type="primary" onClick={item.onClick} style={{ width: 140 }}>
-                        {item.buttonText}
-                      </Button>,
-                    ]}
-                  >
-                    <List.Item.Meta
-                      title={<strong>{item.title}</strong>}
-                      description={item.description}
-                    />
-                  </List.Item>
-                )}
-              />
-            </Card>
-          )}
-
-          <Card size="small" title="Финансы">
-            <List
-              itemLayout="horizontal"
-              dataSource={[
-                {
-                  title: 'Банковские операции',
-                  description:
-                    'Загрузка выписок (XLSX), просмотр, фильтры, ручное добавление и экспорт.',
-                  buttonText: 'Открыть',
-                  onClick: () => navigate(`/connections/${connection.id}/bookkeeping`),
-                },
-              ]}
-              renderItem={(item) => (
-                <List.Item
-                  actions={[
-                    <Button type="primary" onClick={item.onClick} style={{ width: 140 }}>
-                      {item.buttonText}
-                    </Button>,
-                  ]}
-                >
-                  <List.Item.Meta
-                    title={<strong>{item.title}</strong>}
-                    description={item.description}
-                  />
-                </List.Item>
-              )}
-            />
-          </Card>
-
-          {connection.data_source?.name === 'ozon' && connectionId && (
-            <KaitenIntegrationForm connectionId={parseInt(connectionId)} />
-          )}
-
-          <Card title="Настройки поставки" size="small">
-            <Form
-              key={`${connection.id}-${settings.id}`}
-              form={form}
-              layout="vertical"
-              onFinish={handleUpdateSettings}
-              initialValues={{ 
-                logistics_distance: settings.logistics_distance,
-                auto_create_cargoes: settings.auto_create_cargoes,
-                floor_to_box_count: settings.floor_to_box_count,
-              }}
-            >
-              <Form.Item
-                name="logistics_distance"
-                label="Плечо логистики (дней)"
-                rules={[{ required: true, message: 'Введите количество дней' }]}
-              >
-                <InputNumber min={1} max={365} />
-              </Form.Item>
-              <Form.Item
-                name="auto_create_cargoes"
-                label="Автоматически создавать грузоместа"
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-              <Form.Item
-                name="floor_to_box_count"
-                label="Округлять до кратности"
-                valuePropName="checked"
-                tooltip="Округлять количество товаров к поставке до кратности упаковки"
-              >
-                <Switch />
-              </Form.Item>
-              <Form.Item>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  icon={<SaveOutlined />}
-                  loading={savingSettings}
-                >
-                  Сохранить
-                </Button>
-              </Form.Item>
-            </Form>
-          </Card>
-
-          <div>
-            <div className="crm-detail-toolbar">
-              <Title level={4} className="crm-detail-toolbar__title" style={{ margin: 0 }}>
-                Доступные отчеты
-              </Title>
-              <Select
-                value={encoding}
-                onChange={(value) => setEncoding(value)}
-                style={{ width: 250 }}
-              >
-                <Option value="cp1251">CP1251</Option>
-                <Option value="utf-8">UTF-8</Option>
-                <Option value="utf-8-sig">UTF-8-SIG (Windows)</Option>
-              </Select>
-            </div>
-            
-            <Table
-              columns={reportColumns}
-              dataSource={reports}
-              rowKey="id"
-              pagination={false}
-              scroll={{ x: 'max-content' }}
-              locale={{ emptyText: 'Нет доступных отчетов для этого источника данных' }}
-            />
-          </div>
         </Space>
       </Card>
     </div>
