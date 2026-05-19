@@ -11,6 +11,7 @@ export interface KaitenIntegrationSettings {
   lane_id: number
   column_id: number
   owner_id?: number | null
+  card_title_suffix?: string
 }
 
 export interface KaitenIntegrationResponse {

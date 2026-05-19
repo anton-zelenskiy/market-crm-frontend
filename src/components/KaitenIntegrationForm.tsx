@@ -48,6 +48,7 @@ const KaitenIntegrationForm: React.FC<KaitenIntegrationFormProps> = ({ connectio
         lane_id: data.settings?.lane_id,
         column_id: data.settings?.column_id,
         owner_id: data.settings?.owner_id,
+        card_title_suffix: data.settings?.card_title_suffix ?? '',
       })
       if (data.settings?.board_id) {
         setBoardId(data.settings.board_id)
@@ -149,6 +150,7 @@ const KaitenIntegrationForm: React.FC<KaitenIntegrationFormProps> = ({ connectio
     lane_id: number
     column_id: number
     owner_id?: number
+    card_title_suffix?: string
   }) => {
     setSavingSettings(true)
     try {
@@ -158,6 +160,7 @@ const KaitenIntegrationForm: React.FC<KaitenIntegrationFormProps> = ({ connectio
         lane_id: values.lane_id,
         column_id: values.column_id,
         owner_id: values.owner_id ?? null,
+        card_title_suffix: values.card_title_suffix?.trim() ?? '',
       }
 
       const updated = await kaitenIntegrationApi.upsert(connectionId, {
@@ -338,6 +341,14 @@ const KaitenIntegrationForm: React.FC<KaitenIntegrationFormProps> = ({ connectio
                 </Option>
               ))}
             </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="card_title_suffix"
+            label="Суффикс названия карточки"
+            extra="Добавляется в конец названия, чтобы отличать карточки разных подключений в одном аккаунте Kaiten. Можно оставить пустым."
+          >
+            <Input placeholder="Например: Ozon A" allowClear />
           </Form.Item>
 
           <Form.Item>
