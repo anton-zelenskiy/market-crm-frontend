@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Card,
@@ -17,6 +17,7 @@ import {
   Select,
   Spin,
 } from 'antd'
+import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs, { type Dayjs, DATE_FORMAT } from '../lib/dayjs'
 import {
   ArrowLeftOutlined,
@@ -28,11 +29,14 @@ import {
 } from '@ant-design/icons'
 import { AgGridReact } from 'ag-grid-react'
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community'
-import type { ColDef, GetRowIdParams, ICellRendererParams } from 'ag-grid-community'
+import type { ColDef, GetRowIdParams, ICellRendererParams, SelectionChangedEvent } from 'ag-grid-community'
 import {
   bookkeepingApi,
+  type FinanceBookkeepingArticle,
   type FinanceOperation,
   type FinanceOperationCreate,
+  type FinanceWallet,
+  type ListOperationsParams,
 } from '../api/bookkeeping'
 
 ModuleRegistry.registerModules([AllCommunityModule])
@@ -41,22 +45,6 @@ const { Title } = Typography
 const { RangePicker } = DatePicker
 
 const PAIR_ROW_HIGHLIGHT = '#e8f5e9'
-
-const BANK_FILTER_OPTIONS = [
-  { value: 'ozon', label: 'Озон Казакова ф/л' },
-  { value: 'ozon_business', label: 'Озон бизнес' },
-  { value: 'sber', label: 'Сбербанк' },
-  { value: 'tochka', label: 'Точка р/с бизнес' },
-]
-
-const BANK_LABEL_BY_VALUE: Record<string, string> = Object.fromEntries(
-  BANK_FILTER_OPTIONS.map((o) => [o.value, o.label])
-)
-
-function bankDisplayLabel(code: string | undefined | null): string {
-  if (!code) return ''
-  return BANK_LABEL_BY_VALUE[code] ?? code
-}
 
 function signedAmount(o: FinanceOperation): number {
   const n = parseFloat(o.amount)
@@ -103,6 +91,25 @@ function computePairedOperationIds(operations: FinanceOperation[]): Set<number> 
   return paired
 }
 
+function buildListParams(
+  dateRange: [Dayjs | null, Dayjs | null] | null,
+  amountMin: number | null,
+  amountMax: number | null,
+  walletId: number | undefined,
+  sourceFileName: string | undefined,
+  search: string
+): ListOperationsParams {
+  const params: ListOperationsParams = { limit: 500, offset: 0 }
+  if (dateRange?.[0]) params.date_from = dateRange[0].format('YYYY-MM-DD')
+  if (dateRange?.[1]) params.date_to = dateRange[1].format('YYYY-MM-DD')
+  if (amountMin != null) params.amount_min = amountMin
+  if (amountMax != null) params.amount_max = amountMax
+  if (walletId != null) params.wallet_id = walletId
+  if (sourceFileName) params.source_file_name = sourceFileName
+  if (search.trim()) params.search = search.trim()
+  return params
+}
+
 type ActionsParams = ICellRendererParams<FinanceOperation, unknown> & {
   onEdit: (row: FinanceOperation) => void
   onDelete: (row: FinanceOperation) => void
@@ -125,50 +132,81 @@ const BookkeepingPage: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
   const navigate = useNavigate()
   const cid = connectionId ? parseInt(connectionId, 10) : 0
+  const gridRef = useRef<AgGridReact<FinanceOperation>>(null)
 
   const [items, setItems] = useState<FinanceOperation[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null)
   const [amountMin, setAmountMin] = useState<number | null>(null)
   const [amountMax, setAmountMax] = useState<number | null>(null)
-  const [bankName, setBankName] = useState<string | undefined>(undefined)
+  const [walletFilterId, setWalletFilterId] = useState<number | undefined>(undefined)
+  const [sourceFileName, setSourceFileName] = useState<string | undefined>(undefined)
+  const [sourceFileOptions, setSourceFileOptions] = useState<string[]>([])
   const [search, setSearch] = useState('')
   const [highlightPairs, setHighlightPairs] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [selectAllFiltered, setSelectAllFiltered] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<FinanceOperation | null>(null)
   const [form] = Form.useForm()
+  const [wallets, setWallets] = useState<FinanceWallet[]>([])
+  const [articles, setArticles] = useState<FinanceBookkeepingArticle[]>([])
+
+  const listParams = useMemo(
+    () => buildListParams(dateRange, amountMin, amountMax, walletFilterId, sourceFileName, search),
+    [dateRange, amountMin, amountMax, walletFilterId, sourceFileName, search]
+  )
+
+  const loadSourceFiles = useCallback(async () => {
+    if (!cid) return
+    try {
+      const names = await bookkeepingApi.listSourceFileNames(cid)
+      setSourceFileOptions(names)
+    } catch {
+      /* optional */
+    }
+  }, [cid])
 
   const load = useCallback(async () => {
     if (!cid) return
     setLoading(true)
+    setSelectAllFiltered(false)
+    setSelectedIds([])
     try {
-      const params: Parameters<typeof bookkeepingApi.listOperations>[1] = {
-        limit: 500,
-        offset: 0,
-      }
-      if (dateRange?.[0]) params.date_from = dateRange[0].format('YYYY-MM-DD')
-      if (dateRange?.[1]) params.date_to = dateRange[1].format('YYYY-MM-DD')
-      if (amountMin != null) params.amount_min = amountMin
-      if (amountMax != null) params.amount_max = amountMax
-      if (bankName) params.bank_name = bankName
-      if (search.trim()) params.search = search.trim()
-
-      const res = await bookkeepingApi.listOperations(cid, params)
+      const res = await bookkeepingApi.listOperations(cid, listParams)
       setItems(res.items)
       setTotal(res.total)
+      gridRef.current?.api?.deselectAll()
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } } }
       message.error(err.response?.data?.detail || 'Ошибка загрузки операций')
     } finally {
       setLoading(false)
     }
-  }, [cid, dateRange, amountMin, amountMax, bankName, search])
+  }, [cid, listParams])
+
+  const loadMeta = useCallback(async () => {
+    if (!cid) return
+    try {
+      const [w, a] = await Promise.all([
+        bookkeepingApi.listWallets(cid),
+        bookkeepingApi.listBookkeepingArticles(cid),
+      ])
+      setWallets(w)
+      setArticles(a.filter((x) => x.is_active))
+    } catch {
+      /* settings optional until seeded */
+    }
+  }, [cid])
 
   useEffect(() => {
     load()
-  }, [load])
+    loadSourceFiles()
+    loadMeta()
+  }, [load, loadSourceFiles, loadMeta])
 
   const pairedIds = useMemo(() => {
     if (!highlightPairs) return new Set<number>()
@@ -189,11 +227,14 @@ const BookkeepingPage: React.FC = () => {
     (row: FinanceOperation) => {
       setEditing(row)
       form.setFieldsValue({
-        bank_name: row.bank_name,
+        wallet_id: row.wallet_id,
         operation_date: dayjs(row.operation_date),
         amount: parseFloat(row.amount),
         operation_type: row.operation_type,
         payment_details: row.payment_details,
+        bookkeeping_article_id: row.bookkeeping_article_id,
+        platform: row.platform,
+        contractor: row.contractor,
       })
       setModalOpen(true)
     },
@@ -207,26 +248,64 @@ const BookkeepingPage: React.FC = () => {
         await bookkeepingApi.deleteOperation(cid, row.id)
         message.success('Удалено')
         await load()
+        await loadSourceFiles()
       } catch (e: unknown) {
         const err = e as { response?: { data?: { detail?: string } } }
         message.error(err.response?.data?.detail || 'Ошибка удаления')
       }
     },
-    [cid, load]
+    [cid, load, loadSourceFiles]
   )
 
-  const handleUpload = async (file: File) => {
-    if (!cid) return false
-    try {
-      const res = await bookkeepingApi.uploadImports(cid, [file])
-      message.success(
-        `Загружено: ${res.batch.operations_count} операций (пакет #${res.batch.id})`
+  const showUploadResult = (files: Record<string, unknown>[], batchCount: number, batchId: number) => {
+    const errors = files.filter((f) => f.error)
+    if (errors.length === 0) {
+      message.success(`Загружено ${batchCount} операций (пакет #${batchId})`)
+    } else {
+      message.warning(
+        `Пакет #${batchId}: ${batchCount} операций. Ошибки в ${errors.length} из ${files.length} файлов`
       )
+      Modal.info({
+        title: 'Результат загрузки',
+        width: 560,
+        content: (
+          <ul style={{ paddingLeft: 20, margin: 0 }}>
+            {files.map((f, i) => (
+              <li key={i}>
+                <strong>{String(f.filename ?? '?')}</strong>
+                {f.error
+                  ? `: ${String(f.error)}`
+                  : ` — ${String(f.inserted ?? 0)} новых, дублей: ${String(f.skipped_duplicate ?? 0)}`}
+              </li>
+            ))}
+          </ul>
+        ),
+      })
+    }
+  }
+
+  const handleUploadMany = async (fileList: File[]) => {
+    if (!cid || !fileList.length) return
+    setUploading(true)
+    try {
+      const res = await bookkeepingApi.uploadImports(cid, fileList)
+      showUploadResult(res.files, res.batch.operations_count, res.batch.id)
       await load()
+      await loadSourceFiles()
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } } }
-      message.error(err.response?.data?.detail || 'Ошибка загрузки файла')
+      message.error(err.response?.data?.detail || 'Ошибка загрузки')
+    } finally {
+      setUploading(false)
     }
+  }
+
+  const handleBeforeUpload = (file: UploadFile, fileList: UploadFile[]) => {
+    const raw = fileList.map((f) => f as unknown as File)
+    if (fileList[fileList.length - 1]?.uid !== file.uid) {
+      return false
+    }
+    void handleUploadMany(raw)
     return false
   }
 
@@ -234,17 +313,10 @@ const BookkeepingPage: React.FC = () => {
     if (!cid) return
     setExporting(true)
     try {
-      const params: Parameters<typeof bookkeepingApi.exportXlsx>[1] = {
+      const blob = await bookkeepingApi.exportXlsx(cid, {
+        ...listParams,
         include_pairs_preview: true,
-      }
-      if (dateRange?.[0]) params.date_from = dateRange[0].format('YYYY-MM-DD')
-      if (dateRange?.[1]) params.date_to = dateRange[1].format('YYYY-MM-DD')
-      if (amountMin != null) params.amount_min = amountMin
-      if (amountMax != null) params.amount_max = amountMax
-      if (bankName) params.bank_name = bankName
-      if (search.trim()) params.search = search.trim()
-
-      const blob = await bookkeepingApi.exportXlsx(cid, params)
+      })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -260,24 +332,63 @@ const BookkeepingPage: React.FC = () => {
     }
   }
 
+  const onSelectionChanged = useCallback((e: SelectionChangedEvent<FinanceOperation>) => {
+    setSelectAllFiltered(false)
+    setSelectedIds(e.api.getSelectedRows().map((r) => r.id))
+  }, [])
+
+  const handleSelectAllFiltered = () => {
+    setSelectAllFiltered(true)
+    gridRef.current?.api?.selectAll()
+    setSelectedIds(items.map((o) => o.id))
+  }
+
+  const bulkDeleteCount = selectAllFiltered ? total : selectedIds.length
+
+  const handleBulkDelete = async () => {
+    if (!cid || bulkDeleteCount === 0) return
+    try {
+      if (selectAllFiltered) {
+        const res = await bookkeepingApi.bulkDeleteOperations(cid, { filters: listParams })
+        message.success(`Удалено ${res.deleted} операций`)
+      } else {
+        const res = await bookkeepingApi.bulkDeleteOperations(cid, { ids: selectedIds })
+        message.success(`Удалено ${res.deleted} операций`)
+      }
+      setSelectedIds([])
+      setSelectAllFiltered(false)
+      await load()
+      await loadSourceFiles()
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } } }
+      message.error(err.response?.data?.detail || 'Ошибка массового удаления')
+    }
+  }
+
   const submitForm = async () => {
     if (!cid) return
     try {
       const v = await form.validateFields()
       const body: FinanceOperationCreate = {
-        bank_name: v.bank_name,
+        wallet_id: v.wallet_id,
         operation_date: v.operation_date.format('YYYY-MM-DD'),
         amount: v.amount,
         operation_type: v.operation_type,
         payment_details: v.payment_details || '',
+        bookkeeping_article_id: v.bookkeeping_article_id,
+        platform: v.platform,
+        contractor: v.contractor,
       }
       if (editing) {
         await bookkeepingApi.updateOperation(cid, editing.id, {
-          bank_name: body.bank_name,
+          wallet_id: body.wallet_id,
           operation_date: body.operation_date,
           amount: body.amount,
           operation_type: body.operation_type,
           payment_details: body.payment_details,
+          bookkeeping_article_id: body.bookkeeping_article_id,
+          platform: body.platform,
+          contractor: body.contractor,
         })
         message.success('Сохранено')
       } else {
@@ -305,6 +416,11 @@ const BookkeepingPage: React.FC = () => {
     [highlightPairs, pairedIds]
   )
 
+  const articleOptions = useMemo(
+    () => articles.map((a) => ({ value: a.id, label: a.name })),
+    [articles]
+  )
+
   const columnDefs = useMemo<ColDef<FinanceOperation>[]>(
     () => [
       {
@@ -315,23 +431,36 @@ const BookkeepingPage: React.FC = () => {
         filter: false,
       },
       {
-        field: 'bank_name',
-        headerName: 'Банк',
-        width: 160,
+        field: 'wallet_name',
+        headerName: 'Кошелёк',
+        width: 180,
         sortable: true,
         filter: false,
-        valueFormatter: (p) => bankDisplayLabel(p.value as string),
       },
       {
-        field: 'operation_type',
-        headerName: 'Тип',
+        field: 'bookkeeping_article_name',
+        headerName: 'Статья ДДС',
+        width: 180,
+        sortable: true,
+        filter: false,
+      },
+      {
+        field: 'platform',
+        headerName: 'Платформа',
         width: 90,
         sortable: true,
         filter: false,
       },
       {
+        field: 'operation_type',
+        headerName: 'Тип',
+        width: 80,
+        sortable: true,
+        filter: false,
+      },
+      {
         headerName: 'Сумма',
-        width: 130,
+        width: 120,
         sortable: true,
         filter: false,
         comparator: (_a, _b, nodeA, nodeB) => {
@@ -350,29 +479,22 @@ const BookkeepingPage: React.FC = () => {
         field: 'payment_details',
         headerName: 'Назначение',
         flex: 1,
-        minWidth: 200,
+        minWidth: 180,
         sortable: true,
         filter: false,
         tooltipField: 'payment_details',
       },
       {
-        field: 'source',
-        headerName: 'Источник',
-        width: 100,
-        sortable: true,
-        filter: false,
-      },
-      {
         field: 'source_file_name',
         headerName: 'Файл',
-        width: 160,
+        width: 140,
         sortable: true,
         filter: false,
         tooltipField: 'source_file_name',
       },
       {
         headerName: '',
-        width: 120,
+        width: 100,
         sortable: false,
         filter: false,
         suppressMovable: true,
@@ -406,16 +528,24 @@ const BookkeepingPage: React.FC = () => {
                 Назад
               </Button>
               <Title level={3} style={{ margin: 0 }}>
-                Банковские операции
+                Банковские операции (ДДС)
               </Title>
             </div>
             <div className="crm-split-header__end">
               <Space wrap>
-                <Upload accept=".xlsx" showUploadList={false} beforeUpload={handleUpload}>
-                  <Button icon={<UploadOutlined />}>Загрузить XLSX</Button>
+                <Upload
+                  accept=".xlsx,.pdf"
+                  multiple
+                  showUploadList={false}
+                  beforeUpload={handleBeforeUpload}
+                  disabled={uploading}
+                >
+                  <Button icon={<UploadOutlined />} loading={uploading}>
+                    Загрузить выписку
+                  </Button>
                 </Upload>
                 <Button icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>
-                  Экспорт XLSX
+                  Экспорт
                 </Button>
                 <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                   Добавить
@@ -427,14 +557,23 @@ const BookkeepingPage: React.FC = () => {
           <Space wrap align="center">
             <span>Период:</span>
             <RangePicker value={dateRange} onChange={(v) => setDateRange(v)} allowEmpty={[true, true]} format={DATE_FORMAT} />
-            <span>Банк</span>
+            <span>Кошелёк</span>
             <Select
               allowClear
               placeholder="все"
-              style={{ width: 150 }}
-              value={bankName}
-              onChange={setBankName}
-              options={BANK_FILTER_OPTIONS}
+              style={{ width: 220 }}
+              value={walletFilterId}
+              onChange={setWalletFilterId}
+              options={wallets.map((w) => ({ value: w.id, label: w.name }))}
+            />
+            <span>Файл</span>
+            <Select
+              allowClear
+              placeholder="все"
+              style={{ width: 180 }}
+              value={sourceFileName}
+              onChange={setSourceFileName}
+              options={sourceFileOptions.map((n) => ({ value: n, label: n }))}
             />
             <span>Сумма от</span>
             <InputNumber min={0} value={amountMin ?? undefined} onChange={(v) => setAmountMin(v)} />
@@ -442,7 +581,7 @@ const BookkeepingPage: React.FC = () => {
             <InputNumber min={0} value={amountMax ?? undefined} onChange={(v) => setAmountMax(v)} />
             <Input.Search
               placeholder="Сумма или назначение"
-              style={{ width: 240 }}
+              style={{ width: 220 }}
               onSearch={() => load()}
               onChange={(e) => setSearch(e.target.value)}
               allowClear
@@ -454,22 +593,52 @@ const BookkeepingPage: React.FC = () => {
             <Switch checked={highlightPairs} onChange={setHighlightPairs} />
           </Space>
 
-          <div style={{ color: '#888' }}>
-            Всего: {total}
-            <span style={{ marginLeft: 12, fontSize: 12 }}>
-              Сортировка по нескольким колонкам: клик по «Дата», затем по «Сумма» (и др.).
+          <Space wrap>
+            <span>
+              Всего: {total}
+              {selectAllFiltered && total > items.length
+                ? ` (выбраны все по фильтру: ${total})`
+                : selectedIds.length > 0
+                  ? ` · выбрано: ${bulkDeleteCount}`
+                  : ''}
             </span>
-          </div>
+            {total > items.length && (
+              <Button size="small" onClick={handleSelectAllFiltered}>
+                Выбрать все {total} по фильтрам
+              </Button>
+            )}
+            {bulkDeleteCount > 0 && (
+              <Popconfirm
+                title={
+                  selectAllFiltered && total > items.length
+                    ? `Удалить все ${total} операций по текущим фильтрам?`
+                    : `Удалить ${bulkDeleteCount} выбранных операций?`
+                }
+                onConfirm={handleBulkDelete}
+              >
+                <Button danger size="small">
+                  Удалить выбранные ({bulkDeleteCount})
+                </Button>
+              </Popconfirm>
+            )}
+          </Space>
 
           <Spin spinning={loading}>
             <div style={{ height: 560, width: '100%' }}>
               <AgGridReact<FinanceOperation>
+                ref={gridRef}
                 theme={themeAlpine}
                 rowData={items}
                 columnDefs={columnDefs}
                 defaultColDef={defaultColDef}
                 getRowId={getRowId}
                 getRowStyle={getRowStyle}
+                rowSelection={{
+                  mode: 'multiRow',
+                  checkboxes: true,
+                  headerCheckbox: true,
+                }}
+                onSelectionChanged={onSelectionChanged}
                 animateRows={false}
                 suppressCellFocus
                 alwaysMultiSort
@@ -489,8 +658,11 @@ const BookkeepingPage: React.FC = () => {
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="bank_name" label="Банк" rules={[{ required: true }]}>
-            <Input placeholder="ozon / sber / tochka" />
+          <Form.Item name="wallet_id" label="Кошелёк" rules={[{ required: true }]}>
+            <Select
+              options={wallets.map((w) => ({ value: w.id, label: w.name }))}
+              allowClear={false}
+            />
           </Form.Item>
           <Form.Item name="operation_date" label="Дата" rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} format={DATE_FORMAT} />
@@ -505,6 +677,21 @@ const BookkeepingPage: React.FC = () => {
                 { value: 'credit', label: 'Зачисление (credit)' },
               ]}
             />
+          </Form.Item>
+          <Form.Item name="bookkeeping_article_id" label="Статья ДДС">
+            <Select allowClear options={articleOptions} />
+          </Form.Item>
+          <Form.Item name="platform" label="Платформа">
+            <Select
+              allowClear
+              options={[
+                { value: 'WB', label: 'WB' },
+                { value: 'OZON', label: 'OZON' },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item name="contractor" label="Контрагент">
+            <Input />
           </Form.Item>
           <Form.Item name="payment_details" label="Назначение платежа">
             <Input.TextArea rows={3} />

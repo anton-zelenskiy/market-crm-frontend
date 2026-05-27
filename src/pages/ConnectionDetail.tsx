@@ -31,6 +31,7 @@ import type { Report } from '../api/reports'
 import { companiesApi } from '../api/companies'
 import type { Company } from '../api/companies'
 import KaitenIntegrationForm from '../components/KaitenIntegrationForm'
+import BookkeepingDdsSettings from '../components/BookkeepingDdsSettings'
 
 const { Title } = Typography
 const { Option } = Select
@@ -263,15 +264,20 @@ const ConnectionDetail: React.FC = () => {
     {
       key: 'finance',
       label: 'Финансы',
-      children: renderActionList([
-        {
-          title: 'Банковские операции',
-          description:
-            'Загрузка выписок (XLSX), просмотр, фильтры, ручное добавление и экспорт.',
-          buttonText: 'Открыть',
-          onClick: () => navigate(`/connections/${connection.id}/bookkeeping`),
-        },
-      ]),
+      children: (
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+          <BookkeepingDdsSettings connectionId={connection.id} />
+          {renderActionList([
+            {
+              title: 'Банковские операции',
+              description:
+                'Загрузка выписок (XLSX, PDF), просмотр, фильтры, ручное добавление и экспорт.',
+              buttonText: 'Открыть',
+              onClick: () => navigate(`/connections/${connection.id}/bookkeeping`),
+            },
+          ])}
+        </Space>
+      ),
     },
     ...(connection.data_source?.name === 'ozon' && connectionId
       ? [
