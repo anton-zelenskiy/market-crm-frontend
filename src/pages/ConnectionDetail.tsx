@@ -330,11 +330,11 @@ const ConnectionDetail: React.FC = () => {
           </Form.Item>
           <Form.Item
             name="demand"
-            label="Спрос по умолчанию (шт)"
-            rules={[{ required: true, message: 'Введите значение спроса' }]}
-            tooltip="Используется при расчёте поставки, если реальный спрос меньше 50 единиц"
+            label="Количество товара к поставке по умолчанию"
+            rules={[{ required: true, message: 'Введите значение' }]}
+            tooltip="Используется при проверке доступности кластеров принять товар"
           >
-            <InputNumber min={1} />
+            <InputNumber min={1} max={1000} />
           </Form.Item>
           <Form.Item>
             <Button
