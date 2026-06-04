@@ -83,7 +83,7 @@ const ConnectionDetail: React.FC = () => {
     }
   }
 
-  const handleUpdateSettings = async (values: { logistics_distance: number; auto_create_cargoes: boolean; floor_to_box_count: boolean }) => {
+  const handleUpdateSettings = async (values: { logistics_distance: number; auto_create_cargoes: boolean; floor_to_box_count: boolean; demand: number }) => {
     if (!connectionId || !connection) return
 
     setSavingSettings(true)
@@ -92,6 +92,7 @@ const ConnectionDetail: React.FC = () => {
         logistics_distance: values.logistics_distance,
         auto_create_cargoes: values.auto_create_cargoes,
         floor_to_box_count: values.floor_to_box_count,
+        demand: values.demand,
       })
       setSettings(updated)
       message.success('Настройки успешно сохранены')
@@ -301,6 +302,7 @@ const ConnectionDetail: React.FC = () => {
             logistics_distance: settings.logistics_distance,
             auto_create_cargoes: settings.auto_create_cargoes,
             floor_to_box_count: settings.floor_to_box_count,
+            demand: settings.demand,
           }}
           style={{ maxWidth: 480 }}
         >
@@ -325,6 +327,14 @@ const ConnectionDetail: React.FC = () => {
             tooltip="Округлять количество товаров к поставке до кратности упаковки"
           >
             <Switch />
+          </Form.Item>
+          <Form.Item
+            name="demand"
+            label="Количество товара к поставке по умолчанию"
+            rules={[{ required: true, message: 'Введите значение' }]}
+            tooltip="Используется при проверке доступности кластеров принять товар"
+          >
+            <InputNumber min={1} max={1000} />
           </Form.Item>
           <Form.Item>
             <Button

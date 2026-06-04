@@ -6,12 +6,14 @@ export interface ConnectionSettings {
   logistics_distance: number
   auto_create_cargoes: boolean
   floor_to_box_count: boolean
+  demand: number
 }
 
 export interface ConnectionSettingsUpdate {
   logistics_distance?: number
   auto_create_cargoes?: boolean
   floor_to_box_count?: boolean
+  demand?: number
 }
 
 export const connectionSettingsApi = {
