@@ -26,6 +26,30 @@ export interface KaitenCardInfo {
   card_url: string | null
 }
 
+export interface BulkCreateKaitenCardItem {
+  supply_id: string
+  order_id: string
+}
+
+export interface BulkCreateKaitenCardsRequest {
+  connection_id: number
+  supplies: BulkCreateKaitenCardItem[]
+}
+
+export interface BulkCreateKaitenCardItemResult {
+  supply_id: string
+  success: boolean
+  card_id?: number | null
+  card_url?: string | null
+  error?: string | null
+}
+
+export interface BulkCreateKaitenCardsResponse {
+  succeeded: number
+  failed: number
+  results: BulkCreateKaitenCardItemResult[]
+}
+
 export interface SupplyOrdersResponse {
   orders: SupplyOrder[]
   total: number
@@ -433,6 +457,13 @@ export const suppliesApi = {
       order_id: orderId,
     })
     const response = await api.post(`/supplies/${supplyId}/kaiten/card?${params}`)
+    return response.data
+  },
+
+  bulkCreateKaitenCards: async (
+    request: BulkCreateKaitenCardsRequest
+  ): Promise<BulkCreateKaitenCardsResponse> => {
+    const response = await api.post('/supplies/kaiten/cards/bulk', request)
     return response.data
   },
 

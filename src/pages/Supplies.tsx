@@ -407,6 +407,8 @@ const Supplies: React.FC = () => {
   const [deletingKaiten, setDeletingKaiten] = useState<Record<string, boolean>>({})
   const [kaitenInfoRefresh, setKaitenInfoRefresh] = useState<Record<string, number>>({})
   const [downloadingSummaryXlsx, setDownloadingSummaryXlsx] = useState(false)
+  const [selectedSupplyIds, setSelectedSupplyIds] = useState<string[]>([])
+  const [bulkCreatingKaiten, setBulkCreatingKaiten] = useState(false)
   const [stateGroupId, setStateGroupId] = useState<SupplyStateGroupId>('PREPARATION')
   const selectedStates =
     SUPPLY_STATE_GROUPS.find((g) => g.id === stateGroupId)?.states ?? []
@@ -419,9 +421,15 @@ const Supplies: React.FC = () => {
 
   useEffect(() => {
     if (connection) {
+      setSelectedSupplyIds([])
       loadSupplies(selectedStates)
     }
   }, [connection, stateGroupId, selectedStates])
+
+  const canCreateKaitenForSupply = (supply: SupplyOrder) =>
+    !supply.kaiten_card_id &&
+    supply.cargoes_count != null &&
+    supply.cargoes_count > 0
 
   const loadConnectionData = async () => {
     if (!connectionId) return
@@ -641,6 +649,49 @@ const Supplies: React.FC = () => {
       )
     } finally {
       setLinkingKaiten((prev) => ({ ...prev, [supplyId]: false }))
+    }
+  }
+
+  const handleBulkCreateKaitenCards = async () => {
+    if (!connection || selectedSupplyIds.length === 0) return
+
+    const selectedSupplies = supplies.filter((supply) =>
+      selectedSupplyIds.includes(supply.supply_id)
+    )
+    const eligibleSupplies = selectedSupplies.filter(canCreateKaitenForSupply)
+    if (eligibleSupplies.length === 0) {
+      message.warning('Нет поставок, для которых можно создать задачу в Kaiten')
+      return
+    }
+
+    setBulkCreatingKaiten(true)
+    try {
+      const response = await suppliesApi.bulkCreateKaitenCards({
+        connection_id: connection.id,
+        supplies: eligibleSupplies.map((supply) => ({
+          supply_id: supply.supply_id,
+          order_id: supply.order_id.toString(),
+        })),
+      })
+
+      if (response.failed === 0) {
+        message.success(`Задачи в Kaiten созданы: ${response.succeeded}`)
+      } else if (response.succeeded === 0) {
+        message.error('Не удалось создать задачи в Kaiten')
+      } else {
+        message.warning(
+          `Создано задач: ${response.succeeded}, с ошибками: ${response.failed}`
+        )
+      }
+
+      setSelectedSupplyIds([])
+      await loadSupplies(selectedStates)
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка массового создания задач в Kaiten'
+      )
+    } finally {
+      setBulkCreatingKaiten(false)
     }
   }
 
@@ -891,6 +942,22 @@ const Supplies: React.FC = () => {
             </div>
 
             <div className="crm-split-header__end">
+              {selectedSupplyIds.length > 0 && (
+                <Popconfirm
+                  title={`Создать задачи в Kaiten для ${selectedSupplyIds.length} выбранных поставок?`}
+                  onConfirm={handleBulkCreateKaitenCards}
+                  okText="Создать"
+                  cancelText="Отмена"
+                >
+                  <Button
+                    type="primary"
+                    loading={bulkCreatingKaiten}
+                    style={kaitenButtonStyle}
+                  >
+                    Создать задачи в Kaiten ({selectedSupplyIds.length})
+                  </Button>
+                </Popconfirm>
+              )}
               <Button
                 type="primary"
                 loading={downloadingSummaryXlsx}
@@ -937,6 +1004,15 @@ const Supplies: React.FC = () => {
               loading={loading}
               scroll={{ x: 1200 }}
               size='small'
+              rowSelection={{
+                selectedRowKeys: selectedSupplyIds,
+                onChange: (selectedRowKeys) => {
+                  setSelectedSupplyIds(selectedRowKeys as string[])
+                },
+                getCheckboxProps: (record) => ({
+                  disabled: !canCreateKaitenForSupply(record),
+                }),
+              }}
               pagination={{
                 pageSize: 100,
                 showSizeChanger: true,
