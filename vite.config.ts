@@ -10,9 +10,17 @@ export default defineConfig({
     }),
   ],
   build: {
-    // Let Vite handle chunking automatically - it respects dependency order
-    // This ensures React loads before any libraries that depend on it
     chunkSizeWarningLimit: 1400,
+    rollupOptions: {
+      maxParallelFileOps: 2,
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-antd': ['antd', '@ant-design/icons'],
+          'vendor-ag-grid': ['ag-grid-community', 'ag-grid-react'],
+        },
+      },
+    },
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'antd', 'ag-grid-react', 'ag-grid-community', 'react-router-dom'],

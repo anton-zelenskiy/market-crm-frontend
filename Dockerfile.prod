@@ -6,15 +6,16 @@ COPY package*.json ./
 
 RUN npm install husky -g && npm install -g typescript
 
-# Install dependencies with memory limit
-RUN NODE_OPTIONS="--max-old-space-size=650" npm ci
+RUN npm ci
 
 COPY . .
 
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
-RUN NODE_OPTIONS="--max-old-space-size=650" npm run build
+# Split typecheck and bundle steps to lower peak memory during Docker builds.
+RUN NODE_OPTIONS="--max-old-space-size=512" npx tsc -b
+RUN NODE_OPTIONS="--max-old-space-size=768" npx vite build
 
 RUN npm prune --production
 
