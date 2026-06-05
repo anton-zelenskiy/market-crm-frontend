@@ -1,10 +1,12 @@
 services:
   frontend:
+    image: ${FRONTEND_IMAGE:-market-crm-frontend:local}
     build:
       context: .
-      dockerfile: ${DOCKERFILE:-Dockerfile}
+      dockerfile: ${DOCKERFILE:-Dockerfile.prod}
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8001/markets/api/v1}
+    pull_policy: ${FRONTEND_PULL_POLICY:-missing}
     container_name: market-crm-frontend
     ports:
       - "${FRONTEND_PORT:-3001}:3001"
