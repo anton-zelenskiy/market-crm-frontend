@@ -35,6 +35,7 @@ import SupplyTemplates from './pages/SupplyTemplates'
 import SupplyTemplateDetail from './pages/SupplyTemplateDetail'
 import SupplyDraftDetail from './pages/SupplyDraftDetail'
 import SupplyPlanningRunner from './pages/SupplyPlanningRunner'
+import RedistributionOrders from './pages/RedistributionOrders'
 import BookkeepingPage from './pages/BookkeepingPage'
 
 const { Header, Sider, Content } = Layout
@@ -269,6 +270,10 @@ const DashboardLayout: React.FC = () => {
             <Route
               path="/connections/:connectionId/wb-supply-plans"
               element={<SupplyPlanningRunner />}
+            />
+            <Route
+              path="/connections/:connectionId/redistribution-orders"
+              element={<RedistributionOrders />}
             />
             <Route
               path="/reports"

@@ -255,8 +255,14 @@ const ConnectionDetail: React.FC = () => {
               {
                 title: 'Запланировать поставку',
                 description: 'Забронировать дату поставки (небезопасно)',
-                buttonText: 'Supply plans',
+                buttonText: 'Запланировать',
                 onClick: () => navigate(`/connections/${connection.id}/wb-supply-plans`),
+              },
+              {
+                title: 'Перераспределить остатки',
+                description: 'Перемещение товара между складами',
+                buttonText: 'Перераспределить',
+                onClick: () => navigate(`/connections/${connection.id}/redistribution-orders`),
               },
             ]),
           },
