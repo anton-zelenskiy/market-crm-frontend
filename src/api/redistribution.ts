@@ -4,7 +4,7 @@ export interface RedistributionOrder {
   id: number
   user_id: number
   connection_id: number
-  company_name: string
+  company_slug: string
   nm_id: number
   chrt_id: number
   tech_size: string
@@ -22,7 +22,7 @@ export interface RedistributionOrder {
 
 export interface CreateRedistributionOrderRequest {
   connection_id: number
-  company_name: string
+  company_slug: string
   nm_id: number
   chrt_id: number
   tech_size: string
@@ -68,6 +68,20 @@ export interface GoodsReturnItem {
   count: number | null
 }
 
+export interface RedistributionOrderListResponse {
+  items: RedistributionOrder[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export type RedistributionOrderStatus =
+  | 'pending'
+  | 'processing'
+  | 'completed'
+  | 'cancelled'
+  | 'failed'
+
 const BASE_PATH = '/supplies/wildberries/redistribution-orders'
 
 export const redistributionApi = {
@@ -76,9 +90,21 @@ export const redistributionApi = {
     return response.data
   },
 
-  async list(connectionId: number): Promise<RedistributionOrder[]> {
-    const response = await api.get<RedistributionOrder[]>(`${BASE_PATH}/`, {
-      params: { connection_id: connectionId },
+  async list(
+    connectionId: number,
+    options?: {
+      status?: RedistributionOrderStatus
+      limit?: number
+      offset?: number
+    }
+  ): Promise<RedistributionOrderListResponse> {
+    const response = await api.get<RedistributionOrderListResponse>(`${BASE_PATH}/`, {
+      params: {
+        connection_id: connectionId,
+        status: options?.status ?? 'pending',
+        limit: options?.limit ?? 50,
+        offset: options?.offset ?? 0,
+      },
     })
     return response.data
   },
@@ -92,15 +118,20 @@ export const redistributionApi = {
     await api.delete(`${BASE_PATH}/${orderId}`)
   },
 
-  async getStockInfo(connectionId: number, nmId: number): Promise<StockInfo> {
+  async getStockInfo(
+    connectionId: number,
+    companySlug: string,
+    nmId: number
+  ): Promise<StockInfo> {
     const response = await api.get<StockInfo>(`${BASE_PATH}/stocks/info`, {
-      params: { connection_id: connectionId, nm_id: nmId },
+      params: { connection_id: connectionId, company_slug: companySlug, nm_id: nmId },
     })
     return response.data
   },
 
   async listMovements(
     connectionId: number,
+    companySlug: string,
     dateFrom: string,
     dateTo: string,
     nmId?: number
@@ -108,6 +139,7 @@ export const redistributionApi = {
     const response = await api.get<GoodsReturnItem[]>(`${BASE_PATH}/movements/list`, {
       params: {
         connection_id: connectionId,
+        company_slug: companySlug,
         date_from: dateFrom,
         date_to: dateTo,
         ...(nmId && { nm_id: nmId }),

@@ -18,15 +18,9 @@ import {
 import dayjs, { type Dayjs, DATE_FORMAT } from '../lib/dayjs'
 
 import { suppliesApi } from '../api/supplies'
+import { WB_COMPANY_CONFIGS } from '../constants/wbCompanies'
 
 const { Title, Text } = Typography
-
-const WB_COMPANIES = [
-  'ООО "НПЦ"АЛТАЙСКАЯ ЧАЙНАЯ КОМПАНИЯ',
-  'ИП Казакова Т. А.',
-  'ИП Забродин З. Е.',
-  'ИП Мещериков А. В.',
-] as const
 
 const SupplyPlanningRunner: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
@@ -221,7 +215,7 @@ const SupplyPlanningRunner: React.FC = () => {
           layout="vertical"
           onFinish={onSubmit}
           initialValues={{
-            company_name: WB_COMPANIES[0],
+            company_name: WB_COMPANY_CONFIGS[0].companyName,
             preorder_id: undefined,
             date_from: dayjs(),
             date_to: dayjs().add(7, 'day'),
@@ -234,9 +228,9 @@ const SupplyPlanningRunner: React.FC = () => {
             rules={[{ required: true, message: 'Выберите компанию' }]}
           >
             <Select>
-              {WB_COMPANIES.map((c) => (
-                <Select.Option key={c} value={c}>
-                  {c}
+              {WB_COMPANY_CONFIGS.map((company) => (
+                <Select.Option key={company.slug} value={company.companyName}>
+                  {company.companyName}
                 </Select.Option>
               ))}
             </Select>

@@ -27,11 +27,16 @@ import dayjs from 'dayjs'
 import { redistributionApi } from '../api/redistribution'
 import type {
   RedistributionOrder,
+  RedistributionOrderStatus,
   StockInfo,
   GoodsReturnItem,
 } from '../api/redistribution'
 import { connectionsApi } from '../api/connections'
 import type { Connection } from '../api/connections'
+import {
+  WB_COMPANY_CONFIGS,
+  getCompanyNameBySlug,
+} from '../constants/wbCompanies'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -42,18 +47,24 @@ const RedistributionOrders: React.FC = () => {
   const navigate = useNavigate()
   const [connection, setConnection] = useState<Connection | null>(null)
   const [orders, setOrders] = useState<RedistributionOrder[]>([])
+  const [ordersTotal, setOrdersTotal] = useState(0)
+  const [ordersPage, setOrdersPage] = useState(1)
+  const [ordersPageSize, setOrdersPageSize] = useState(10)
+  const [ordersStatus, setOrdersStatus] =
+    useState<RedistributionOrderStatus>('pending')
   const [movements, setMovements] = useState<GoodsReturnItem[]>([])
   const [loading, setLoading] = useState(false)
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [stockInfo, setStockInfo] = useState<StockInfo | null>(null)
   const [searchingArticle, setSearchingArticle] = useState(false)
+  const [movementsCompanySlug, setMovementsCompanySlug] = useState<string>()
   const [form] = Form.useForm()
 
   useEffect(() => {
     if (connectionId) {
       loadData()
     }
-  }, [connectionId])
+  }, [connectionId, ordersPage, ordersPageSize, ordersStatus])
 
   const loadData = async () => {
     if (!connectionId) return
@@ -62,10 +73,15 @@ const RedistributionOrders: React.FC = () => {
     try {
       const [conn, ordersData] = await Promise.all([
         connectionsApi.getById(parseInt(connectionId)),
-        redistributionApi.list(parseInt(connectionId)),
+        redistributionApi.list(parseInt(connectionId), {
+          status: ordersStatus,
+          limit: ordersPageSize,
+          offset: (ordersPage - 1) * ordersPageSize,
+        }),
       ])
       setConnection(conn)
-      setOrders(ordersData)
+      setOrders(ordersData.items)
+      setOrdersTotal(ordersData.total)
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка загрузки данных')
     } finally {
@@ -73,12 +89,17 @@ const RedistributionOrders: React.FC = () => {
     }
   }
 
-  const loadMovements = async (dateFrom: string, dateTo: string) => {
+  const loadMovements = async (
+    dateFrom: string,
+    dateTo: string,
+    companySlug: string
+  ) => {
     if (!connectionId) return
 
     try {
       const movementsData = await redistributionApi.listMovements(
         parseInt(connectionId),
+        companySlug,
         dateFrom,
         dateTo
       )
@@ -90,12 +111,18 @@ const RedistributionOrders: React.FC = () => {
 
   const handleSearchArticle = async () => {
     const nmId = form.getFieldValue('nm_id')
+    const companySlug = form.getFieldValue('company_slug')
     if (!nmId || !connectionId) return
+    if (!companySlug) {
+      message.warning('Сначала выберите компанию')
+      return
+    }
 
     setSearchingArticle(true)
     try {
       const stockData = await redistributionApi.getStockInfo(
         parseInt(connectionId),
+        companySlug,
         nmId
       )
       setStockInfo(stockData)
@@ -142,7 +169,7 @@ const RedistributionOrders: React.FC = () => {
 
       await redistributionApi.create({
         connection_id: parseInt(connectionId),
-        company_name: values.company_name,
+        company_slug: values.company_slug,
         nm_id: values.nm_id,
         chrt_id: values.chrt_id,
         tech_size: stockItem.tech_size,
@@ -194,6 +221,12 @@ const RedistributionOrders: React.FC = () => {
   }
 
   const ordersColumns: ColumnsType<RedistributionOrder> = [
+    {
+      title: 'Компания',
+      dataIndex: 'company_slug',
+      key: 'company_slug',
+      render: (slug: string) => getCompanyNameBySlug(slug) ?? slug,
+    },
     {
       title: 'Артикул WB',
       dataIndex: 'nm_id',
@@ -316,7 +349,7 @@ const RedistributionOrders: React.FC = () => {
                   style={{ marginBottom: '16px', width: '100%' }}
                   direction="vertical"
                 >
-                  <Space>
+                  <Space wrap>
                     <Button
                       type="primary"
                       icon={<PlusOutlined />}
@@ -331,6 +364,20 @@ const RedistributionOrders: React.FC = () => {
                     >
                       Обновить
                     </Button>
+                    <Select
+                      value={ordersStatus}
+                      style={{ width: 180 }}
+                      onChange={(value) => {
+                        setOrdersStatus(value)
+                        setOrdersPage(1)
+                      }}
+                    >
+                      <Option value="pending">Ожидает</Option>
+                      <Option value="processing">Обработка</Option>
+                      <Option value="completed">Завершен</Option>
+                      <Option value="cancelled">Отменен</Option>
+                      <Option value="failed">Ошибка</Option>
+                    </Select>
                   </Space>
                 </Space>
 
@@ -339,7 +386,16 @@ const RedistributionOrders: React.FC = () => {
                   dataSource={orders}
                   rowKey="id"
                   loading={loading}
-                  pagination={{ pageSize: 10 }}
+                  pagination={{
+                    current: ordersPage,
+                    pageSize: ordersPageSize,
+                    total: ordersTotal,
+                    showSizeChanger: true,
+                    onChange: (page, pageSize) => {
+                      setOrdersPage(page)
+                      setOrdersPageSize(pageSize)
+                    },
+                  }}
                 />
               </Card>
             ),
@@ -357,16 +413,30 @@ const RedistributionOrders: React.FC = () => {
                   <Text>
                     Проверьте, появились ли созданные перемещения в системе WB
                   </Text>
+                  <Select
+                    placeholder="Выберите компанию"
+                    style={{ width: 300 }}
+                    value={movementsCompanySlug}
+                    onChange={setMovementsCompanySlug}
+                  >
+                    {WB_COMPANY_CONFIGS.map((company) => (
+                      <Option key={company.slug} value={company.slug}>
+                        {company.companyName}
+                      </Option>
+                    ))}
+                  </Select>
                   <RangePicker
                     onChange={(dates) => {
-                      if (dates && dates[0] && dates[1]) {
+                      if (dates && dates[0] && dates[1] && movementsCompanySlug) {
                         loadMovements(
                           dates[0].format('YYYY-MM-DD'),
-                          dates[1].format('YYYY-MM-DD')
+                          dates[1].format('YYYY-MM-DD'),
+                          movementsCompanySlug
                         )
                       }
                     }}
                     format="DD.MM.YYYY"
+                    disabled={!movementsCompanySlug}
                   />
                 </Space>
 
@@ -395,17 +465,16 @@ const RedistributionOrders: React.FC = () => {
       >
         <Form form={form} onFinish={handleCreateOrder} layout="vertical">
           <Form.Item
-            name="company_name"
+            name="company_slug"
             label="Компания"
             rules={[{ required: true, message: 'Выберите компанию' }]}
           >
             <Select placeholder="Выберите компанию">
-              <Option value='ООО "НПЦ"АЛТАЙСКАЯ ЧАЙНАЯ КОМПАНИЯ'>
-                ООО "НПЦ"АЛТАЙСКАЯ ЧАЙНАЯ КОМПАНИЯ
-              </Option>
-              <Option value="ИП Казакова Т. А.">ИП Казакова Т. А.</Option>
-              <Option value="ИП Забродин З. Е.">ИП Забродин З. Е.</Option>
-              <Option value="ИП Мещериков А. В.">ИП Мещериков А. В.</Option>
+              {WB_COMPANY_CONFIGS.map((company) => (
+                <Option key={company.slug} value={company.slug}>
+                  {company.companyName}
+                </Option>
+              ))}
             </Select>
           </Form.Item>
 
