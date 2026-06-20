@@ -43,6 +43,7 @@ export interface WarehouseStock {
   office_name: string
   office_id: number
   in_stock: StockItem[]
+  dst_warehouse_ids?: number[]
 }
 
 export interface WarehouseDestination {
@@ -53,19 +54,6 @@ export interface WarehouseDestination {
 export interface StockInfo {
   src: WarehouseStock[]
   dst: WarehouseDestination[]
-}
-
-export interface GoodsReturnItem {
-  brand_name: string
-  subject_name: string
-  ts_name: string
-  nm_id: number
-  office_id: number
-  office_address: string
-  status_id: string
-  payment_type: string
-  order_date: string
-  count: number | null
 }
 
 export interface RedistributionOrderListResponse {
@@ -125,25 +113,6 @@ export const redistributionApi = {
   ): Promise<StockInfo> {
     const response = await api.get<StockInfo>(`${BASE_PATH}/stocks/info`, {
       params: { connection_id: connectionId, company_slug: companySlug, nm_id: nmId },
-    })
-    return response.data
-  },
-
-  async listMovements(
-    connectionId: number,
-    companySlug: string,
-    dateFrom: string,
-    dateTo: string,
-    nmId?: number
-  ): Promise<GoodsReturnItem[]> {
-    const response = await api.get<GoodsReturnItem[]>(`${BASE_PATH}/movements/list`, {
-      params: {
-        connection_id: connectionId,
-        company_slug: companySlug,
-        date_from: dateFrom,
-        date_to: dateTo,
-        ...(nmId && { nm_id: nmId }),
-      },
     })
     return response.data
   },

@@ -14,7 +14,6 @@ import {
   InputNumber,
   Modal,
   Tabs,
-  DatePicker,
 } from 'antd'
 import {
   ArrowLeftOutlined,
@@ -29,7 +28,6 @@ import type {
   RedistributionOrder,
   RedistributionOrderStatus,
   StockInfo,
-  GoodsReturnItem,
 } from '../api/redistribution'
 import { connectionsApi } from '../api/connections'
 import type { Connection } from '../api/connections'
@@ -40,7 +38,6 @@ import {
 
 const { Title, Text } = Typography
 const { Option } = Select
-const { RangePicker } = DatePicker
 
 const RedistributionOrders: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
@@ -52,12 +49,10 @@ const RedistributionOrders: React.FC = () => {
   const [ordersPageSize, setOrdersPageSize] = useState(10)
   const [ordersStatus, setOrdersStatus] =
     useState<RedistributionOrderStatus>('pending')
-  const [movements, setMovements] = useState<GoodsReturnItem[]>([])
   const [loading, setLoading] = useState(false)
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [stockInfo, setStockInfo] = useState<StockInfo | null>(null)
   const [searchingArticle, setSearchingArticle] = useState(false)
-  const [movementsCompanySlug, setMovementsCompanySlug] = useState<string>()
   const [form] = Form.useForm()
 
   useEffect(() => {
@@ -86,26 +81,6 @@ const RedistributionOrders: React.FC = () => {
       message.error(error.response?.data?.detail || 'Ошибка загрузки данных')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const loadMovements = async (
-    dateFrom: string,
-    dateTo: string,
-    companySlug: string
-  ) => {
-    if (!connectionId) return
-
-    try {
-      const movementsData = await redistributionApi.listMovements(
-        parseInt(connectionId),
-        companySlug,
-        dateFrom,
-        dateTo
-      )
-      setMovements(movementsData)
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Ошибка загрузки перемещений')
     }
   }
 
@@ -140,7 +115,7 @@ const RedistributionOrders: React.FC = () => {
   }
 
   const handleSrcWarehouseChange = () => {
-    form.setFieldsValue({ chrt_id: undefined })
+    form.setFieldsValue({ chrt_id: undefined, dst_office_id: undefined })
   }
 
   const handleCreateOrder = async (values: any) => {
@@ -289,42 +264,6 @@ const RedistributionOrders: React.FC = () => {
     },
   ]
 
-  const movementsColumns: ColumnsType<GoodsReturnItem> = [
-    {
-      title: 'Артикул WB',
-      dataIndex: 'nm_id',
-      key: 'nm_id',
-    },
-    {
-      title: 'Товар',
-      key: 'product',
-      render: (_, record) => (
-        <div>
-          <div>{record.brand_name}</div>
-          <div style={{ fontSize: '12px', color: '#888' }}>
-            {record.subject_name} - {record.ts_name}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: 'Склад',
-      dataIndex: 'office_address',
-      key: 'office_address',
-    },
-    {
-      title: 'Статус',
-      dataIndex: 'status_id',
-      key: 'status_id',
-    },
-    {
-      title: 'Дата заказа',
-      dataIndex: 'order_date',
-      key: 'order_date',
-      render: (date) => dayjs(date).format('DD.MM.YYYY'),
-    },
-  ]
-
   return (
     <div style={{ padding: '24px' }}>
       <Space style={{ marginBottom: '24px' }} size="large">
@@ -400,55 +339,6 @@ const RedistributionOrders: React.FC = () => {
               </Card>
             ),
           },
-          {
-            key: 'movements',
-            label: 'Проверка перемещений',
-            children: (
-              <Card>
-                <Space
-                  style={{ marginBottom: '16px' }}
-                  direction="vertical"
-                  size="large"
-                >
-                  <Text>
-                    Проверьте, появились ли созданные перемещения в системе WB
-                  </Text>
-                  <Select
-                    placeholder="Выберите компанию"
-                    style={{ width: 300 }}
-                    value={movementsCompanySlug}
-                    onChange={setMovementsCompanySlug}
-                  >
-                    {WB_COMPANY_CONFIGS.map((company) => (
-                      <Option key={company.slug} value={company.slug}>
-                        {company.companyName}
-                      </Option>
-                    ))}
-                  </Select>
-                  <RangePicker
-                    onChange={(dates) => {
-                      if (dates && dates[0] && dates[1] && movementsCompanySlug) {
-                        loadMovements(
-                          dates[0].format('YYYY-MM-DD'),
-                          dates[1].format('YYYY-MM-DD'),
-                          movementsCompanySlug
-                        )
-                      }
-                    }}
-                    format="DD.MM.YYYY"
-                    disabled={!movementsCompanySlug}
-                  />
-                </Space>
-
-                <Table
-                  columns={movementsColumns}
-                  dataSource={movements}
-                  rowKey={(record, index) => `${record.nm_id}-${index}`}
-                  pagination={{ pageSize: 10 }}
-                />
-              </Card>
-            ),
-          },
         ]}
       />
 
@@ -519,17 +409,33 @@ const RedistributionOrders: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name="dst_office_id"
-                label="Склад куда переместить"
-                rules={[{ required: true, message: 'Выберите склад' }]}
+                noStyle
+                shouldUpdate={(prev, cur) => prev.src_office_id !== cur.src_office_id}
               >
-                <Select placeholder="Выберите склад">
-                  {stockInfo.dst.map((wh) => (
-                    <Option key={wh.office_id} value={wh.office_id}>
-                      {wh.office_name}
-                    </Option>
-                  ))}
-                </Select>
+                {({ getFieldValue }) => {
+                  const srcId = getFieldValue('src_office_id')
+                  const srcWh = stockInfo.src.find((w) => w.office_id === srcId)
+                  const allowedIds = new Set(srcWh?.dst_warehouse_ids ?? [])
+                  const filteredDst =
+                    allowedIds.size > 0
+                      ? stockInfo.dst.filter((w) => allowedIds.has(w.office_id))
+                      : stockInfo.dst
+                  return (
+                    <Form.Item
+                      name="dst_office_id"
+                      label="Склад куда переместить"
+                      rules={[{ required: true, message: 'Выберите склад' }]}
+                    >
+                      <Select placeholder="Выберите склад" disabled={!srcId}>
+                        {filteredDst.map((wh) => (
+                          <Option key={wh.office_id} value={wh.office_id}>
+                            {wh.office_name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  )
+                }}
               </Form.Item>
 
               <Form.Item
