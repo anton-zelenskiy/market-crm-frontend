@@ -17,6 +17,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } f
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/landing/Login'
 import Register from './pages/landing/Register'
+import CompleteRegistration from './pages/landing/CompleteRegistration'
 import Home from './pages/landing/Home'
 import TariffDetail from './pages/landing/TariffDetail'
 import Tariffs from './pages/landing/Tariffs'
@@ -323,6 +324,7 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/complete-registration" element={<CompleteRegistration />} />
             <Route path="/" element={<Home />} />
             <Route path="/tariffs" element={<Tariffs />} />
             <Route path="/tariff/:slug" element={<TariffDetail />} />

@@ -21,7 +21,7 @@ export interface Company {
   id: number
   name: string
   slug: string | null
-  user_id: number
+  owner_id: number
   ozon_consignee_note_info: OzonConsigneeNoteInfo | null
   connections: Connection[]
   created_at: string
