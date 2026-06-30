@@ -32,10 +32,6 @@ import type {
 } from '../api/redistribution'
 import { connectionsApi } from '../api/connections'
 import type { Connection } from '../api/connections'
-import {
-  WB_COMPANY_CONFIGS,
-  getCompanyNameBySlug,
-} from '../constants/wbCompanies'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -87,18 +83,12 @@ const RedistributionOrders: React.FC = () => {
 
   const handleSearchArticle = async () => {
     const nmId = form.getFieldValue('nm_id')
-    const companySlug = form.getFieldValue('company_slug')
     if (!nmId || !connectionId) return
-    if (!companySlug) {
-      message.warning('Сначала выберите компанию')
-      return
-    }
 
     setSearchingArticle(true)
     try {
       const stockData = await redistributionApi.getStockInfo(
         parseInt(connectionId),
-        companySlug,
         nmId
       )
       setStockInfo(stockData)
@@ -145,7 +135,6 @@ const RedistributionOrders: React.FC = () => {
 
       await redistributionApi.create({
         connection_id: parseInt(connectionId),
-        company_slug: values.company_slug,
         nm_id: values.nm_id,
         chrt_id: values.chrt_id,
         tech_size: stockItem.tech_size,
@@ -212,12 +201,6 @@ const RedistributionOrders: React.FC = () => {
   }
 
   const ordersColumns: ColumnsType<RedistributionOrder> = [
-    {
-      title: 'Компания',
-      dataIndex: 'company_slug',
-      key: 'company_slug',
-      render: (slug: string) => getCompanyNameBySlug(slug) ?? slug,
-    },
     {
       title: 'Артикул WB',
       dataIndex: 'nm_id',
@@ -376,20 +359,6 @@ const RedistributionOrders: React.FC = () => {
         width={600}
       >
         <Form form={form} onFinish={handleCreateOrder} layout="vertical">
-          <Form.Item
-            name="company_slug"
-            label="Компания"
-            rules={[{ required: true, message: 'Выберите компанию' }]}
-          >
-            <Select placeholder="Выберите компанию">
-              {WB_COMPANY_CONFIGS.map((company) => (
-                <Option key={company.slug} value={company.slug}>
-                  {company.companyName}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
           <Form.Item
             name="nm_id"
             label="Артикул WB"

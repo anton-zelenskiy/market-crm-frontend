@@ -22,7 +22,6 @@ export interface RedistributionOrder {
 
 export interface CreateRedistributionOrderRequest {
   connection_id: number
-  company_slug: string
   nm_id: number
   chrt_id: number
   tech_size: string
@@ -106,13 +105,9 @@ export const redistributionApi = {
     await api.delete(`${BASE_PATH}/${orderId}`)
   },
 
-  async getStockInfo(
-    connectionId: number,
-    companySlug: string,
-    nmId: number
-  ): Promise<StockInfo> {
+  async getStockInfo(connectionId: number, nmId: number): Promise<StockInfo> {
     const response = await api.get<StockInfo>(`${BASE_PATH}/stocks/info`, {
-      params: { connection_id: connectionId, company_slug: companySlug, nm_id: nmId },
+      params: { connection_id: connectionId, nm_id: nmId },
     })
     return response.data
   },
