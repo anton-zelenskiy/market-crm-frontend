@@ -116,4 +116,12 @@ export const redistributionApi = {
     })
     return response.data
   },
+
+  async exportPaidOrders(connectionId: number): Promise<Blob> {
+    const response = await api.get(`${BASE_PATH}/paid-export`, {
+      params: { connection_id: connectionId },
+      responseType: 'blob',
+    })
+    return response.data
+  },
 }

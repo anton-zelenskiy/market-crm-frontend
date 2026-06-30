@@ -20,6 +20,7 @@ import {
   ReloadOutlined,
   PlusOutlined,
   SearchOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
@@ -165,6 +166,21 @@ const RedistributionOrders: React.FC = () => {
     }
   }
 
+  const handleExportPaidOrders = async () => {
+    if (!connectionId) return
+    try {
+      const blob = await redistributionApi.exportPaidOrders(parseInt(connectionId))
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'paid_orders.xlsx'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка экспорта')
+    }
+  }
+
   const handleCancelOrder = async (orderId: number) => {
     try {
       await redistributionApi.cancel(orderId)
@@ -302,6 +318,12 @@ const RedistributionOrders: React.FC = () => {
                       loading={loading}
                     >
                       Обновить
+                    </Button>
+                    <Button
+                      icon={<DownloadOutlined />}
+                      onClick={handleExportPaidOrders}
+                    >
+                      Скачать оплаченные (xlsx)
                     </Button>
                     <Select
                       value={ordersStatus}
