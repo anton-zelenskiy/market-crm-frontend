@@ -64,6 +64,68 @@ const { Option } = Select
 
 const VENDOR_STOCKS_COLUMN_LABEL = 'Остатки на заводе'
 
+const OZON_MAX_BOXES = 30
+
+// Box "units" for an item's to_supply quantity: full box_count-sized units, plus a
+// trailing partial unit for the remainder when partial boxes are allowed.
+const getBoxUnits = (quantity: number, boxCount: number, floorToBoxCount: boolean): number[] => {
+  if (boxCount <= 0 || quantity <= 0) return []
+  const numFullBoxes = Math.floor(quantity / boxCount)
+  const remainder = quantity % boxCount
+  const units = Array(numFullBoxes).fill(boxCount)
+  if (remainder > 0 && !floorToBoxCount) {
+    units.push(remainder)
+  }
+  return units
+}
+
+const getBoxCount = (quantity: number, boxCount: number, floorToBoxCount: boolean): number => {
+  return getBoxUnits(quantity, boxCount, floorToBoxCount).length
+}
+
+// Splits bundle items into groups of at most OZON_MAX_BOXES boxes each, walking box
+// units in order so a single item's boxes may be split across two bundles at box
+// boundaries (a partial trailing box is never split further).
+const splitItemsIntoBoxBundles = (
+  items: BundleItem[],
+  boxCountByOfferId: Map<string, number>,
+  floorToBoxCount: boolean
+): BundleItem[][] => {
+  const bundles: BundleItem[][] = []
+  let currentBundle: Map<string, BundleItem> = new Map()
+  let currentBundleBoxes = 0
+
+  const pushToCurrentBundle = (item: BundleItem, unitQuantity: number) => {
+    const existing = currentBundle.get(item.offer_id)
+    if (existing) {
+      existing.quantity += unitQuantity
+    } else {
+      currentBundle.set(item.offer_id, { ...item, quantity: unitQuantity })
+    }
+  }
+
+  for (const item of items) {
+    const boxCount = boxCountByOfferId.get(item.offer_id) || 0
+    const units = getBoxUnits(item.quantity, boxCount, floorToBoxCount)
+
+    for (const unitQuantity of units) {
+      if (currentBundleBoxes >= OZON_MAX_BOXES) {
+        bundles.push(Array.from(currentBundle.values()))
+        currentBundle = new Map()
+        currentBundleBoxes = 0
+      }
+      pushToCurrentBundle(item, unitQuantity)
+      currentBundleBoxes += 1
+    }
+  }
+
+  if (currentBundle.size > 0) {
+    bundles.push(Array.from(currentBundle.values()))
+  }
+
+  return bundles
+}
+
 // Map warehouse types to human-readable Russian text
 const getWarehouseTypeLabel = (warehouseType: string | undefined): string => {
   const typeMap: Record<string, string> = {
@@ -119,14 +181,22 @@ const ClusterHeaderComponent = (params: any) => {
   // These are merged into the params object directly
   const isNeighborCluster = params.isNeighborCluster || params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.isNeighborCluster
   const onCreateDraft = params.onCreateDraft || params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.onCreateDraft
-  
+  const boxCount = params.boxCount ?? params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.boxCount
+
   if (!clusterName) {
     return <span>{params.displayName || 'Unknown'}</span>
   }
-  
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', height: '100%', padding: '4px', width: '100%' }}>
       <span>{clusterName}</span>
+      {typeof boxCount === 'number' && boxCount > 0 && (
+        <Tooltip title={boxCount > OZON_MAX_BOXES ? `Превышен лимит Ozon в ${OZON_MAX_BOXES} коробок — будет создано ${Math.ceil(boxCount / OZON_MAX_BOXES)} поставки` : 'Кол-во коробок к поставке'}>
+          <Tag color={boxCount > OZON_MAX_BOXES ? 'red' : 'default'} style={{ margin: 0 }}>
+            {boxCount} кор.
+          </Tag>
+        </Tooltip>
+      )}
       {isNeighborCluster && (
         <Tooltip title="Соседний кластер">
           <span style={{ fontSize: '16px', color: '#1890ff', cursor: 'help' }}>🔗</span>
@@ -263,6 +333,34 @@ const SupplyTemplateDetail: React.FC = () => {
     }
     return items
   }, [selectedCluster, tableData])
+
+  const floorToBoxCount = settings?.floor_to_box_count !== false
+
+  const boxCountByOfferId = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const item of tableData) {
+      map.set(item.offer_id, item.box_count || 0)
+    }
+    return map
+  }, [tableData])
+
+  // Total box count per cluster, across all items with to_supply > 0.
+  const clusterBoxCounts = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const item of tableData) {
+      const boxCount = item.box_count || 0
+      for (const cluster of item.clusters || []) {
+        if (!cluster.cluster_name || cluster.to_supply <= 0 || boxCount <= 0) continue
+        const boxes = getBoxCount(cluster.to_supply, boxCount, floorToBoxCount)
+        map.set(cluster.cluster_name, (map.get(cluster.cluster_name) || 0) + boxes)
+      }
+    }
+    return map
+  }, [tableData, floorToBoxCount])
+
+  const previewBundles = useMemo(() => {
+    return splitItemsIntoBoxBundles(previewItems, boxCountByOfferId, floorToBoxCount)
+  }, [previewItems, boxCountByOfferId, floorToBoxCount])
 
   const [isDirty, setIsDirty] = useState(false)
 
@@ -610,23 +708,38 @@ const SupplyTemplateDetail: React.FC = () => {
         return
       }
 
-      const request: CreateCrossdockDraftRequest = {
-        connection_id: parseInt(connectionId),
-        supply_data_snapshot_id: parseInt(snapshotId!),
-        drop_off_warehouse: {
-          warehouse_id: warehouseId,
-          name: selectedWarehouse.name,
-          address: selectedWarehouse.address || null,
-        },
-        cluster_name: selectedCluster,
-        items: previewItems,
-        deletion_sku_mode: 'PARTIAL',
+      const bundles = previewBundles.length > 0 ? previewBundles : [previewItems]
+      const createdDraftIds: number[] = []
+
+      for (const bundleItems of bundles) {
+        const request: CreateCrossdockDraftRequest = {
+          connection_id: parseInt(connectionId),
+          supply_data_snapshot_id: parseInt(snapshotId!),
+          drop_off_warehouse: {
+            warehouse_id: warehouseId,
+            name: selectedWarehouse.name,
+            address: selectedWarehouse.address || null,
+          },
+          cluster_name: selectedCluster,
+          items: bundleItems,
+          deletion_sku_mode: 'PARTIAL',
+        }
+
+        const response = await suppliesApi.createCrossdockDraft(request)
+        if (response.id) {
+          createdDraftIds.push(response.id)
+        }
       }
 
-      const response = await suppliesApi.createCrossdockDraft(request)
-      if (response.id) {
-        message.success('Черновик поставки создан')
-        window.open(`/connections/${connectionId}/supply-templates/${snapshotId}/drafts/${response.id}`, '_blank', 'noopener,noreferrer')
+      if (createdDraftIds.length === bundles.length) {
+        message.success(
+          createdDraftIds.length > 1
+            ? `Создано ${createdDraftIds.length} черновика(ов) поставки`
+            : 'Черновик поставки создан'
+        )
+        for (const draftId of createdDraftIds) {
+          window.open(`/connections/${connectionId}/supply-templates/${snapshotId}/drafts/${draftId}`, '_blank', 'noopener,noreferrer')
+        }
       } else {
         message.error('Не удалось создать черновик поставки')
       }
@@ -1064,7 +1177,7 @@ const SupplyTemplateDetail: React.FC = () => {
             if (boxCount <= 0) {
               isBoxCountValid = false
               boxCountError = 'Не задана кратность'
-            } else if (numValue > 0 && numValue % boxCount !== 0) {
+            } else if (floorToBoxCount && numValue > 0 && numValue % boxCount !== 0) {
               isBoxCountValid = false
               boxCountError = `Количество не кратно количеству в коробке (${boxCount})`
             }
@@ -1123,6 +1236,7 @@ const SupplyTemplateDetail: React.FC = () => {
           headerGroupComponentParams: {
             clusterName,
             isNeighborCluster,
+            boxCount: clusterBoxCounts.get(clusterName) || 0,
             onCreateDraft: handleCreateDraft,
           },
           children,
@@ -1177,7 +1291,7 @@ const SupplyTemplateDetail: React.FC = () => {
     }
 
     return baseHeaders
-  }, [snapshot, handleCreateDraft, clusterFilter, visibleBaseColumns, visibleSubColumns, copyTextToClipboard])
+  }, [snapshot, handleCreateDraft, clusterFilter, visibleBaseColumns, visibleSubColumns, copyTextToClipboard, floorToBoxCount, clusterBoxCounts])
 
   // Transform data for AG Grid - keep nested structure with clusters array
   const tableRows = useMemo(() => {
@@ -1433,6 +1547,16 @@ const SupplyTemplateDetail: React.FC = () => {
               ))}
             </Select>
           </Form.Item>
+
+          {previewBundles.length > 1 && (
+            <Alert
+              title="Будет создано несколько поставок"
+              description={`Кластер превышает лимит Ozon в ${OZON_MAX_BOXES} коробок на одну поставку. Будет создано ${previewBundles.length} черновика(ов) с ${previewBundles.map(b => b.reduce((sum, item) => sum + getBoxCount(item.quantity, boxCountByOfferId.get(item.offer_id) || 0, floorToBoxCount), 0)).join(' и ')} коробками соответственно.`}
+              type="warning"
+              showIcon
+              style={{ marginTop: '16px' }}
+            />
+          )}
 
           {previewItems.length > 0 && (
             <div style={{ marginTop: '16px' }}>
