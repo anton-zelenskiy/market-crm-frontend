@@ -327,9 +327,11 @@ export interface DraftStorageWarehouse {
 export interface SupplyCreateInfo {
   error_reasons?: string[] | null
   order_id?: number | null
-  status: string
+  status?: string
   order_pass_status?: SupplyOrderPassStatus | null
   cargoes_created?: boolean
+  // Set when a timeslot check ran but found nothing (draft created, no supply yet).
+  timeslot_checked?: boolean
 }
 
 export interface SupplyDraft {
@@ -568,6 +570,15 @@ export const suppliesApi = {
     const response = await api.post(
       `/supplies/snapshot/${snapshotId}/refresh`,
       config
+    )
+    return response.data
+  },
+
+  createAllSupplies: async (
+    snapshotId: number
+  ): Promise<RefreshSnapshotResponse> => {
+    const response = await api.post(
+      `/supplies/snapshot/${snapshotId}/create-all-supplies`
     )
     return response.data
   },

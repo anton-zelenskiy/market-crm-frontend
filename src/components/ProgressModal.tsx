@@ -11,6 +11,7 @@ interface ProgressModalProps {
   taskId: string
   onComplete: () => void
   onCancel: () => void
+  title?: string
 }
 
 export const ProgressModal: React.FC<ProgressModalProps> = ({
@@ -19,6 +20,7 @@ export const ProgressModal: React.FC<ProgressModalProps> = ({
   taskId,
   onComplete,
   onCancel,
+  title = 'Создание шаблона',
 }) => {
   const [progress, setProgress] = useState<ProgressData>({
     status: 'pending',
@@ -88,6 +90,8 @@ export const ProgressModal: React.FC<ProgressModalProps> = ({
       creating_draft: 'Создание черновика',
       fetching_bundles: 'Получение данных о доступности кластеров',
       calculating: 'Расчет количества товаров к поставке',
+      planning: 'Формирование плана создания поставок',
+      creating_supplies: 'Создание поставок',
       completed: 'Завершено',
       failed: 'Ошибка',
     }
@@ -96,7 +100,7 @@ export const ProgressModal: React.FC<ProgressModalProps> = ({
 
   return (
     <Modal
-      title="Создание шаблона"
+      title={title}
       open={visible}
       onCancel={onCancel}
       footer={null}

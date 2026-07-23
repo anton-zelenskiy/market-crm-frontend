@@ -22,6 +22,9 @@ import {
 import {
   ArrowLeftOutlined,
   FileExcelOutlined,
+  ThunderboltOutlined,
+  CheckCircleFilled,
+  ExclamationCircleFilled,
   DeleteOutlined,
   SearchOutlined,
   SettingOutlined,
@@ -182,6 +185,7 @@ const ClusterHeaderComponent = (params: any) => {
   const isNeighborCluster = params.isNeighborCluster || params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.isNeighborCluster
   const onCreateDraft = params.onCreateDraft || params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.onCreateDraft
   const boxCount = params.boxCount ?? params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.boxCount
+  const supplyStatus = params.supplyStatus ?? params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.supplyStatus
 
   if (!clusterName) {
     return <span>{params.displayName || 'Unknown'}</span>
@@ -195,6 +199,16 @@ const ClusterHeaderComponent = (params: any) => {
           <Tag color={boxCount > OZON_MAX_BOXES ? 'red' : 'default'} style={{ margin: 0 }}>
             {boxCount} кор.
           </Tag>
+        </Tooltip>
+      )}
+      {supplyStatus === 'created' && (
+        <Tooltip title="Поставка создана">
+          <CheckCircleFilled style={{ fontSize: '16px', color: '#52c41a' }} />
+        </Tooltip>
+      )}
+      {supplyStatus === 'no_timeslot' && (
+        <Tooltip title="Нет доступных таймслотов на выбранную дату — создайте поставку вручную">
+          <ExclamationCircleFilled style={{ fontSize: '16px', color: '#faad14' }} />
         </Tooltip>
       )}
       {isNeighborCluster && (
@@ -236,6 +250,9 @@ const SupplyTemplateDetail: React.FC = () => {
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null)
   const [progressModalVisible, setProgressModalVisible] = useState(false)
   const [progressTaskId, setProgressTaskId] = useState<string | null>(null)
+  const [creatingAllSupplies, setCreatingAllSupplies] = useState(false)
+  const [bulkSupplyModalVisible, setBulkSupplyModalVisible] = useState(false)
+  const [bulkSupplyTaskId, setBulkSupplyTaskId] = useState<string | null>(null)
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [warehouseLoading, setWarehouseLoading] = useState(false)
   const [form] = Form.useForm()
@@ -361,6 +378,26 @@ const SupplyTemplateDetail: React.FC = () => {
   const previewBundles = useMemo(() => {
     return splitItemsIntoBoxBundles(previewItems, boxCountByOfferId, floorToBoxCount)
   }, [previewItems, boxCountByOfferId, floorToBoxCount])
+
+  // Per-cluster supply status derived from existing drafts: 'created' if any draft for
+  // the cluster has a supply order_id, 'no_timeslot' if a timeslot check ran and found
+  // nothing. No entry (nothing shown) if the cluster was never attempted.
+  const clusterSupplyStatus = useMemo(() => {
+    const map = new Map<string, 'created' | 'no_timeslot'>()
+    for (const draft of drafts) {
+      const clusterName = draft.cluster?.cluster_name
+      if (!clusterName) continue
+      if (draft.supply_create_info?.order_id) {
+        map.set(clusterName, 'created')
+      } else if (
+        draft.supply_create_info?.timeslot_checked &&
+        map.get(clusterName) !== 'created'
+      ) {
+        map.set(clusterName, 'no_timeslot')
+      }
+    }
+    return map
+  }, [drafts])
 
   const [isDirty, setIsDirty] = useState(false)
 
@@ -574,7 +611,29 @@ const SupplyTemplateDetail: React.FC = () => {
     message.success('Настройки сохранены и данные обновлены')
   }
 
+  const handleCreateAllSupplies = async () => {
+    if (!snapshotId) return
 
+    setCreatingAllSupplies(true)
+    try {
+      const response = await suppliesApi.createAllSupplies(parseInt(snapshotId, 10))
+      setBulkSupplyTaskId(response.task_id)
+      setBulkSupplyModalVisible(true)
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка создания поставок'
+      )
+    } finally {
+      setCreatingAllSupplies(false)
+    }
+  }
+
+  const handleBulkSupplyProgressComplete = async () => {
+    setBulkSupplyModalVisible(false)
+    setBulkSupplyTaskId(null)
+    await Promise.all([loadDrafts(), loadSnapshot()])
+    message.success('Создание поставок завершено')
+  }
 
   const handleDownloadFullXlsx = async () => {
     if (!snapshotId) return
@@ -1237,6 +1296,7 @@ const SupplyTemplateDetail: React.FC = () => {
             clusterName,
             isNeighborCluster,
             boxCount: clusterBoxCounts.get(clusterName) || 0,
+            supplyStatus: clusterSupplyStatus.get(clusterName),
             onCreateDraft: handleCreateDraft,
           },
           children,
@@ -1291,7 +1351,7 @@ const SupplyTemplateDetail: React.FC = () => {
     }
 
     return baseHeaders
-  }, [snapshot, handleCreateDraft, clusterFilter, visibleBaseColumns, visibleSubColumns, copyTextToClipboard, floorToBoxCount, clusterBoxCounts])
+  }, [snapshot, handleCreateDraft, clusterFilter, visibleBaseColumns, visibleSubColumns, copyTextToClipboard, floorToBoxCount, clusterBoxCounts, clusterSupplyStatus])
 
   // Transform data for AG Grid - keep nested structure with clusters array
   const tableRows = useMemo(() => {
@@ -1387,6 +1447,14 @@ const SupplyTemplateDetail: React.FC = () => {
               onClick={handleDownloadFullXlsx}
             >
               Скачать таблицу (XLSX)
+            </Button>
+            <Button
+              type="primary"
+              icon={<ThunderboltOutlined />}
+              loading={creatingAllSupplies}
+              onClick={handleCreateAllSupplies}
+            >
+              Создать все поставки
             </Button>
             <Space><Text type="warning">Логистическое плечо: {logisticsDistance} дней</Text></Space>
           </Space>
@@ -1664,6 +1732,21 @@ const SupplyTemplateDetail: React.FC = () => {
           onCancel={() => {
             setProgressModalVisible(false)
             setProgressTaskId(null)
+          }}
+        />
+      )}
+
+      {/* Bulk supply creation progress modal */}
+      {bulkSupplyTaskId && snapshotId && (
+        <ProgressModal
+          visible={bulkSupplyModalVisible}
+          snapshotId={parseInt(snapshotId)}
+          taskId={bulkSupplyTaskId}
+          title="Создание поставок"
+          onComplete={handleBulkSupplyProgressComplete}
+          onCancel={() => {
+            setBulkSupplyModalVisible(false)
+            setBulkSupplyTaskId(null)
           }}
         />
       )}
