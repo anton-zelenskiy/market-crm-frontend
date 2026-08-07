@@ -7,6 +7,8 @@ export interface ConnectionSettings {
   auto_create_cargoes: boolean
   floor_to_box_count: boolean
   demand: number
+  stocks_spreadsheet_id?: string | null
+  stocks_sheet_id?: number | null
 }
 
 export interface ConnectionSettingsUpdate {
@@ -14,6 +16,8 @@ export interface ConnectionSettingsUpdate {
   auto_create_cargoes?: boolean
   floor_to_box_count?: boolean
   demand?: number
+  stocks_spreadsheet_id?: string
+  stocks_sheet_id?: number
 }
 
 export const connectionSettingsApi = {

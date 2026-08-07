@@ -3,7 +3,7 @@ import api from './axios'
 // Vendor Products Types
 export interface VendorProduct {
   id: number
-  company_id: number
+  connection_id: number
   offer_id: string
   name: string
   quantity: number
@@ -61,38 +61,38 @@ export interface OzonProductUpdate {
 
 // Vendor Products API
 export const vendorProductsApi = {
-  getAll: async (companyId: number): Promise<VendorProduct[]> => {
-    const response = await api.get(`/products/vendor/${companyId}`)
+  getAll: async (connectionId: number): Promise<VendorProduct[]> => {
+    const response = await api.get(`/products/vendor/${connectionId}`)
     return response.data
   },
 
-  getById: async (companyId: number, vendorProductId: number): Promise<VendorProduct> => {
-    const response = await api.get(`/products/vendor/${companyId}/${vendorProductId}`)
+  getById: async (connectionId: number, vendorProductId: number): Promise<VendorProduct> => {
+    const response = await api.get(`/products/vendor/${connectionId}/${vendorProductId}`)
     return response.data
   },
 
-  create: async (companyId: number, data: VendorProductCreate): Promise<VendorProduct> => {
-    const response = await api.post(`/products/vendor/${companyId}`, data)
+  create: async (connectionId: number, data: VendorProductCreate): Promise<VendorProduct> => {
+    const response = await api.post(`/products/vendor/${connectionId}`, data)
     return response.data
   },
 
   update: async (
-    companyId: number,
+    connectionId: number,
     vendorProductId: number,
     data: VendorProductUpdate
   ): Promise<VendorProduct> => {
-    const response = await api.put(`/products/vendor/${companyId}/${vendorProductId}`, data)
+    const response = await api.put(`/products/vendor/${connectionId}/${vendorProductId}`, data)
     return response.data
   },
 
-  delete: async (companyId: number, vendorProductId: number): Promise<void> => {
-    await api.delete(`/products/vendor/${companyId}/${vendorProductId}`)
+  delete: async (connectionId: number, vendorProductId: number): Promise<void> => {
+    await api.delete(`/products/vendor/${connectionId}/${vendorProductId}`)
   },
 
-  syncFromCSV: async (companyId: number, file: File): Promise<{ message: string; products_synced: number }> => {
+  syncFromCSV: async (connectionId: number, file: File): Promise<{ message: string; products_synced: number }> => {
     const formData = new FormData()
     formData.append('file', file)
-    const response = await api.post(`/products/vendor/${companyId}/sync-csv`, formData, {
+    const response = await api.post(`/products/vendor/${connectionId}/sync-csv`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -100,8 +100,13 @@ export const vendorProductsApi = {
     return response.data
   },
 
-  downloadSyncCSVTemplate: async (companyId: number): Promise<void> => {
-    const response = await api.get(`/products/vendor/${companyId}/sync-csv-template`, {
+  syncFromGSheet: async (connectionId: number): Promise<{ message: string; products_synced: number }> => {
+    const response = await api.post(`/products/vendor/${connectionId}/sync-gsheet`)
+    return response.data
+  },
+
+  downloadSyncCSVTemplate: async (connectionId: number): Promise<void> => {
+    const response = await api.get(`/products/vendor/${connectionId}/sync-csv-template`, {
       responseType: 'blob',
     })
 
@@ -116,8 +121,8 @@ export const vendorProductsApi = {
     window.URL.revokeObjectURL(url)
   },
 
-  resetStocks: async (companyId: number): Promise<{ message: string; products_updated: number }> => {
-    const response = await api.post(`/products/vendor/${companyId}/reset-stocks`)
+  resetStocks: async (connectionId: number): Promise<{ message: string; products_updated: number }> => {
+    const response = await api.post(`/products/vendor/${connectionId}/reset-stocks`)
     return response.data
   },
 }

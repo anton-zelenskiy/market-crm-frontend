@@ -24,14 +24,16 @@ import {
   DownloadOutlined,
   ClearOutlined,
   SearchOutlined,
+  SyncOutlined,
 } from '@ant-design/icons'
 import { vendorProductsApi, type VendorProduct, type VendorProductCreate, type VendorProductUpdate } from '../api/products'
 import { companiesApi } from '../api/companies'
+import { connectionsApi } from '../api/connections'
 
 const { Title } = Typography
 
 const VendorProducts: React.FC = () => {
-  const { companyId } = useParams<{ companyId: string }>()
+  const { connectionId } = useParams<{ connectionId: string }>()
   const navigate = useNavigate()
   const [products, setProducts] = useState<VendorProduct[]>([])
   const [loading, setLoading] = useState(false)
@@ -40,22 +42,24 @@ const VendorProducts: React.FC = () => {
   const [form] = Form.useForm()
   const [companyName, setCompanyName] = useState<string>('')
   const [searchText, setSearchText] = useState('')
+  const [syncingGSheet, setSyncingGSheet] = useState(false)
 
   useEffect(() => {
-    if (companyId) {
+    if (connectionId) {
       loadData()
     }
-  }, [companyId])
+  }, [connectionId])
 
   const loadData = async () => {
-    if (!companyId) return
+    if (!connectionId) return
 
     setLoading(true)
     try {
-      const company = await companiesApi.getById(parseInt(companyId))
+      const connection = await connectionsApi.getById(parseInt(connectionId))
+      const company = await companiesApi.getById(connection.company_id)
       setCompanyName(company.name)
-      
-      const productsData = await vendorProductsApi.getAll(parseInt(companyId))
+
+      const productsData = await vendorProductsApi.getAll(parseInt(connectionId))
       setProducts(productsData)
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка загрузки товаров')
@@ -81,10 +85,10 @@ const VendorProducts: React.FC = () => {
   }
 
   const handleDelete = async (id: number) => {
-    if (!companyId) return
-    
+    if (!connectionId) return
+
     try {
-      await vendorProductsApi.delete(parseInt(companyId), id)
+      await vendorProductsApi.delete(parseInt(connectionId), id)
       message.success('Товар успешно удален')
       loadData()
     } catch (error: any) {
@@ -95,14 +99,14 @@ const VendorProducts: React.FC = () => {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
-      
-      if (!companyId) return
+
+      if (!connectionId) return
 
       if (editingProduct) {
-        await vendorProductsApi.update(parseInt(companyId), editingProduct.id, values as VendorProductUpdate)
+        await vendorProductsApi.update(parseInt(connectionId), editingProduct.id, values as VendorProductUpdate)
         message.success('Товар успешно обновлен')
       } else {
-        await vendorProductsApi.create(parseInt(companyId), values as VendorProductCreate)
+        await vendorProductsApi.create(parseInt(connectionId), values as VendorProductCreate)
         message.success('Товар успешно создан')
       }
 
@@ -117,10 +121,10 @@ const VendorProducts: React.FC = () => {
   }
 
   const handleCSVUpload = async (file: File) => {
-    if (!companyId) return
+    if (!connectionId) return
 
     try {
-      const result = await vendorProductsApi.syncFromCSV(parseInt(companyId), file)
+      const result = await vendorProductsApi.syncFromCSV(parseInt(connectionId), file)
       message.success(result.message || `Синхронизировано ${result.products_synced} товаров`)
       loadData()
     } catch (error: any) {
@@ -130,10 +134,10 @@ const VendorProducts: React.FC = () => {
   }
 
   const handleDownloadTemplate = async () => {
-    if (!companyId) return
+    if (!connectionId) return
 
     try {
-      await vendorProductsApi.downloadSyncCSVTemplate(parseInt(companyId))
+      await vendorProductsApi.downloadSyncCSVTemplate(parseInt(connectionId))
       message.success('Шаблон CSV успешно скачан')
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка скачивания шаблона')
@@ -141,14 +145,29 @@ const VendorProducts: React.FC = () => {
   }
 
   const handleResetStocks = async () => {
-    if (!companyId) return
+    if (!connectionId) return
 
     try {
-      const result = await vendorProductsApi.resetStocks(parseInt(companyId))
+      const result = await vendorProductsApi.resetStocks(parseInt(connectionId))
       message.success(result.message || `Обнулены остатки для ${result.products_updated} товаров`)
       loadData()
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка обнуления остатков')
+    }
+  }
+
+  const handleSyncFromGSheet = async () => {
+    if (!connectionId) return
+
+    setSyncingGSheet(true)
+    try {
+      const result = await vendorProductsApi.syncFromGSheet(parseInt(connectionId))
+      message.success(result.message || `Синхронизировано ${result.products_synced} товаров`)
+      loadData()
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка синхронизации из Google Таблицы')
+    } finally {
+      setSyncingGSheet(false)
     }
   }
 
@@ -222,6 +241,15 @@ const VendorProducts: React.FC = () => {
             </div>
             <div className="crm-split-header__end">
               <Space wrap>
+                <Tooltip title="Синхронизировать остатки из Google Таблицы, указанной в настройках подключения">
+                  <Button
+                    icon={<SyncOutlined />}
+                    onClick={handleSyncFromGSheet}
+                    loading={syncingGSheet}
+                  >
+                    Синхронизировать из Google Таблицы
+                  </Button>
+                </Tooltip>
                 <Popconfirm
                   title="Обнулить остатки?"
                   description="Количество на складе будет установлено в 0 для всех товаров"

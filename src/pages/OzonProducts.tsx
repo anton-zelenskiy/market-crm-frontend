@@ -76,14 +76,15 @@ const OzonProducts: React.FC = () => {
           console.log('Failed to load company data')
         }
 
-        // Load vendor products for the company (for vendor_offer_id dropdown)
-        try {
-          const vendorProductsData = await vendorProductsApi.getAll(connectionData.company_id)
-          setVendorProducts(vendorProductsData)
-        } catch (error) {
-          // Vendor products might not exist, that's okay
-          console.log('No vendor products found for company')
-        }
+      }
+
+      // Load vendor products for this connection (for vendor_offer_id dropdown)
+      try {
+        const vendorProductsData = await vendorProductsApi.getAll(parseInt(connectionId))
+        setVendorProducts(vendorProductsData)
+      } catch (error) {
+        // Vendor products might not exist, that's okay
+        console.log('No vendor products found for connection')
       }
 
       const productsData = await ozonProductsApi.getAll(parseInt(connectionId))

@@ -12,6 +12,7 @@ import {
   Spin,
   List,
   InputNumber,
+  Input,
   Form,
   Switch,
   Tabs,
@@ -83,7 +84,14 @@ const ConnectionDetail: React.FC = () => {
     }
   }
 
-  const handleUpdateSettings = async (values: { logistics_distance: number; auto_create_cargoes: boolean; floor_to_box_count: boolean; demand: number }) => {
+  const handleUpdateSettings = async (values: {
+    logistics_distance: number
+    auto_create_cargoes: boolean
+    floor_to_box_count: boolean
+    demand: number
+    stocks_spreadsheet_id?: string
+    stocks_sheet_id?: number
+  }) => {
     if (!connectionId || !connection) return
 
     setSavingSettings(true)
@@ -93,6 +101,8 @@ const ConnectionDetail: React.FC = () => {
         auto_create_cargoes: values.auto_create_cargoes,
         floor_to_box_count: values.floor_to_box_count,
         demand: values.demand,
+        stocks_spreadsheet_id: values.stocks_spreadsheet_id,
+        stocks_sheet_id: values.stocks_sheet_id,
       })
       setSettings(updated)
       message.success('Настройки успешно сохранены')
@@ -220,7 +230,7 @@ const ConnectionDetail: React.FC = () => {
                 description:
                   'Используйте раздел для заполнения остатков товаров на складах поставщика.',
                 buttonText: 'Товары поставщика',
-                onClick: () => navigate(`/companies/${company.id}/vendor-products`),
+                onClick: () => navigate(`/connections/${connection.id}/vendor-products`),
               },
               {
                 title: 'Товары Ozon',
@@ -309,6 +319,8 @@ const ConnectionDetail: React.FC = () => {
             auto_create_cargoes: settings.auto_create_cargoes,
             floor_to_box_count: settings.floor_to_box_count,
             demand: settings.demand,
+            stocks_spreadsheet_id: settings.stocks_spreadsheet_id,
+            stocks_sheet_id: settings.stocks_sheet_id,
           }}
           style={{ maxWidth: 480 }}
         >
@@ -341,6 +353,20 @@ const ConnectionDetail: React.FC = () => {
             tooltip="Используется при проверке доступности кластеров принять товар"
           >
             <InputNumber min={1} max={1000} />
+          </Form.Item>
+          <Form.Item
+            name="stocks_spreadsheet_id"
+            label="ID Google таблицы с остатками"
+            tooltip="Идентификатор таблицы из её ссылки: docs.google.com/spreadsheets/d/ЭТОТ_ID/edit"
+          >
+            <Input placeholder="1AbCDefGhIJKLmnoPQRstuVWxyz" />
+          </Form.Item>
+          <Form.Item
+            name="stocks_sheet_id"
+            label="ID листа с остатками (gid)"
+            tooltip="Идентификатор листа из ссылки: ...#gid=ЭТОТ_ID. Лист должен содержать колонки «Артикул» и «Кол-во на складе», таблица должна быть доступна по ссылке всем"
+          >
+            <InputNumber min={0} style={{ width: '100%' }} placeholder="0" />
           </Form.Item>
           <Form.Item>
             <Button
