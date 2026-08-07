@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   Card,
   Typography,
@@ -16,9 +16,9 @@ import {
   Form,
   Switch,
   Tabs,
+  Breadcrumb,
 } from 'antd'
 import {
-  ArrowLeftOutlined,
   PlayCircleOutlined,
   LinkOutlined,
   SaveOutlined,
@@ -416,20 +416,22 @@ const ConnectionDetail: React.FC = () => {
       <Card>
         <Space orientation="vertical" style={{ width: '100%' }} size="large">
           <div className="crm-page-lead">
-            <Space wrap size="small">
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/connections')}
-              >
-                Назад
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                <LinkOutlined /> API Подключение:{' '}
-                {company
-                  ? `${company.name} (${connection.data_source?.title})`
-                  : connection.data_source?.title}
-              </Title>
-            </Space>
+            <Breadcrumb
+              items={[
+                { title: <Link to="/connections">API Подключения</Link> },
+                {
+                  title: company
+                    ? `${company.name} (${connection.data_source?.title})`
+                    : connection.data_source?.title,
+                },
+              ]}
+            />
+            <Title level={2} style={{ margin: 0 }}>
+              <LinkOutlined /> API Подключение:{' '}
+              {company
+                ? `${company.name} (${connection.data_source?.title})`
+                : connection.data_source?.title}
+            </Title>
           </div>
 
           <Tabs items={tabItems} />

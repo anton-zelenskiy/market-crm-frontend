@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import {
   Card,
   Typography,
@@ -14,9 +14,9 @@ import {
   InputNumber,
   Modal,
   Tabs,
+  Breadcrumb,
 } from 'antd'
 import {
-  ArrowLeftOutlined,
   ReloadOutlined,
   PlusOutlined,
   SearchOutlined,
@@ -32,14 +32,15 @@ import type {
 } from '../api/redistribution'
 import { connectionsApi } from '../api/connections'
 import type { Connection } from '../api/connections'
+import { companiesApi, type Company } from '../api/companies'
 
 const { Title, Text } = Typography
 const { Option } = Select
 
 const RedistributionOrders: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
-  const navigate = useNavigate()
   const [connection, setConnection] = useState<Connection | null>(null)
+  const [company, setCompany] = useState<Company | null>(null)
   const [orders, setOrders] = useState<RedistributionOrder[]>([])
   const [ordersTotal, setOrdersTotal] = useState(0)
   const [ordersPage, setOrdersPage] = useState(1)
@@ -74,6 +75,15 @@ const RedistributionOrders: React.FC = () => {
       setConnection(conn)
       setOrders(ordersData.items)
       setOrdersTotal(ordersData.total)
+
+      if (conn.company_id) {
+        try {
+          const companyData = await companiesApi.getById(conn.company_id)
+          setCompany(companyData)
+        } catch {
+          // company lookup is best-effort for the page title
+        }
+      }
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка загрузки данных')
     } finally {
@@ -265,13 +275,16 @@ const RedistributionOrders: React.FC = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <Space style={{ marginBottom: '24px' }} size="large">
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
-          Назад
-        </Button>
+      <Space orientation="vertical" style={{ marginBottom: '24px' }} size="small">
+        <Breadcrumb
+          items={[
+            { title: <Link to="/connections">API Подключения</Link> },
+            { title: <Link to={`/connections/${connectionId}`}>{company?.name || 'Подключение'}</Link> },
+            { title: 'Перераспределение остатков' },
+          ]}
+        />
         <Title level={2} style={{ margin: 0 }}>
-          Перераспределение остатков
-          {connection && ` - ${connection.company_id}`}
+          Перераспределение остатков{company && `: ${company.name}`}
         </Title>
       </Space>
 

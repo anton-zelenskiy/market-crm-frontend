@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   Card,
   Typography,
@@ -16,10 +16,10 @@ import {
   Tag,
   Modal,
   Table,
+  Breadcrumb,
 } from 'antd'
 import dayjs, { type Dayjs } from '../lib/dayjs'
 import {
-  ArrowLeftOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons'
@@ -306,12 +306,15 @@ const SupplyDraftDetail: React.FC = () => {
     return (
       <Card>
         <Space orientation="vertical" style={{ width: '100%' }}>
-          <Button
-            icon={<ArrowLeftOutlined />}
-            onClick={() => navigate(`/connections/${connectionId}/supply-templates/${snapshotId}`)}
-          >
-            Назад
-          </Button>
+          <Breadcrumb
+            items={[
+              { title: <Link to="/connections">API Подключения</Link> },
+              { title: <Link to={`/connections/${connectionId}`}>Подключение</Link> },
+              { title: <Link to={`/connections/${connectionId}/supply-templates`}>Поставки</Link> },
+              { title: <Link to={`/connections/${connectionId}/supply-templates/${snapshotId}`}>Формирование поставки</Link> },
+              { title: 'Черновик поставки' },
+            ]}
+          />
           <Alert
             title="Нет доступных складов"
             description="Для этого черновика нет доступных складов размещения"
@@ -402,12 +405,15 @@ const SupplyDraftDetail: React.FC = () => {
     <div>
       <Card>
         <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-          <Button
-            icon={<ArrowLeftOutlined />}
-            onClick={() => navigate(`/connections/${connectionId}/supply-templates/${snapshotId}`)}
-          >
-            Назад к шаблону поставки
-          </Button>
+          <Breadcrumb
+            items={[
+              { title: <Link to="/connections">API Подключения</Link> },
+              { title: <Link to={`/connections/${connectionId}`}>Подключение</Link> },
+              { title: <Link to={`/connections/${connectionId}/supply-templates`}>Поставки</Link> },
+              { title: <Link to={`/connections/${connectionId}/supply-templates/${snapshotId}`}>Формирование поставки</Link> },
+              { title: 'Черновик поставки' },
+            ]}
+          />
 
           <Title level={2}>Черновик поставки</Title>
 

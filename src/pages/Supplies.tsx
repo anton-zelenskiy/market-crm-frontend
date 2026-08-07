@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import {
   Card,
   Typography,
@@ -18,9 +18,10 @@ import {
   Select,
   Popconfirm,
   Tooltip,
+  Breadcrumb,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { ArrowLeftOutlined, MoreOutlined } from '@ant-design/icons'
+import { MoreOutlined } from '@ant-design/icons'
 import { formatDate, formatDateTime } from '../lib/dayjs'
 import {
   suppliesApi,
@@ -393,7 +394,6 @@ const SupplyKaitenExpandedSection: React.FC<SupplyKaitenExpandedSectionProps> = 
 
 const Supplies: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
-  const navigate = useNavigate()
   const [supplies, setSupplies] = useState<SupplyOrder[]>([])
   const [loading, setLoading] = useState(false)
   const [company, setCompany] = useState<Company | null>(null)
@@ -930,15 +930,13 @@ const Supplies: React.FC = () => {
         >
           <div className="crm-split-header">
             <div className="crm-split-header__start">
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(`/connections/${connectionId}`)}
-              >
-                Назад
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Поставки - {company?.name || ''}
-              </Title>
+              <Breadcrumb
+                items={[
+                  { title: <Link to="/connections">API Подключения</Link> },
+                  { title: <Link to={`/connections/${connectionId}`}>{company?.name || 'Подключение'}</Link> },
+                  { title: 'Поставки' },
+                ]}
+              />
             </div>
 
             <div className="crm-split-header__end">
@@ -980,6 +978,10 @@ const Supplies: React.FC = () => {
               </Select>
             </div>
           </div>
+
+          <Title level={2} style={{ margin: 0 }}>
+            Поставки - {company?.name || ''}
+          </Title>
 
           {!connection ? (
             <Alert

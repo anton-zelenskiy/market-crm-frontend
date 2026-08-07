@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   Table,
   Button,
@@ -8,10 +8,10 @@ import {
   message,
   Card,
   Typography,
+  Breadcrumb,
 } from 'antd'
 import dayjs, { formatDate } from '../lib/dayjs'
 import {
-  ArrowLeftOutlined,
   PlusOutlined,
   DeleteOutlined,
   FileTextOutlined,
@@ -250,15 +250,13 @@ const SupplyTemplates: React.FC = () => {
         <Space orientation="vertical" style={{ width: '100%' }} size="large">
           <div className="crm-split-header">
             <div className="crm-split-header__start">
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(`/connections/${connectionId}`)}
-              >
-                Назад
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                <FileTextOutlined /> Поставки - {company?.name} ({connection?.data_source?.title})
-              </Title>
+              <Breadcrumb
+                items={[
+                  { title: <Link to="/connections">API Подключения</Link> },
+                  { title: <Link to={`/connections/${connectionId}`}>{company?.name || 'Подключение'}</Link> },
+                  { title: 'Шаблоны поставок' },
+                ]}
+              />
             </div>
             <div className="crm-split-header__end">
               <Button
@@ -272,9 +270,13 @@ const SupplyTemplates: React.FC = () => {
             </div>
           </div>
 
+          <Title level={2} style={{ margin: 0 }}>
+            <FileTextOutlined /> Шаблоны поставок - {company?.name} ({connection?.data_source?.title})
+          </Title>
+
           <SupplyConfigModal
             visible={modalVisible}
-            title="Сформировать новую поставку"
+            title="Новая поставка"
             okText="Создать"
             cancelText="Отмена"
             confirmLoading={creating}

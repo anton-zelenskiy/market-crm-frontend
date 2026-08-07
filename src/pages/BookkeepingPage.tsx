@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import {
   Card,
   Typography,
@@ -16,11 +16,11 @@ import {
   Switch,
   Select,
   Spin,
+  Breadcrumb,
 } from 'antd'
 import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs, { type Dayjs, DATE_FORMAT } from '../lib/dayjs'
 import {
-  ArrowLeftOutlined,
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
@@ -130,7 +130,6 @@ const OperationsActionsCell: React.FC<ActionsParams> = (params) => {
 
 const BookkeepingPage: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
-  const navigate = useNavigate()
   const cid = connectionId ? parseInt(connectionId, 10) : 0
   const gridRef = useRef<AgGridReact<FinanceOperation>>(null)
 
@@ -524,12 +523,13 @@ const BookkeepingPage: React.FC = () => {
         <Space orientation="vertical" style={{ width: '100%' }} size="middle">
           <div className="crm-split-header">
             <div className="crm-split-header__start">
-              <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/connections/${cid}`)}>
-                Назад
-              </Button>
-              <Title level={3} style={{ margin: 0 }}>
-                Банковские операции (ДДС)
-              </Title>
+              <Breadcrumb
+                items={[
+                  { title: <Link to="/connections">API Подключения</Link> },
+                  { title: <Link to={`/connections/${connectionId}`}>Подключение</Link> },
+                  { title: 'Банковские операции (ДДС)' },
+                ]}
+              />
             </div>
             <div className="crm-split-header__end">
               <Space wrap>
@@ -553,6 +553,10 @@ const BookkeepingPage: React.FC = () => {
               </Space>
             </div>
           </div>
+
+          <Title level={3} style={{ margin: 0 }}>
+            Банковские операции (ДДС)
+          </Title>
 
           <Space wrap align="center">
             <span>Период:</span>

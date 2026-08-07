@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import {
   Card,
   Typography,
@@ -16,10 +16,10 @@ import {
   Tag,
   Select,
   Tooltip,
+  Breadcrumb,
 } from 'antd'
 
 import {
-  ArrowLeftOutlined,
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
@@ -43,7 +43,6 @@ const { Option } = Select
 
 const OzonProducts: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
-  const navigate = useNavigate()
   const [products, setProducts] = useState<OzonProduct[]>([])
   const [vendorProducts, setVendorProducts] = useState<VendorProduct[]>([])
   const [loading, setLoading] = useState(false)
@@ -298,12 +297,13 @@ const OzonProducts: React.FC = () => {
         <Space orientation="vertical" style={{ width: '100%', gap: '24px' }} size="large">
           <div className="crm-split-header">
             <div className="crm-split-header__start">
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(`/connections/${connectionId}`)}
-              >
-                Назад
-              </Button>
+              <Breadcrumb
+                items={[
+                  { title: <Link to="/connections">API Подключения</Link> },
+                  { title: <Link to={`/connections/${connectionId}`}>{company?.name || 'Подключение'}</Link> },
+                  { title: 'Товары Ozon' },
+                ]}
+              />
             </div>
             <div className="crm-split-header__end">
               <Space wrap>

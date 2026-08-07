@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   Card,
   Typography,
@@ -11,9 +11,9 @@ import {
   Spin,
   Alert,
   Descriptions,
+  Breadcrumb,
 } from 'antd'
 import {
-  ArrowLeftOutlined,
   ShopOutlined,
   LinkOutlined,
 } from '@ant-design/icons'
@@ -70,17 +70,15 @@ const CompanyDetail: React.FC = () => {
       <Card>
         <Space orientation="vertical" style={{ width: '100%', gap: '24px' }} size="large">
           <div className="crm-page-lead">
-            <Space wrap size="small">
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/companies')}
-              >
-                Назад к компаниям
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                <ShopOutlined /> {company.name}
-              </Title>
-            </Space>
+            <Breadcrumb
+              items={[
+                { title: <Link to="/companies">Компании</Link> },
+                { title: company.name },
+              ]}
+            />
+            <Title level={2} style={{ margin: 0 }}>
+              <ShopOutlined /> {company.name}
+            </Title>
           </div>
 
           <Descriptions bordered column={1}>

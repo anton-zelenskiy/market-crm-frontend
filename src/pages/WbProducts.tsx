@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import {
   Card,
   Typography,
@@ -13,10 +13,10 @@ import {
   InputNumber,
   Popconfirm,
   Tag,
+  Breadcrumb,
 } from 'antd'
 
 import {
-  ArrowLeftOutlined,
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
@@ -35,7 +35,6 @@ const { Title } = Typography
 
 const WbProducts: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
-  const navigate = useNavigate()
   const [products, setProducts] = useState<WbProduct[]>([])
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -208,12 +207,13 @@ const WbProducts: React.FC = () => {
         <Space orientation="vertical" style={{ width: '100%', gap: '24px' }} size="large">
           <div className="crm-split-header">
             <div className="crm-split-header__start">
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(`/connections/${connectionId}`)}
-              >
-                Назад
-              </Button>
+              <Breadcrumb
+                items={[
+                  { title: <Link to="/connections">API Подключения</Link> },
+                  { title: <Link to={`/connections/${connectionId}`}>{company?.name || 'Подключение'}</Link> },
+                  { title: 'Товары Wildberries' },
+                ]}
+              />
             </div>
             <div className="crm-split-header__end">
               <Space wrap>

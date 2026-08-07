@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import {
   Card,
   Typography,
@@ -18,9 +18,9 @@ import {
   Input,
   Checkbox,
   Popover,
+  Breadcrumb,
 } from 'antd'
 import {
-  ArrowLeftOutlined,
   FileExcelOutlined,
   ThunderboltOutlined,
   CheckCircleFilled,
@@ -37,7 +37,7 @@ import type { ColDef, ColGroupDef, CellValueChangedEvent } from 'ag-grid-communi
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule])
 import { debounce } from 'throttle-debounce'
-import dayjs, { formatDateTime } from '../lib/dayjs'
+import dayjs, { formatDate, formatDateTime } from '../lib/dayjs'
 import {
   suppliesApi,
   type SupplySnapshotResponse,
@@ -148,7 +148,7 @@ const MemoizedTable = memo(({ columnDefs, rowData, onCellValueChanged }: {
   onCellValueChanged: (event: CellValueChangedEvent) => void
 }) => {
   return (
-    <div style={{ height: '600px', width: '100%' }}>
+    <div style={{ height: '600px', width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
       <AgGridReact
         theme={themeAlpine}
         columnDefs={columnDefs}
@@ -236,7 +236,6 @@ const ClusterHeaderComponent = (params: any) => {
 
 const SupplyTemplateDetail: React.FC = () => {
   const { connectionId, snapshotId } = useParams<{ connectionId: string, snapshotId: string }>()
-  const navigate = useNavigate()
   const [settings, setSettings] = useState<any>(null)
   const [snapshot, setSnapshot] = useState<SupplySnapshotResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -1377,87 +1376,87 @@ const SupplyTemplateDetail: React.FC = () => {
           style={{ width: '100%', gap: '24px' }}
           size="large"
         >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <Space>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => {
-                  if (connectionId) {
-                    navigate(`/connections/${connectionId}/supply-templates`)
-                  } else {
-                    navigate('/connections')
-                  }
-                }}
-              >
-                Назад
-              </Button>
-            </Space>
-            <Space>
-              {snapshot && (
-                <Text type="secondary">
-                  Обновлено: {formatDateTime(snapshot.updated_at)}
-                </Text>
-              )}
-              
-              <Button
-                icon={<EditOutlined />}
-                onClick={handleOpenSettingsModal}
-              >
-                Редактировать
-              </Button>
-            </Space>
+          <div className="crm-split-header">
+            <div className="crm-split-header__start">
+              <Breadcrumb
+                items={[
+                  { title: <Link to="/connections">API Подключения</Link> },
+                  ...(connectionId
+                    ? [{ title: <Link to={`/connections/${connectionId}`}>{company?.name || 'Подключение'}</Link> }]
+                    : []),
+                  ...(connectionId
+                    ? [{ title: <Link to={`/connections/${connectionId}/supply-templates`}>Шаблоны поставок</Link> }]
+                    : []),
+                  { title: `Поставка №${snapshot?.id} от ${formatDate(snapshot?.updated_at)}` },
+                ]}
+              />
+            </div>
+            <div className="crm-split-header__end">
+              <Space wrap>
+                {snapshot && (
+                  <Text type="secondary">
+                    Обновлено: {formatDateTime(snapshot.updated_at)}
+                  </Text>
+                )}
+
+                <Button
+                  icon={<EditOutlined />}
+                  onClick={handleOpenSettingsModal}
+                >
+                  Редактировать
+                </Button>
+              </Space>
+            </div>
           </div>
 
-          <Space align="center">
-            <Title level={2} style={{ margin: 0 }}>
-              Формирование поставки - {company?.name || ''}
-            </Title>
-          </Space>
+          <Title level={2} style={{ margin: 0 }}>
+            Формирование поставки - {company?.name || ''}
+          </Title>
 
-          <Space>
-            <Input
-              placeholder="Введите имя кластера..."
-              allowClear
-              prefix={<SearchOutlined />}
-              value={clusterFilter}
-              onChange={(e) => setClusterFilter(e.target.value)}
-              style={{ maxWidth: 400 }}
-            />
-            <Popover
-              content={columnSettingsContent}
-              title="Настройка столбцов"
-              trigger="click"
-              placement="bottomRight"
-            >
-              <Button
-                icon={<SettingOutlined />}
+          <div className="crm-split-header">
+            <div className="crm-split-header__start">
+              <Input
+                placeholder="Введите имя кластера..."
+                allowClear
+                prefix={<SearchOutlined />}
+                value={clusterFilter}
+                onChange={(e) => setClusterFilter(e.target.value)}
+                style={{ width: '100%', maxWidth: 400 }}
+              />
+              <Popover
+                content={columnSettingsContent}
+                title="Настройка столбцов"
+                trigger="click"
+                placement="bottomRight"
               >
-                Настроить столбцы
-              </Button>
-            </Popover>
-            <Button
-              icon={<FileExcelOutlined />}
-              loading={downloadLoading}
-              onClick={handleDownloadFullXlsx}
-            >
-              Скачать таблицу (XLSX)
-            </Button>
-            <Button
-              type="primary"
-              icon={<ThunderboltOutlined />}
-              loading={creatingAllSupplies}
-              onClick={handleCreateAllSupplies}
-            >
-              Создать все поставки
-            </Button>
-            <Space><Text type="warning">Логистическое плечо: {logisticsDistance} дней</Text></Space>
-          </Space>
+                <Button
+                  icon={<SettingOutlined />}
+                >
+                  Настроить столбцы
+                </Button>
+              </Popover>
+            </div>
+            <div className="crm-split-header__end">
+              <Space wrap>
+                <Button
+                  icon={<FileExcelOutlined />}
+                  loading={downloadLoading}
+                  onClick={handleDownloadFullXlsx}
+                >
+                  Скачать таблицу (XLSX)
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<ThunderboltOutlined />}
+                  loading={creatingAllSupplies}
+                  onClick={handleCreateAllSupplies}
+                >
+                  Создать все поставки
+                </Button>
+                <Text type="warning">Логистическое плечо: {logisticsDistance} дней</Text>
+              </Space>
+            </div>
+          </div>
 
           {!snapshot ? (
             <Alert

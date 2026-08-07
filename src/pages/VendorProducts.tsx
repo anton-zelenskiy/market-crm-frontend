@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import {
   Card,
   Typography,
@@ -14,9 +14,9 @@ import {
   Popconfirm,
   Upload,
   Tooltip,
+  Breadcrumb,
 } from 'antd'
 import {
-  ArrowLeftOutlined,
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
@@ -34,7 +34,6 @@ const { Title } = Typography
 
 const VendorProducts: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
-  const navigate = useNavigate()
   const [products, setProducts] = useState<VendorProduct[]>([])
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
@@ -232,12 +231,13 @@ const VendorProducts: React.FC = () => {
         <Space orientation="vertical" style={{ width: '100%', gap: '24px' }} size="large">
           <div className="crm-split-header">
             <div className="crm-split-header__start">
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(-1 as any)}
-              >
-                Назад
-              </Button>
+              <Breadcrumb
+                items={[
+                  { title: <Link to="/connections">API Подключения</Link> },
+                  { title: <Link to={`/connections/${connectionId}`}>{companyName || 'Подключение'}</Link> },
+                  { title: 'Товары поставщика' },
+                ]}
+              />
             </div>
             <div className="crm-split-header__end">
               <Space wrap>
