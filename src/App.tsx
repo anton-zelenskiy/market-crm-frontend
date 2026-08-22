@@ -38,6 +38,10 @@ import SupplyDraftDetail from './pages/SupplyDraftDetail'
 import SupplyPlanningRunner from './pages/SupplyPlanningRunner'
 import RedistributionOrders from './pages/RedistributionOrders'
 import BookkeepingPage from './pages/BookkeepingPage'
+import Fulfillments from './pages/Fulfillments'
+import ProductCategories from './pages/ProductCategories'
+import FBSOrders from './pages/FBSOrders'
+import FulfillmentSupplies from './pages/FulfillmentSupplies'
 
 const { Header, Sider, Content } = Layout
 
@@ -254,6 +258,10 @@ const DashboardLayout: React.FC = () => {
             <Route path="/connections/:connectionId/vendor-products" element={<VendorProducts />} />
             <Route path="/connections/:connectionId/ozon-products" element={<OzonProducts />} />
             <Route path="/connections/:connectionId/wb-products" element={<WbProducts />} />
+            <Route path="/connections/:connectionId/fulfillments" element={<Fulfillments />} />
+            <Route path="/connections/:connectionId/product-categories" element={<ProductCategories />} />
+            <Route path="/connections/:connectionId/fbs-orders" element={<FBSOrders />} />
+            <Route path="/connections/:connectionId/fulfillment-supplies" element={<FulfillmentSupplies />} />
             <Route path="/connections/:connectionId/supplies" element={<Supplies />} />
             <Route path="/connections/:connectionId/bookkeeping" element={<BookkeepingPage />} />
             <Route path="/connections/:connectionId/supply-templates" element={<SupplyTemplates />} />

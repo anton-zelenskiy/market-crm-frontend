@@ -156,6 +156,21 @@ const WbProducts: React.FC = () => {
       ellipsis: true,
     },
     {
+      title: 'Размеры',
+      dataIndex: 'sizes',
+      key: 'sizes',
+      width: 200,
+      render: (sizes: WbProduct['sizes']) => (
+        <Space wrap>
+          {sizes.slice(0, 3).map((s) => (
+            <Tag key={s.chrt_id}>{s.tech_size || s.chrt_id}</Tag>
+          ))}
+          {sizes.length > 3 && <Tag>+{sizes.length - 3}</Tag>}
+          {sizes.length === 0 && <span style={{ color: '#999' }}>—</span>}
+        </Space>
+      ),
+    },
+    {
       title: 'Штрихкоды',
       dataIndex: 'barcodes',
       key: 'barcodes',
@@ -234,7 +249,7 @@ const WbProducts: React.FC = () => {
             dataSource={products}
             rowKey="id"
             loading={loading}
-            scroll={{ x: 1100 }}
+            scroll={{ x: 1300 }}
             pagination={{
               pageSize: 100,
               showSizeChanger: true,

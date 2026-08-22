@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import {
   Card,
   Typography,
@@ -40,6 +40,7 @@ const { Option } = Select
 const ConnectionDetail: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const [connection, setConnection] = useState<Connection | null>(null)
   const [settings, setSettings] = useState<ConnectionSettings | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
@@ -276,6 +277,36 @@ const ConnectionDetail: React.FC = () => {
               },
             ]),
           },
+          {
+            key: 'fbs',
+            label: 'FBS',
+            children: renderActionList([
+              {
+                title: 'Фулфилменты',
+                description: 'Организации фулфилмента, склады, тарифы',
+                buttonText: 'Фулфилменты',
+                onClick: () => navigate(`/connections/${connection.id}/fulfillments`),
+              },
+              {
+                title: 'Категории товаров',
+                description: 'Категории для расчёта тарифов фулфилмента',
+                buttonText: 'Категории',
+                onClick: () => navigate(`/connections/${connection.id}/product-categories`),
+              },
+              {
+                title: 'Заказы FBS',
+                description: 'Статусы и история заказов, обрабатываемых фулфилментами',
+                buttonText: 'Заказы FBS',
+                onClick: () => navigate(`/connections/${connection.id}/fbs-orders`),
+              },
+              {
+                title: 'Поставки',
+                description: 'Поставки FBS с расчётом стоимости фулфилмента по тарифам',
+                buttonText: 'Поставки',
+                onClick: () => navigate(`/connections/${connection.id}/fulfillment-supplies`),
+              },
+            ]),
+          },
         ]
       : []),
     {
@@ -411,6 +442,11 @@ const ConnectionDetail: React.FC = () => {
     },
   ]
 
+  const hashKey = location.hash.slice(1)
+  const activeKey = tabItems.some((item) => item.key === hashKey)
+    ? hashKey
+    : tabItems[0]?.key
+
   return (
     <div>
       <Card>
@@ -434,7 +470,11 @@ const ConnectionDetail: React.FC = () => {
             </Title>
           </div>
 
-          <Tabs items={tabItems} />
+          <Tabs
+            items={tabItems}
+            activeKey={activeKey}
+            onChange={(key) => navigate(`${location.pathname}#${key}`, { replace: true })}
+          />
 
         </Space>
       </Card>

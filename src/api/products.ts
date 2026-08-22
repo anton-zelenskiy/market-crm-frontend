@@ -192,6 +192,11 @@ export const ozonProductsApi = {
   },
 }
 
+export interface WbProductSize {
+  chrt_id: number
+  tech_size: string | null
+}
+
 export interface WbProduct {
   id: number
   connection_id: number
@@ -200,6 +205,7 @@ export interface WbProduct {
   name: string
   barcodes: string[]
   box_quantity: number | null
+  sizes: WbProductSize[]
   created_at: string
   updated_at: string
 }
