@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Card, Typography, Space, Table, message, Breadcrumb } from 'antd'
+import { Card, Typography, Button, Space, Table, message, Breadcrumb } from 'antd'
+import { DownloadOutlined } from '@ant-design/icons'
 import { fulfillmentSuppliesApi, type FulfillmentSupplyRow } from '../api/wbFulfillment'
 import { connectionsApi } from '../api/connections'
 import { companiesApi, type Company } from '../api/companies'
@@ -15,6 +16,7 @@ const FulfillmentSupplies: React.FC = () => {
 
   const [rows, setRows] = useState<FulfillmentSupplyRow[]>([])
   const [loading, setLoading] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [company, setCompany] = useState<Company | null>(null)
 
   useEffect(() => {
@@ -37,6 +39,17 @@ const FulfillmentSupplies: React.FC = () => {
       message.error(error.response?.data?.detail || 'Ошибка загрузки поставок')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDownloadXlsx = async () => {
+    setDownloading(true)
+    try {
+      await fulfillmentSuppliesApi.downloadXlsx(connId)
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка скачивания файла')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -105,6 +118,11 @@ const FulfillmentSupplies: React.FC = () => {
                   { title: 'Поставки фулфилмента' },
                 ]}
               />
+            </div>
+            <div className="crm-split-header__end">
+              <Button icon={<DownloadOutlined />} loading={downloading} onClick={handleDownloadXlsx}>
+                Скачать XLSX
+              </Button>
             </div>
           </div>
           <Title level={2} style={{ margin: 0 }}>
