@@ -273,6 +273,107 @@ export interface FulfillmentSupplyRow {
   total_price: string | null
 }
 
+export interface FBSShipment {
+  id: number
+  fulfillment_id: number
+  product_category_id: number
+  date: string
+  quantity: number
+  created_at: string
+  updated_at: string
+}
+
+export interface FBSShipmentCreate {
+  fulfillment_id: number
+  product_category_id: number
+  date: string
+  quantity: number
+}
+
+export interface FBSShipmentUpdate {
+  date?: string
+  quantity?: number
+}
+
+export const fbsShipmentsApi = {
+  getAll: async (connectionId: number): Promise<FBSShipment[]> => {
+    const response = await api.get(`/wildberries/connections/${connectionId}/fbs-shipments`)
+    return response.data
+  },
+
+  create: async (connectionId: number, data: FBSShipmentCreate): Promise<FBSShipment> => {
+    const response = await api.post(`/wildberries/connections/${connectionId}/fbs-shipments`, data)
+    return response.data
+  },
+
+  update: async (
+    connectionId: number,
+    shipmentId: number,
+    data: FBSShipmentUpdate,
+  ): Promise<FBSShipment> => {
+    const response = await api.put(
+      `/wildberries/connections/${connectionId}/fbs-shipments/${shipmentId}`,
+      data,
+    )
+    return response.data
+  },
+
+  delete: async (connectionId: number, shipmentId: number): Promise<void> => {
+    await api.delete(`/wildberries/connections/${connectionId}/fbs-shipments/${shipmentId}`)
+  },
+}
+
+export interface StockPoint {
+  date: string
+  quantity: number
+}
+
+export interface FulfillmentStockRow {
+  fulfillment_id: number
+  fulfillment_name: string
+  product_category_id: number
+  product_category_name: string
+  points: StockPoint[]
+}
+
+export const fulfillmentStockApi = {
+  getAll: async (connectionId: number): Promise<FulfillmentStockRow[]> => {
+    const response = await api.get(`/wildberries/connections/${connectionId}/fulfillment-stock`)
+    return response.data
+  },
+}
+
+export interface FulfillmentPaymentCategoryRow {
+  product_category_id: number
+  product_category_name: string
+  package_count: number
+  total_quantity: number
+  total_price: string
+}
+
+export interface FulfillmentPaymentRow {
+  fulfillment_id: number
+  fulfillment_name: string
+  categories: FulfillmentPaymentCategoryRow[]
+  total_package_count: number
+  total_quantity: number
+  total_price: string
+}
+
+export const fulfillmentPaymentsApi = {
+  getAll: async (
+    connectionId: number,
+    dateFrom: string,
+    dateTo: string,
+  ): Promise<FulfillmentPaymentRow[]> => {
+    const response = await api.get(
+      `/wildberries/connections/${connectionId}/fulfillment-payments`,
+      { params: { date_from: dateFrom, date_to: dateTo } },
+    )
+    return response.data
+  },
+}
+
 export const fulfillmentSuppliesApi = {
   getAll: async (connectionId: number): Promise<FulfillmentSupplyRow[]> => {
     const response = await api.get(

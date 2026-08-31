@@ -305,6 +305,12 @@ const ConnectionDetail: React.FC = () => {
                 buttonText: 'Поставки',
                 onClick: () => navigate(`/connections/${connection.id}/fulfillment-supplies`),
               },
+              {
+                title: 'Отгрузки товаров',
+                description: 'Учёт отгрузок товаров фулфилментам по категориям и датам',
+                buttonText: 'Отгрузки',
+                onClick: () => navigate(`/connections/${connection.id}/fbs-shipments`),
+              },
             ]),
           },
         ]

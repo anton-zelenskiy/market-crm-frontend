@@ -42,6 +42,7 @@ import Fulfillments from './pages/Fulfillments'
 import ProductCategories from './pages/ProductCategories'
 import FBSOrders from './pages/FBSOrders'
 import FulfillmentSupplies from './pages/FulfillmentSupplies'
+import FBSShipments from './pages/FBSShipments'
 
 const { Header, Sider, Content } = Layout
 
@@ -262,6 +263,7 @@ const DashboardLayout: React.FC = () => {
             <Route path="/connections/:connectionId/product-categories" element={<ProductCategories />} />
             <Route path="/connections/:connectionId/fbs-orders" element={<FBSOrders />} />
             <Route path="/connections/:connectionId/fulfillment-supplies" element={<FulfillmentSupplies />} />
+            <Route path="/connections/:connectionId/fbs-shipments" element={<FBSShipments />} />
             <Route path="/connections/:connectionId/supplies" element={<Supplies />} />
             <Route path="/connections/:connectionId/bookkeeping" element={<BookkeepingPage />} />
             <Route path="/connections/:connectionId/supply-templates" element={<SupplyTemplates />} />

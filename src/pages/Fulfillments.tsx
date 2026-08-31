@@ -16,18 +16,22 @@ import {
   Breadcrumb,
   Transfer,
   Select,
+  DatePicker,
 } from 'antd'
 import type { TransferProps } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, ApartmentOutlined } from '@ant-design/icons'
+import dayjs from 'dayjs'
 import {
   fulfillmentsApi,
   productCategoriesApi,
   fulfillmentTariffsApi,
   sellerWarehousesApi,
+  fbsShipmentsApi,
   type Fulfillment,
   type ProductCategory,
   type FulfillmentTariff,
   type SellerWarehouse,
+  type FBSShipment,
 } from '../api/wbFulfillment'
 import { connectionsApi } from '../api/connections'
 import { companiesApi, type Company } from '../api/companies'
@@ -58,6 +62,12 @@ const Fulfillments: React.FC = () => {
   const [editingTariff, setEditingTariff] = useState<FulfillmentTariff | null>(null)
   const [tariffForm] = Form.useForm()
 
+  const [shipments, setShipments] = useState<FBSShipment[]>([])
+  const [shipmentModalVisible, setShipmentModalVisible] = useState(false)
+  const [shipmentFulfillment, setShipmentFulfillment] = useState<Fulfillment | null>(null)
+  const [editingShipment, setEditingShipment] = useState<FBSShipment | null>(null)
+  const [shipmentForm] = Form.useForm()
+
   useEffect(() => {
     if (connId) loadData()
   }, [connId])
@@ -73,16 +83,19 @@ const Fulfillments: React.FC = () => {
           setCompany(null)
         }
       }
-      const [fulfillmentsData, categoriesData, warehousesData, tariffsData] = await Promise.all([
-        fulfillmentsApi.getAll(connId),
-        productCategoriesApi.getAll(connId),
-        sellerWarehousesApi.getAll(connId),
-        fulfillmentTariffsApi.getAll(connId),
-      ])
+      const [fulfillmentsData, categoriesData, warehousesData, tariffsData, shipmentsData] =
+        await Promise.all([
+          fulfillmentsApi.getAll(connId),
+          productCategoriesApi.getAll(connId),
+          sellerWarehousesApi.getAll(connId),
+          fulfillmentTariffsApi.getAll(connId),
+          fbsShipmentsApi.getAll(connId),
+        ])
       setFulfillments(fulfillmentsData)
       setCategories(categoriesData)
       setWarehouses(warehousesData)
       setTariffs(tariffsData)
+      setShipments(shipmentsData)
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка загрузки данных')
     } finally {
@@ -194,6 +207,58 @@ const Fulfillments: React.FC = () => {
     try {
       await fulfillmentTariffsApi.delete(connId, id)
       message.success('Тариф удалён')
+      loadData()
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка удаления')
+    }
+  }
+
+  const openShipmentModal = (fulfillment: Fulfillment, shipment: FBSShipment | null) => {
+    setShipmentFulfillment(fulfillment)
+    setEditingShipment(shipment)
+    shipmentForm.resetFields()
+    if (shipment) {
+      shipmentForm.setFieldsValue({
+        product_category_id: shipment.product_category_id,
+        date: dayjs(shipment.date),
+        quantity: shipment.quantity,
+      })
+    }
+    setShipmentModalVisible(true)
+  }
+
+  const handleShipmentSubmit = async () => {
+    if (!shipmentFulfillment) return
+    try {
+      const values = await shipmentForm.validateFields()
+      const date = (values.date as dayjs.Dayjs).format('YYYY-MM-DD')
+      if (editingShipment) {
+        await fbsShipmentsApi.update(connId, editingShipment.id, {
+          date,
+          quantity: values.quantity,
+        })
+        message.success('Поставка обновлена')
+      } else {
+        await fbsShipmentsApi.create(connId, {
+          fulfillment_id: shipmentFulfillment.id,
+          product_category_id: values.product_category_id,
+          date,
+          quantity: values.quantity,
+        })
+        message.success('Поставка создана')
+      }
+      setShipmentModalVisible(false)
+      loadData()
+    } catch (error: any) {
+      if (error.errorFields) return
+      message.error(error.response?.data?.detail || 'Ошибка сохранения поставки')
+    }
+  }
+
+  const handleShipmentDelete = async (id: number) => {
+    try {
+      await fbsShipmentsApi.delete(connId, id)
+      message.success('Поставка удалена')
       loadData()
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка удаления')
@@ -330,6 +395,56 @@ const Fulfillments: React.FC = () => {
                         },
                       ]}
                     />
+                    <div
+                      style={{
+                        margin: '16px 0 8px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <Typography.Text strong>Поставки на склад</Typography.Text>
+                      <Button size="small" onClick={() => openShipmentModal(record, null)}>
+                        Добавить поставку
+                      </Button>
+                    </div>
+                    <Table
+                      size="small"
+                      pagination={false}
+                      rowKey="id"
+                      dataSource={shipments.filter((s) => s.fulfillment_id === record.id)}
+                      columns={[
+                        { title: 'Дата', dataIndex: 'date' },
+                        {
+                          title: 'Категория товара',
+                          dataIndex: 'product_category_id',
+                          render: (id: number) => categoryName(id),
+                        },
+                        { title: 'Количество', dataIndex: 'quantity' },
+                        {
+                          title: '',
+                          key: 'actions',
+                          width: 100,
+                          render: (_: unknown, shipment: FBSShipment) => (
+                            <Space>
+                              <Button
+                                type="link"
+                                size="small"
+                                icon={<EditOutlined />}
+                                onClick={() => openShipmentModal(record, shipment)}
+                              />
+                              <Popconfirm
+                                title="Удалить поставку?"
+                                onConfirm={() => handleShipmentDelete(shipment.id)}
+                                okText="Да"
+                                cancelText="Нет"
+                              >
+                                <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+                              </Popconfirm>
+                            </Space>
+                          ),
+                        },
+                      ]}
+                    />
                   </div>
                 )
               },
@@ -403,6 +518,38 @@ const Fulfillments: React.FC = () => {
             rules={[{ required: true, message: 'Введите цену' }]}
           >
             <InputNumber min={0} step={0.01} style={{ width: '100%' }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={editingShipment ? 'Редактировать поставку' : 'Добавить поставку'}
+        open={shipmentModalVisible}
+        onOk={handleShipmentSubmit}
+        onCancel={() => setShipmentModalVisible(false)}
+        okText={editingShipment ? 'Обновить' : 'Создать'}
+        cancelText="Отмена"
+      >
+        <Form form={shipmentForm} layout="vertical">
+          <Form.Item
+            name="product_category_id"
+            label="Категория товара"
+            rules={[{ required: true, message: 'Выберите категорию' }]}
+          >
+            <Select
+              disabled={!!editingShipment}
+              options={categories.map((c) => ({ value: c.id, label: c.name }))}
+            />
+          </Form.Item>
+          <Form.Item name="date" label="Дата" rules={[{ required: true, message: 'Выберите дату' }]}>
+            <DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" />
+          </Form.Item>
+          <Form.Item
+            name="quantity"
+            label="Количество"
+            rules={[{ required: true, message: 'Введите количество' }]}
+          >
+            <InputNumber min={1} style={{ width: '100%' }} />
           </Form.Item>
         </Form>
       </Modal>
