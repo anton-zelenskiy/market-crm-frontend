@@ -6,6 +6,7 @@ import {
   Form,
   InputNumber,
   Select,
+  Switch,
   message,
   Card,
   Typography,
@@ -63,8 +64,20 @@ const Clusters: React.FC = () => {
     form.setFieldsValue({
       neighbor_cluster_id: record.neighbor_cluster_id,
       priority: record.priority,
+      is_available: record.is_available,
     })
     setModalVisible(true)
+  }
+
+  const handleToggleAvailable = async (record: OzonCluster, isAvailable: boolean) => {
+    try {
+      await ozonClustersApi.update(record.id, { is_available: isAvailable })
+      setClusters(prev =>
+        prev.map(c => (c.id === record.id ? { ...c, is_available: isAvailable } : c))
+      )
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка обновления доступности')
+    }
   }
 
   const handleSubmit = async () => {
@@ -74,6 +87,7 @@ const Clusters: React.FC = () => {
         await ozonClustersApi.update(editingCluster.id, {
           neighbor_cluster_id: values.neighbor_cluster_id ?? null,
           priority: values.priority,
+          is_available: values.is_available,
         })
         message.success('Кластер Ozon успешно обновлен')
         setModalVisible(false)
@@ -119,6 +133,17 @@ const Clusters: React.FC = () => {
         const neighbor = clusters.find(c => c.id === neighborId)
         return neighbor ? neighbor.name : neighborId
       },
+    },
+    {
+      title: 'Доступен',
+      dataIndex: 'is_available',
+      key: 'is_available',
+      render: (_: boolean, record: OzonCluster) => (
+        <Switch
+          checked={record.is_available}
+          onChange={(checked) => handleToggleAvailable(record, checked)}
+        />
+      ),
     },
     {
       title: 'Действия',
@@ -184,6 +209,14 @@ const Clusters: React.FC = () => {
             initialValue={1}
           >
             <InputNumber min={1} style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item
+            name="is_available"
+            label="Доступен для поставок"
+            valuePropName="checked"
+          >
+            <Switch />
           </Form.Item>
 
           <Form.Item

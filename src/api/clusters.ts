@@ -7,11 +7,13 @@ export interface OzonCluster {
   macrolocal_cluster_id: number | null
   neighbor_cluster_id: number | null
   priority: number
+  is_available: boolean
 }
 
 export interface OzonClusterUpdate {
   neighbor_cluster_id?: number | null
   priority?: number
+  is_available?: boolean
 }
 
 export const ozonClustersApi = {

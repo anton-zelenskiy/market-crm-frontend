@@ -33,6 +33,7 @@ import { companiesApi } from '../api/companies'
 import type { Company } from '../api/companies'
 import KaitenIntegrationForm from '../components/KaitenIntegrationForm'
 import BookkeepingDdsSettings from '../components/BookkeepingDdsSettings'
+import WbAuthModal from '../components/WbAuthModal'
 
 const { Title } = Typography
 const { Option } = Select
@@ -49,6 +50,7 @@ const ConnectionDetail: React.FC = () => {
   const [savingSettings, setSavingSettings] = useState(false)
   const [runningReportId, setRunningReportId] = useState<number | null>(null)
   const [encoding, setEncoding] = useState<'cp1251' | 'utf-8' | 'utf-8-sig'>('utf-8-sig')
+  const [wbAuthModalOpen, setWbAuthModalOpen] = useState(false)
   const [form] = Form.useForm()
 
   useEffect(() => {
@@ -256,6 +258,13 @@ const ConnectionDetail: React.FC = () => {
             key: 'marketplace',
             label: 'Действия Wildberries',
             children: renderActionList([
+              {
+                title: 'Авторизация Wildberries',
+                description:
+                  'Вход в личный кабинет WB по номеру телефона и коду из СМС для работы действий, требующих авторизации.',
+                buttonText: 'Авторизоваться',
+                onClick: () => setWbAuthModalOpen(true),
+              },
               {
                 title: 'Товары Wildberries',
                 description:
@@ -484,6 +493,12 @@ const ConnectionDetail: React.FC = () => {
 
         </Space>
       </Card>
+
+      <WbAuthModal
+        connectionId={connection.id}
+        open={wbAuthModalOpen}
+        onClose={() => setWbAuthModalOpen(false)}
+      />
     </div>
   )
 }
