@@ -121,6 +121,7 @@ export interface SetExternalOrderIdRequest {
 
 export interface DownloadCargoLabelsRequest {
   connection_id: number
+  order_id: string
 }
 
 export interface ClusterData {
@@ -506,6 +507,7 @@ export const suppliesApi = {
   ): Promise<Blob> => {
     const params = new URLSearchParams({
       connection_id: request.connection_id.toString(),
+      order_id: request.order_id,
     })
     const response = await api.get(`/supplies/${supplyId}/cargo-labels?${params}`, {
       responseType: 'blob',

@@ -746,9 +746,12 @@ const Supplies: React.FC = () => {
     try {
       const blob = await suppliesApi.downloadCargoLabels(supplyId, {
         connection_id: connection.id,
+        order_id: supply.order_id.toString(),
       })
 
-      const filename = `${supplyId} Ярлыки.pdf`
+      const namePart =
+        supply.macrolocal_cluster_name ?? supply.storage_warehouse_name ?? ''
+      const filename = `${supplyId} ${namePart} Ярлыки.pdf`.replace(/\s+/g, ' ')
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
