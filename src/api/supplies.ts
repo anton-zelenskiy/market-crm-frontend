@@ -1,4 +1,9 @@
 import api from './axios'
+import {
+  openProgressStream,
+  resolveApiUrl,
+  type ProgressEventSource,
+} from './progressStream'
 
 export interface SupplyOrder {
   order_id: number
@@ -36,18 +41,19 @@ export interface BulkCreateKaitenCardsRequest {
   supplies: BulkCreateKaitenCardItem[]
 }
 
-export interface BulkCreateKaitenCardItemResult {
-  supply_id: string
-  success: boolean
-  card_id?: number | null
-  card_url?: string | null
-  error?: string | null
+export interface BulkCreateKaitenCardsTaskResponse {
+  task_id: string
 }
 
-export interface BulkCreateKaitenCardsResponse {
-  succeeded: number
-  failed: number
-  results: BulkCreateKaitenCardItemResult[]
+export interface BulkSupplyActionItem {
+  supply_id: string
+  order_id: string
+}
+
+export interface BulkSupplyActionRequest {
+  connection_id: number
+  supplies: BulkSupplyActionItem[]
+  delete_current_version?: boolean
 }
 
 export interface SupplyOrdersResponse {
@@ -196,7 +202,7 @@ export interface RefreshSnapshotResponse {
 }
 
 export interface ProgressData {
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'error'
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'error' | 'expired'
   stage: string
   progress: number
   message?: string
@@ -465,7 +471,7 @@ export const suppliesApi = {
 
   bulkCreateKaitenCards: async (
     request: BulkCreateKaitenCardsRequest
-  ): Promise<BulkCreateKaitenCardsResponse> => {
+  ): Promise<BulkCreateKaitenCardsTaskResponse> => {
     const response = await api.post('/supplies/kaiten/cards/bulk', request)
     return response.data
   },
@@ -585,111 +591,56 @@ export const suppliesApi = {
     return response.data
   },
 
-  getSnapshotProgress: (snapshotId: number, taskId: string): EventSource => {
-    const baseURL = api.defaults.baseURL || ''
-    const url = `${baseURL}/supplies/snapshot/${snapshotId}/progress?task_id=${encodeURIComponent(taskId)}`
-    
-    // EventSource doesn't support custom headers, so we need to use a custom implementation
-    // that supports Authorization header via fetch API
-    const token = localStorage.getItem('access_token')
-    const fullUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`
-    
-    // Create a custom EventSource-like object using fetch
-    const eventTarget = new EventTarget()
-    let abortController: AbortController | null = null
-    
-    const startStream = () => {
-      abortController = new AbortController()
-      
-      fetch(fullUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'text/event-stream',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        signal: abortController.signal,
-      })
-        .then(async (response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`)
-          }
-          
-          const reader = response.body?.getReader()
-          const decoder = new TextDecoder()
-          
-          if (!reader) {
-            throw new Error('No response body')
-          }
-          
-          let buffer = ''
-          let currentEventType = 'progress'
-          let currentData: string[] = []
-          
-          while (true) {
-            const { done, value } = await reader.read()
-            
-            if (done) {
-              break
-            }
-            
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            buffer = lines.pop() || ''
-            
-            for (const line of lines) {
-              if (line.startsWith('event:')) {
-                currentEventType = line.substring(6).trim()
-              } else if (line.startsWith('data:')) {
-                currentData.push(line.substring(5))
-              } else if (line === '') {
-                // Empty line indicates end of event
-                if (currentData.length > 0) {
-                  try {
-                    const dataString = currentData.join('')
-                    // Pass the JSON string as data, ProgressModal will parse it
-                    const event = new MessageEvent(currentEventType, { data: dataString })
-                    eventTarget.dispatchEvent(event)
-                  } catch (e) {
-                    console.error('Error parsing SSE data:', e, 'Data:', currentData.join(''))
-                  }
-                }
-                currentEventType = 'progress'
-                currentData = []
-              }
-            }
-          }
-        })
-        .catch((error) => {
-          if (error.name !== 'AbortError') {
-            const errorEvent = new MessageEvent('error', {
-              data: { error: error.message },
-            })
-            eventTarget.dispatchEvent(errorEvent)
-          }
-        })
-    }
-    
-    startStream()
-    
-    // Create EventSource-like interface
-    const eventSource = {
-      addEventListener: (type: string, listener: EventListener) => {
-        eventTarget.addEventListener(type, listener)
-      },
-      removeEventListener: (type: string, listener: EventListener) => {
-        eventTarget.removeEventListener(type, listener)
-      },
-      close: () => {
-        if (abortController) {
-          abortController.abort()
-        }
-      },
-      readyState: EventSource.CONNECTING,
-      url: fullUrl,
-      withCredentials: true,
-    } as EventSource
-    
-    return eventSource
+  /** SSE URL for the legacy snapshot-scoped progress endpoint. */
+  getSnapshotProgressUrl: (snapshotId: number, taskId: string): string =>
+    resolveApiUrl(
+      `/supplies/snapshot/${snapshotId}/progress?task_id=${encodeURIComponent(taskId)}`
+    ),
+
+  /** SSE URL for the generic task progress endpoint (any background task). */
+  getTaskProgressUrl: (taskId: string): string =>
+    resolveApiUrl(`/supplies/task/${encodeURIComponent(taskId)}/progress`),
+
+  getSnapshotProgress: (
+    snapshotId: number,
+    taskId: string
+  ): ProgressEventSource =>
+    openProgressStream(
+      suppliesApi.getSnapshotProgressUrl(snapshotId, taskId)
+    ),
+
+  /** Open an SSE stream for any background task by its id. */
+  getTaskProgress: (taskId: string): ProgressEventSource =>
+    openProgressStream(suppliesApi.getTaskProgressUrl(taskId)),
+
+  /** Authed blob GET for a bulk task's result archive. 404 once it expires. */
+  getTaskResult: async (taskId: string): Promise<Blob> => {
+    const response = await api.get(
+      `/supplies/task/${encodeURIComponent(taskId)}/result`,
+      { responseType: 'blob' }
+    )
+    return response.data
+  },
+
+  bulkGenerateCargoes: async (
+    body: BulkSupplyActionRequest
+  ): Promise<{ task_id: string }> => {
+    const response = await api.post('/supplies/cargoes/bulk', body)
+    return response.data
+  },
+
+  bulkDownloadDocuments: async (
+    body: BulkSupplyActionRequest
+  ): Promise<{ task_id: string }> => {
+    const response = await api.post('/supplies/documents/bulk', body)
+    return response.data
+  },
+
+  bulkDownloadCargoLabels: async (
+    body: BulkSupplyActionRequest
+  ): Promise<{ task_id: string }> => {
+    const response = await api.post('/supplies/cargo-labels/bulk', body)
+    return response.data
   },
 
   deleteSnapshot: async (snapshotId: number): Promise<void> => {

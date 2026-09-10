@@ -22,7 +22,10 @@ import {
   type CreateSnapshotConfig,
   type Warehouse,
 } from '../api/supplies'
-import { ProgressModal } from '../components/ProgressModal'
+import {
+  useTaskProgress,
+  useTaskCompletion,
+} from '../context/TaskProgressContext'
 import SupplyConfigModal, {
   type SupplyConfigFormValues,
 } from '../components/SupplyConfigModal'
@@ -42,9 +45,17 @@ const SupplyTemplates: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
-  const [progressModalVisible, setProgressModalVisible] = useState(false)
-  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
-  const [currentSnapshotId, setCurrentSnapshotId] = useState<number | null>(null)
+  const { startTask } = useTaskProgress()
+
+  useTaskCompletion({ kind: 'create_snapshot' }, (task) => {
+    if (task.status === 'completed') {
+      message.success('Шаблон создан')
+    } else {
+      message.error(
+        task.error || task.message || 'Ошибка создания шаблона'
+      )
+    }
+  })
 
   // Configuration state
   const [clusters, setClusters] = useState<OzonCluster[]>([])
@@ -181,9 +192,16 @@ const SupplyTemplates: React.FC = () => {
       )
       setModalVisible(false)
 
-      setCurrentSnapshotId(newSnapshot.snapshot_id)
-      setCurrentTaskId(newSnapshot.task_id)
-      setProgressModalVisible(true)
+      startTask({
+        taskId: newSnapshot.task_id,
+        kind: 'create_snapshot',
+        title: 'Создание шаблона',
+        progressUrl: suppliesApi.getTaskProgressUrl(newSnapshot.task_id),
+        context: {
+          snapshotId: newSnapshot.snapshot_id,
+          connectionId: parseInt(connectionId),
+        },
+      })
     } catch (error: any) {
       message.error(
         error.response?.data?.detail || 'Ошибка создания шаблона'
@@ -297,25 +315,6 @@ const SupplyTemplates: React.FC = () => {
             warehouseLoading={warehouseLoading}
             onWarehouseSearch={handleWarehouseSearch}
           />
-
-          {currentSnapshotId && currentTaskId && (
-            <ProgressModal
-              visible={progressModalVisible}
-              snapshotId={currentSnapshotId}
-              taskId={currentTaskId}
-              onComplete={() => {
-                setProgressModalVisible(false)
-                navigate(`/connections/${connectionId}/supply-templates/${currentSnapshotId}`)
-                setCurrentTaskId(null)
-                setCurrentSnapshotId(null)
-              }}
-              onCancel={() => {
-                setProgressModalVisible(false)
-                setCurrentTaskId(null)
-                setCurrentSnapshotId(null)
-              }}
-            />
-          )}
 
           <Table
             columns={columns}

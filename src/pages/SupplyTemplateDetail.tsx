@@ -57,7 +57,10 @@ import { connectionSettingsApi } from '../api/connectionSettings'
 import { companiesApi, type Company } from '../api/companies'
 import { ozonClustersApi, type OzonCluster } from '../api/clusters'
 import { ozonProductsApi, type OzonProduct } from '../api/products'
-import { ProgressModal } from '../components/ProgressModal'
+import {
+  useTaskProgress,
+  useTaskCompletion,
+} from '../context/TaskProgressContext'
 import SupplyConfigModal, {
   type SupplyConfigFormValues,
 } from '../components/SupplyConfigModal'
@@ -247,11 +250,8 @@ const SupplyTemplateDetail: React.FC = () => {
   const [creatingDraft, setCreatingDraft] = useState(false)
   const [downloadingBundle, setDownloadingBundle] = useState(false)
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null)
-  const [progressModalVisible, setProgressModalVisible] = useState(false)
-  const [progressTaskId, setProgressTaskId] = useState<string | null>(null)
   const [creatingAllSupplies, setCreatingAllSupplies] = useState(false)
-  const [bulkSupplyModalVisible, setBulkSupplyModalVisible] = useState(false)
-  const [bulkSupplyTaskId, setBulkSupplyTaskId] = useState<string | null>(null)
+  const { startTask } = useTaskProgress()
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [warehouseLoading, setWarehouseLoading] = useState(false)
   const [form] = Form.useForm()
@@ -590,8 +590,18 @@ const SupplyTemplateDetail: React.FC = () => {
         config
       )
 
-      setProgressTaskId(response.task_id)
-      setProgressModalVisible(true)
+      startTask({
+        taskId: response.task_id,
+        kind: 'refresh_snapshot',
+        title: 'Обновление шаблона',
+        progressUrl: suppliesApi.getTaskProgressUrl(response.task_id),
+        context: {
+          snapshotId: parseInt(snapshotId, 10),
+          connectionId:
+            snapshot?.connection_id ??
+            (connectionId ? parseInt(connectionId, 10) : null),
+        },
+      })
       setSettingsModalVisible(false)
     } catch (error: any) {
       message.error(
@@ -602,22 +612,24 @@ const SupplyTemplateDetail: React.FC = () => {
     }
   }
 
-  const handleProgressComplete = async () => {
-    setProgressModalVisible(false)
-    setProgressTaskId(null)
-    // Reload snapshot data
-    await loadSnapshot()
-    message.success('Настройки сохранены и данные обновлены')
-  }
-
   const handleCreateAllSupplies = async () => {
     if (!snapshotId) return
 
     setCreatingAllSupplies(true)
     try {
       const response = await suppliesApi.createAllSupplies(parseInt(snapshotId, 10))
-      setBulkSupplyTaskId(response.task_id)
-      setBulkSupplyModalVisible(true)
+      startTask({
+        taskId: response.task_id,
+        kind: 'bulk_supply',
+        title: 'Создание поставок',
+        progressUrl: suppliesApi.getTaskProgressUrl(response.task_id),
+        context: {
+          snapshotId: parseInt(snapshotId, 10),
+          connectionId:
+            snapshot?.connection_id ??
+            (connectionId ? parseInt(connectionId, 10) : null),
+        },
+      })
     } catch (error: any) {
       message.error(
         error.response?.data?.detail || 'Ошибка создания поставок'
@@ -627,12 +639,35 @@ const SupplyTemplateDetail: React.FC = () => {
     }
   }
 
-  const handleBulkSupplyProgressComplete = async () => {
-    setBulkSupplyModalVisible(false)
-    setBulkSupplyTaskId(null)
-    await Promise.all([loadDrafts(), loadSnapshot()])
-    message.success('Создание поставок завершено')
-  }
+  const currentSnapshotId = snapshotId ? parseInt(snapshotId, 10) : undefined
+
+  useTaskCompletion(
+    { kind: 'refresh_snapshot', contextMatch: { snapshotId: currentSnapshotId } },
+    async (task) => {
+      if (task.status === 'completed') {
+        await loadSnapshot()
+        message.success('Настройки сохранены и данные обновлены')
+      } else {
+        message.error(
+          task.error || task.message || 'Ошибка обновления шаблона'
+        )
+      }
+    }
+  )
+
+  useTaskCompletion(
+    { kind: 'bulk_supply', contextMatch: { snapshotId: currentSnapshotId } },
+    async (task) => {
+      if (task.status === 'completed') {
+        await Promise.all([loadDrafts(), loadSnapshot()])
+        message.success('Создание поставок завершено')
+      } else {
+        message.error(
+          task.error || task.message || 'Ошибка создания поставок'
+        )
+      }
+    }
+  )
 
   const handleDownloadFullXlsx = async () => {
     if (!snapshotId) return
@@ -1721,34 +1756,6 @@ const SupplyTemplateDetail: React.FC = () => {
         onWarehouseSearch={handleWarehouseSearch}
       />
 
-      {/* Progress modal */}
-      {progressTaskId && snapshotId && (
-        <ProgressModal
-          visible={progressModalVisible}
-          snapshotId={parseInt(snapshotId)}
-          taskId={progressTaskId}
-          onComplete={handleProgressComplete}
-          onCancel={() => {
-            setProgressModalVisible(false)
-            setProgressTaskId(null)
-          }}
-        />
-      )}
-
-      {/* Bulk supply creation progress modal */}
-      {bulkSupplyTaskId && snapshotId && (
-        <ProgressModal
-          visible={bulkSupplyModalVisible}
-          snapshotId={parseInt(snapshotId)}
-          taskId={bulkSupplyTaskId}
-          title="Создание поставок"
-          onComplete={handleBulkSupplyProgressComplete}
-          onCancel={() => {
-            setBulkSupplyModalVisible(false)
-            setBulkSupplyTaskId(null)
-          }}
-        />
-      )}
     </div>
   )
 }

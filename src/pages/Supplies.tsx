@@ -19,9 +19,12 @@ import {
   Popconfirm,
   Tooltip,
   Breadcrumb,
+  Dropdown,
+  Modal,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { MoreOutlined } from '@ant-design/icons'
+import type { MenuProps } from 'antd'
+import { MoreOutlined, DownOutlined } from '@ant-design/icons'
 import { formatDate, formatDateTime } from '../lib/dayjs'
 import {
   suppliesApi,
@@ -32,6 +35,12 @@ import {
 } from '../api/supplies'
 import { companiesApi, type Company } from '../api/companies'
 import { connectionsApi, type Connection } from '../api/connections'
+import {
+  useTaskProgress,
+  useTaskCompletion,
+  type TaskDescriptor,
+} from '../context/TaskProgressContext'
+import { downloadBlob } from '../lib/downloadBlob'
 
 const { Title } = Typography
 const { Option } = Select
@@ -409,9 +418,14 @@ const Supplies: React.FC = () => {
   const [downloadingSummaryXlsx, setDownloadingSummaryXlsx] = useState(false)
   const [selectedSupplyIds, setSelectedSupplyIds] = useState<string[]>([])
   const [bulkCreatingKaiten, setBulkCreatingKaiten] = useState(false)
+  const [bulkGeneratingCargoes, setBulkGeneratingCargoes] = useState(false)
+  const [bulkDownloadingDocs, setBulkDownloadingDocs] = useState(false)
+  const [bulkDownloadingLabels, setBulkDownloadingLabels] = useState(false)
   const [stateGroupId, setStateGroupId] = useState<SupplyStateGroupId>('PREPARATION')
   const selectedStates =
     SUPPLY_STATE_GROUPS.find((g) => g.id === stateGroupId)?.states ?? []
+
+  const { startTask } = useTaskProgress()
 
   useEffect(() => {
     if (connectionId) {
@@ -430,6 +444,13 @@ const Supplies: React.FC = () => {
     !supply.kaiten_card_id &&
     supply.cargoes_count != null &&
     supply.cargoes_count > 0
+
+  const canGenerateCargoesForSupply = (supply: SupplyOrder) =>
+    supply.order_id != null
+  const canDownloadDocsForSupply = (supply: SupplyOrder) =>
+    (supply.cargoes_count ?? 0) > 0
+  const canDownloadLabelsForSupply = (supply: SupplyOrder) =>
+    (supply.cargoes_count ?? 0) > 0
 
   const loadConnectionData = async () => {
     if (!connectionId) return
@@ -674,18 +695,14 @@ const Supplies: React.FC = () => {
         })),
       })
 
-      if (response.failed === 0) {
-        message.success(`Задачи в Kaiten созданы: ${response.succeeded}`)
-      } else if (response.succeeded === 0) {
-        message.error('Не удалось создать задачи в Kaiten')
-      } else {
-        message.warning(
-          `Создано задач: ${response.succeeded}, с ошибками: ${response.failed}`
-        )
-      }
-
+      startTask({
+        taskId: response.task_id,
+        kind: 'kaiten_bulk',
+        title: 'Создание задач в Kaiten',
+        progressUrl: suppliesApi.getTaskProgressUrl(response.task_id),
+        context: { connectionId: connection.id },
+      })
       setSelectedSupplyIds([])
-      await loadSupplies(selectedStates)
     } catch (error: any) {
       message.error(
         error.response?.data?.detail || 'Ошибка массового создания задач в Kaiten'
@@ -694,6 +711,232 @@ const Supplies: React.FC = () => {
       setBulkCreatingKaiten(false)
     }
   }
+
+  useTaskCompletion({ kind: 'kaiten_bulk' }, async (task) => {
+    if (task.status === 'completed') {
+      message.success(task.message || 'Задачи в Kaiten созданы')
+      await loadSupplies(selectedStates)
+    } else {
+      message.error(
+        task.error || task.message || 'Ошибка массового создания задач в Kaiten'
+      )
+    }
+  })
+
+  const bulkSupplyPayload = (eligible: SupplyOrder[]) => ({
+    connection_id: connection!.id,
+    supplies: eligible.map((s) => ({
+      supply_id: s.supply_id,
+      order_id: s.order_id.toString(),
+    })),
+  })
+
+  const handleBulkGenerateCargoes = async () => {
+    if (!connection) return
+    const eligible = supplies
+      .filter((s) => selectedSupplyIds.includes(s.supply_id))
+      .filter(canGenerateCargoesForSupply)
+    if (eligible.length === 0) {
+      message.warning('Нет подходящих поставок')
+      return
+    }
+    setBulkGeneratingCargoes(true)
+    try {
+      const res = await suppliesApi.bulkGenerateCargoes({
+        ...bulkSupplyPayload(eligible),
+        delete_current_version: true,
+      })
+      startTask({
+        taskId: res.task_id,
+        kind: 'bulk_cargoes',
+        title: 'Генерация грузомест',
+        progressUrl: suppliesApi.getTaskProgressUrl(res.task_id),
+        context: { connectionId: connection.id },
+      })
+      setSelectedSupplyIds([])
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка генерации грузомест'
+      )
+    } finally {
+      setBulkGeneratingCargoes(false)
+    }
+  }
+
+  const handleBulkDownloadDocuments = async () => {
+    if (!connection) return
+    const eligible = supplies
+      .filter((s) => selectedSupplyIds.includes(s.supply_id))
+      .filter(canDownloadDocsForSupply)
+    if (eligible.length === 0) {
+      message.warning('Нет поставок с грузоместами')
+      return
+    }
+    setBulkDownloadingDocs(true)
+    try {
+      const res = await suppliesApi.bulkDownloadDocuments(
+        bulkSupplyPayload(eligible)
+      )
+      startTask({
+        taskId: res.task_id,
+        kind: 'bulk_documents',
+        title: 'Комплект документов',
+        progressUrl: suppliesApi.getTaskProgressUrl(res.task_id),
+        context: {
+          connectionId: connection.id,
+          download: { filename: `Комплект документов (${eligible.length}).zip` },
+        },
+      })
+      setSelectedSupplyIds([])
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail ||
+          'Ошибка формирования комплекта документов'
+      )
+    } finally {
+      setBulkDownloadingDocs(false)
+    }
+  }
+
+  const handleBulkDownloadCargoLabels = async () => {
+    if (!connection) return
+    const eligible = supplies
+      .filter((s) => selectedSupplyIds.includes(s.supply_id))
+      .filter(canDownloadLabelsForSupply)
+    if (eligible.length === 0) {
+      message.warning('Нет поставок с грузоместами')
+      return
+    }
+    setBulkDownloadingLabels(true)
+    try {
+      const res = await suppliesApi.bulkDownloadCargoLabels(
+        bulkSupplyPayload(eligible)
+      )
+      startTask({
+        taskId: res.task_id,
+        kind: 'bulk_cargo_labels',
+        title: 'Ярлыки грузомест',
+        progressUrl: suppliesApi.getTaskProgressUrl(res.task_id),
+        context: {
+          connectionId: connection.id,
+          download: { filename: `Ярлыки грузомест (${eligible.length}).zip` },
+        },
+      })
+      setSelectedSupplyIds([])
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка формирования ярлыков грузомест'
+      )
+    } finally {
+      setBulkDownloadingLabels(false)
+    }
+  }
+
+  const downloadTaskResult = async (task: TaskDescriptor) => {
+    const filename =
+      (task.context?.download as { filename?: string } | undefined)?.filename ??
+      'result.zip'
+    try {
+      const blob = await suppliesApi.getTaskResult(task.taskId)
+      downloadBlob(blob, filename)
+    } catch (error: any) {
+      message.error(
+        error?.response?.status === 404
+          ? 'Результат недоступен или устарел'
+          : 'Ошибка скачивания результата'
+      )
+    }
+  }
+
+  useTaskCompletion({ kind: 'bulk_cargoes' }, async (task) => {
+    if (task.status === 'completed') {
+      message.success(task.message || 'Грузоместа сгенерированы')
+      await loadSupplies(selectedStates)
+    } else {
+      message.error(
+        task.error || task.message || 'Ошибка генерации грузомест'
+      )
+    }
+  })
+
+  useTaskCompletion({ kind: 'bulk_documents' }, async (task) => {
+    if (task.status === 'completed') {
+      message.success(task.message || 'Архив готов')
+      await downloadTaskResult(task)
+    } else {
+      message.error(
+        task.error || task.message || 'Ошибка формирования комплекта документов'
+      )
+    }
+  })
+
+  useTaskCompletion({ kind: 'bulk_cargo_labels' }, async (task) => {
+    if (task.status === 'completed') {
+      message.success(task.message || 'Архив готов')
+      await downloadTaskResult(task)
+    } else {
+      message.error(
+        task.error || task.message || 'Ошибка формирования ярлыков грузомест'
+      )
+    }
+  })
+
+  const bulkSelectedSupplies = supplies.filter((s) =>
+    selectedSupplyIds.includes(s.supply_id)
+  )
+  const bulkEligible = {
+    kaiten: bulkSelectedSupplies.filter(canCreateKaitenForSupply).length,
+    cargoes: bulkSelectedSupplies.filter(canGenerateCargoesForSupply).length,
+    docs: bulkSelectedSupplies.filter(canDownloadDocsForSupply).length,
+    labels: bulkSelectedSupplies.filter(canDownloadLabelsForSupply).length,
+  }
+  const bulkBusy =
+    bulkCreatingKaiten ||
+    bulkGeneratingCargoes ||
+    bulkDownloadingDocs ||
+    bulkDownloadingLabels
+
+  const confirmBulk = (title: string, okText: string, run: () => void) => {
+    Modal.confirm({ title, okText, cancelText: 'Отмена', onOk: run })
+  }
+
+  const bulkMenuItems: MenuProps['items'] = [
+    {
+      key: 'kaiten',
+      label: `Создать задачи в Kaiten (${bulkEligible.kaiten})`,
+      disabled: bulkEligible.kaiten === 0,
+      onClick: () =>
+        confirmBulk(
+          `Создать задачи в Kaiten для ${bulkEligible.kaiten} поставок?`,
+          'Создать',
+          handleBulkCreateKaitenCards
+        ),
+    },
+    {
+      key: 'cargoes',
+      label: `Сгенерировать грузоместа (${bulkEligible.cargoes})`,
+      disabled: bulkEligible.cargoes === 0,
+      onClick: () =>
+        confirmBulk(
+          `Сгенерировать грузоместа для ${bulkEligible.cargoes} поставок?`,
+          'Сгенерировать',
+          handleBulkGenerateCargoes
+        ),
+    },
+    { type: 'divider' as const },
+    {
+      key: 'docs',
+      label: `Скачать комплект документов (${bulkEligible.docs})`,
+      disabled: bulkEligible.docs === 0,
+      onClick: handleBulkDownloadDocuments,
+    },
+    {
+      key: 'labels',
+      label: `Скачать ярлыки грузомест (${bulkEligible.labels})`,
+      disabled: bulkEligible.labels === 0,
+      onClick: handleBulkDownloadCargoLabels,
+    },
+  ]
 
   const handleCreateKaitenCard = async (supply: SupplyOrder) => {
     if (!connection) return
@@ -943,22 +1186,21 @@ const Supplies: React.FC = () => {
             </div>
 
             <div className="crm-split-header__end">
-              {selectedSupplyIds.length > 0 && (
-                <Popconfirm
-                  title={`Создать задачи в Kaiten для ${selectedSupplyIds.length} выбранных поставок?`}
-                  onConfirm={handleBulkCreateKaitenCards}
-                  okText="Создать"
-                  cancelText="Отмена"
-                >
-                  <Button
-                    type="primary"
-                    loading={bulkCreatingKaiten}
-                    style={kaitenButtonStyle}
-                  >
-                    Создать задачи в Kaiten ({selectedSupplyIds.length})
-                  </Button>
-                </Popconfirm>
-              )}
+              <Dropdown
+                menu={{ items: bulkMenuItems }}
+                trigger={['click']}
+                disabled={selectedSupplyIds.length === 0}
+              >
+                <Button loading={bulkBusy}>
+                  <Space size={4}>
+                    Выберите действие:
+                    {selectedSupplyIds.length > 0
+                      ? ` (${selectedSupplyIds.length})`
+                      : ''}
+                    <DownOutlined />
+                  </Space>
+                </Button>
+              </Dropdown>
               <Button
                 type="primary"
                 loading={downloadingSummaryXlsx}
@@ -1015,7 +1257,7 @@ const Supplies: React.FC = () => {
                   setSelectedSupplyIds(selectedRowKeys as string[])
                 },
                 getCheckboxProps: (record) => ({
-                  disabled: !canCreateKaitenForSupply(record),
+                  disabled: record.order_id == null,
                 }),
               }}
               pagination={{

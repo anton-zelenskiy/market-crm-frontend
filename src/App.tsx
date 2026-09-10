@@ -15,6 +15,11 @@ import {
 } from '@ant-design/icons'
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import {
+  TaskProgressProvider,
+  useTaskProgress,
+} from './context/TaskProgressContext'
+import { TaskProgressBar } from './components/TaskProgressBar'
 import Login from './pages/landing/Login'
 import Register from './pages/landing/Register'
 import CompleteRegistration from './pages/landing/CompleteRegistration'
@@ -84,6 +89,7 @@ const DashboardLayout: React.FC = () => {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken()
   const { logout, isAdmin } = useAuth()
+  const { tasks } = useTaskProgress()
   const location = useLocation()
 
   useEffect(() => {
@@ -249,6 +255,7 @@ const DashboardLayout: React.FC = () => {
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
             maxWidth: '100%',
+            paddingBottom: tasks.length > 0 ? 96 : contentPadding,
           }}
         >
           <Routes>
@@ -296,6 +303,7 @@ const DashboardLayout: React.FC = () => {
             />
           </Routes>
         </Content>
+        <TaskProgressBar />
       </Layout>
     </Layout>
   )
@@ -330,7 +338,8 @@ const App: React.FC = () => {
   return (
     <ConfigProvider theme={softTheme} locale={ruRU}>
       <AuthProvider>
-        <Router>
+        <TaskProgressProvider>
+          <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -347,7 +356,8 @@ const App: React.FC = () => {
               }
             />
           </Routes>
-        </Router>
+          </Router>
+        </TaskProgressProvider>
       </AuthProvider>
     </ConfigProvider>
   )
