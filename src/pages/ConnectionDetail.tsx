@@ -351,7 +351,8 @@ const ConnectionDetail: React.FC = () => {
           },
         ]
       : []),
-    {
+    ...(connection.data_source?.name === 'ozon'
+      ? [{
       key: 'settings',
       label: 'Настройки поставок',
       children: (
@@ -426,7 +427,8 @@ const ConnectionDetail: React.FC = () => {
           </Form.Item>
         </Form>
       ),
-    },
+    }]
+      : []),
     {
       key: 'reports',
       label: 'Отчёты',

@@ -3,10 +3,10 @@ import api from './axios'
 export interface ConnectionSettings {
   id: number
   connection_id: number
-  logistics_distance: number
-  auto_create_cargoes: boolean
-  floor_to_box_count: boolean
-  demand: number
+  logistics_distance: number | null
+  auto_create_cargoes: boolean | null
+  floor_to_box_count: boolean | null
+  demand: number | null
   stocks_spreadsheet_id?: string | null
   stocks_sheet_id?: number | null
 }
