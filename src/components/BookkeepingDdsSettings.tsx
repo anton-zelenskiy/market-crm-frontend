@@ -415,7 +415,7 @@ const BookkeepingDdsSettings: React.FC<BookkeepingDdsSettingsProps> = ({ connect
           <Form.Item name="sub_article" label="Субстатья">
             <Input.TextArea rows={2} />
           </Form.Item>
-          <Form.Item name="source_hint" label="Источник данных">
+          <Form.Item name="source_hint" label="Маркетплейс">
             <Select
               allowClear
               options={[

@@ -165,7 +165,7 @@ const Reports: React.FC = () => {
       render: (type: string) => <Tag color="blue">{type}</Tag>,
     },
     {
-      title: 'Источник данных',
+      title: 'Маркетплейс',
       key: 'data_source',
       render: (_: any, record: Report) => (
         <Tag color="green">
@@ -278,11 +278,11 @@ const Reports: React.FC = () => {
 
           <Form.Item
             name="data_source_id"
-            label="Источник данных"
-            rules={[{ required: true, message: 'Пожалуйста, выберите источник данных' }]}
+            label="Маркетплейс"
+            rules={[{ required: true, message: 'Пожалуйста, выберите маркетплейс' }]}
           >
             <Select 
-              placeholder="Выберите источник данных"
+              placeholder="Выберите маркетплейс"
               loading={dataSourcesLoading}
               showSearch
               filterOption={(input, option) => {

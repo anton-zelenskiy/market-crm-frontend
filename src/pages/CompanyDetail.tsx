@@ -111,7 +111,7 @@ const CompanyDetail: React.FC = () => {
                 scroll={{ x: 'max-content' }}
                 columns={[
                   {
-                    title: 'Источник данных',
+                    title: 'Маркетплейс',
                     key: 'data_source',
                     render: (_: any, record: Connection) => (
                       <Tag color="blue">

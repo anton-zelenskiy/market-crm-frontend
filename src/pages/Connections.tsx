@@ -175,7 +175,7 @@ const Connections: React.FC = () => {
     if (!selectedDataSource) {
       return (
         <div style={{ textAlign: 'center', padding: 20, color: '#999' }}>
-          Пожалуйста, выберите источник данных для настройки учетных данных
+          Пожалуйста, выберите маркетплейс для настройки учетных данных
         </div>
       )
     }
@@ -218,7 +218,7 @@ const Connections: React.FC = () => {
       },
     },
     {
-      title: 'Источник данных',
+      title: 'Маркетплейс',
       key: 'data_source',
       render: (_: any, record: Connection) => (
         <Tag color={record.data_source?.name === "ozon" ? "blue" : "purple"}>
@@ -314,11 +314,11 @@ const Connections: React.FC = () => {
 
           <Form.Item
             name="data_source_id"
-            label="Источник данных"
-            rules={[{ required: true, message: 'Пожалуйста, выберите источник данных' }]}
+            label="Маркетплейс"
+            rules={[{ required: true, message: 'Пожалуйста, выберите маркетплейс' }]}
           >
             <Select
-              placeholder="Выберите источник данных"
+              placeholder="Выберите маркетплейс"
               onChange={handleDataSourceChange}
             >
               {dataSources.map((ds) => (

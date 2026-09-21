@@ -71,7 +71,7 @@ const DataSources: React.FC = () => {
   const handleDelete = async (id: number) => {
     try {
       await dataSourcesApi.delete(id)
-      message.success('Источник данных успешно удален')
+      message.success('Маркетплейс успешно удален')
       loadDataSources()
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Ошибка удаления источника данных')
@@ -89,10 +89,10 @@ const DataSources: React.FC = () => {
 
       if (editingDataSource) {
         await dataSourcesApi.update(editingDataSource.id, data)
-        message.success('Источник данных успешно обновлен')
+        message.success('Маркетплейс успешно обновлен')
       } else {
         await dataSourcesApi.create(data)
-        message.success('Источник данных успешно создан')
+        message.success('Маркетплейс успешно создан')
       }
 
       setModalVisible(false)
@@ -149,7 +149,7 @@ const DataSources: React.FC = () => {
           >
           </Button>
           <Popconfirm
-            title="Вы уверены, что хотите удалить этот источник данных?"
+            title="Вы уверены, что хотите удалить этот маркетплейс?"
             onConfirm={() => handleDelete(record.id)}
             okText="Да"
             cancelText="Нет"
@@ -173,7 +173,7 @@ const DataSources: React.FC = () => {
           }
           actions={
             <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-              Создать источник данных
+              Создать маркетплейс
             </Button>
           }
         />
@@ -189,7 +189,7 @@ const DataSources: React.FC = () => {
       </Card>
 
       <Modal
-        title={editingDataSource ? 'Редактировать источник данных' : 'Создать источник данных'}
+        title={editingDataSource ? 'Редактировать маркетплейс' : 'Создать маркетплейс'}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
