@@ -306,7 +306,7 @@ const VendorProducts: React.FC = () => {
             loading={loading}
             scroll={{ x: 'max-content' }}
             size='small'
-            pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (total) => `Всего ${total} товаров` }}
+            pagination={{ pageSize: 100, showSizeChanger: true, showTotal: (total) => `Всего ${total} товаров` }}
           />
         </Space>
       </Card>
