@@ -38,6 +38,50 @@ import WbAuthModal from '../components/WbAuthModal'
 const { Title } = Typography
 const { Option } = Select
 
+const PRODUCTS_SUMMARY_COLUMN_OPTIONS: { key: string; label: string }[] = [
+  { key: 'status', label: 'Статус' },
+  { key: 'offer_id', label: 'Артикул' },
+  { key: 'title', label: 'Наименование' },
+  { key: 'quantity', label: 'Количество' },
+  { key: 'storage_warehouse', label: 'Склад доставки' },
+  { key: 'acceptance_date', label: 'Дата приемки' },
+  { key: 'drop_off_warehouse_name', label: 'Склад отгрузки' },
+  { key: 'shipment_date', label: 'Дата отгрузки' },
+  { key: 'supply_number', label: 'Номер поставки' },
+  { key: 'supply_cost', label: 'Стоимость поставки' },
+  { key: 'external_order_id', label: 'Номер заказа' },
+]
+
+const EMPTY_COLUMN_KEY = '__empty__'
+// Select needs unique option values, so each empty-column slot in the widget
+// gets its own suffixed key; these all collapse back to EMPTY_COLUMN_KEY
+// before sending to the backend.
+const EMPTY_COLUMN_SLOT_COUNT = 5
+const EMPTY_COLUMN_SLOT_KEYS = Array.from(
+  { length: EMPTY_COLUMN_SLOT_COUNT },
+  (_, i) => `${EMPTY_COLUMN_KEY}${i + 1}`,
+)
+
+// Backend stores repeated EMPTY_COLUMN_KEY entries; assign each occurrence
+// a distinct slot key in order so the Select can represent them.
+const columnsFromBackend = (columns: string[] | null | undefined): string[] => {
+  if (!columns || columns.length === 0) {
+    return PRODUCTS_SUMMARY_COLUMN_OPTIONS.map((o) => o.key)
+  }
+  let emptyIndex = 0
+  return columns.map((key) => {
+    if (key === EMPTY_COLUMN_KEY) {
+      const slot = EMPTY_COLUMN_SLOT_KEYS[emptyIndex] ?? EMPTY_COLUMN_KEY
+      emptyIndex += 1
+      return slot
+    }
+    return key
+  })
+}
+
+const columnsToBackend = (columns: string[]): string[] =>
+  columns.map((key) => (key.startsWith(EMPTY_COLUMN_KEY) ? EMPTY_COLUMN_KEY : key))
+
 const ConnectionDetail: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
   const navigate = useNavigate()
@@ -94,6 +138,8 @@ const ConnectionDetail: React.FC = () => {
     demand: number
     stocks_spreadsheet_id?: string
     stocks_sheet_id?: number
+    shipment_date_days_offset?: number
+    products_summary_columns?: string[]
   }) => {
     if (!connectionId || !connection) return
 
@@ -106,6 +152,10 @@ const ConnectionDetail: React.FC = () => {
         demand: values.demand,
         stocks_spreadsheet_id: values.stocks_spreadsheet_id,
         stocks_sheet_id: values.stocks_sheet_id,
+        shipment_date_days_offset: values.shipment_date_days_offset,
+        products_summary_columns: values.products_summary_columns
+          ? columnsToBackend(values.products_summary_columns)
+          : undefined,
       })
       setSettings(updated)
       message.success('Настройки успешно сохранены')
@@ -248,6 +298,13 @@ const ConnectionDetail: React.FC = () => {
                 buttonText: 'Поставки Ozon',
                 onClick: () => navigate(`/connections/${connection.id}/supplies`),
               },
+              {
+                title: 'Кластеры Ozon',
+                description:
+                  'Приоритеты, доступность и соседние кластеры для расчёта поставок.',
+                buttonText: 'Кластеры',
+                onClick: () => navigate(`/connections/${connection.id}/ozon-clusters`),
+              },
             ]),
           },
         ]
@@ -368,6 +425,8 @@ const ConnectionDetail: React.FC = () => {
             demand: settings.demand,
             stocks_spreadsheet_id: settings.stocks_spreadsheet_id,
             stocks_sheet_id: settings.stocks_sheet_id,
+            shipment_date_days_offset: settings.shipment_date_days_offset ?? 1,
+            products_summary_columns: columnsFromBackend(settings.products_summary_columns),
           }}
           style={{ maxWidth: 480 }}
         >
@@ -414,6 +473,32 @@ const ConnectionDetail: React.FC = () => {
             tooltip="Идентификатор листа из ссылки: ...#gid=ЭТОТ_ID. Лист должен содержать колонки «Артикул» и «Кол-во на складе», таблица должна быть доступна по ссылке всем"
           >
             <InputNumber min={0} style={{ width: '100%' }} placeholder="0" />
+          </Form.Item>
+          <Form.Item
+            name="shipment_date_days_offset"
+            label="Смещение даты отгрузки (дней до начала таймслота)"
+            rules={[{ required: true, message: 'Введите количество дней' }]}
+            tooltip="Дата отгрузки в сводке по товарам = начало таймслота минус это число дней"
+          >
+            <InputNumber min={0} max={30} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item
+            name="products_summary_columns"
+            label="Колонки сводки по товарам"
+            tooltip="Порядок реальных колонок фиксирован, выбор влияет только на включение/исключение и расположение пустых колонок. Порядок выбора «Пустой колонки» задаёт её позицию."
+          >
+            <Select mode="multiple" placeholder="Выберите колонки" allowClear>
+              {PRODUCTS_SUMMARY_COLUMN_OPTIONS.map((o) => (
+                <Option key={o.key} value={o.key}>
+                  {o.label}
+                </Option>
+              ))}
+              {EMPTY_COLUMN_SLOT_KEYS.map((key, i) => (
+                <Option key={key} value={key}>
+                  {`Пустая колонка ${i + 1}`}
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
           <Form.Item>
             <Button

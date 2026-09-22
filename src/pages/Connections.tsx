@@ -11,6 +11,8 @@ import {
   Card,
   Typography,
   Tag,
+  Divider,
+  Space,
 } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -41,6 +43,8 @@ const Connections: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false)
   const [editingConnection, setEditingConnection] = useState<Connection | null>(null)
   const [selectedDataSource, setSelectedDataSource] = useState<DataSource | null>(null)
+  const [newCompanyName, setNewCompanyName] = useState('')
+  const [creatingCompany, setCreatingCompany] = useState(false)
   const [form] = Form.useForm()
 
   useEffect(() => {
@@ -68,8 +72,29 @@ const Connections: React.FC = () => {
   const handleCreate = () => {
     setEditingConnection(null)
     setSelectedDataSource(null)
+    setNewCompanyName('')
     form.resetFields()
     setModalVisible(true)
+  }
+
+  const handleCreateCompany = async () => {
+    const name = newCompanyName.trim()
+    if (!name) {
+      message.error('Введите название компании')
+      return
+    }
+    setCreatingCompany(true)
+    try {
+      const newCompany = await companiesApi.create({ name })
+      setCompanies((prev) => [...prev, newCompany])
+      form.setFieldValue('company_id', newCompany.id)
+      setNewCompanyName('')
+      message.success('Компания успешно создана')
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка создания компании')
+    } finally {
+      setCreatingCompany(false)
+    }
   }
 
   const handleEdit = (record: Connection) => {
@@ -303,6 +328,28 @@ const Connections: React.FC = () => {
             <Select
               placeholder="Выберите компанию"
               disabled={!!editingConnection}
+              popupRender={(menu) => (
+                <>
+                  {menu}
+                  <Divider style={{ margin: '8px 0' }} />
+                  <Space style={{ padding: '0 8px 4px', width: '100%' }} onClick={(e) => e.stopPropagation()}>
+                    <Input
+                      placeholder="Название новой компании"
+                      value={newCompanyName}
+                      onChange={(e) => setNewCompanyName(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    />
+                    <Button
+                      type="text"
+                      icon={<PlusOutlined />}
+                      loading={creatingCompany}
+                      onClick={handleCreateCompany}
+                    >
+                      Добавить
+                    </Button>
+                  </Space>
+                </>
+              )}
             >
               {companies.map((company) => (
                 <Option key={company.id} value={company.id}>

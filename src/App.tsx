@@ -7,7 +7,7 @@ import {
   MenuUnfoldOutlined,
   MenuOutlined,
   // UploadOutlined,
-  DatabaseOutlined,
+  // DatabaseOutlined,
   ShopOutlined,
   LinkOutlined,
   HomeOutlined,
@@ -131,11 +131,6 @@ const DashboardLayout: React.FC = () => {
     //   adminOnly: true,
     // },
     {
-      key: '/clusters',
-      icon: <DatabaseOutlined />,
-      label: <Link to="/clusters">Кластеры</Link>,
-    },
-    {
       key: 'logout',
       icon: <LogoutOutlined />,
       label: 'Выйти',
@@ -167,9 +162,6 @@ const DashboardLayout: React.FC = () => {
     }
     if (path.startsWith('/reports')) {
       return '/reports'
-    }
-    if (path.startsWith('/clusters')) {
-      return '/clusters'
     }
     return path
   }
@@ -284,7 +276,7 @@ const DashboardLayout: React.FC = () => {
                 </AdminRoute>
               }
             />
-            <Route path="/clusters" element={<Clusters />} />
+            <Route path="/connections/:connectionId/ozon-clusters" element={<Clusters />} />
             <Route
               path="/connections/:connectionId/wb-supply-plans"
               element={<SupplyPlanningRunner />}

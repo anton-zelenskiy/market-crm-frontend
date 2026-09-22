@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import {
   Table,
   Button,
@@ -10,6 +11,7 @@ import {
   message,
   Card,
   Typography,
+  Breadcrumb,
 } from 'antd'
 import {
   EditOutlined,
@@ -23,6 +25,7 @@ const { Title } = Typography
 const { Option } = Select
 
 const Clusters: React.FC = () => {
+  const { connectionId } = useParams<{ connectionId: string }>()
   const [clusters, setClusters] = useState<OzonCluster[]>([])
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -165,6 +168,14 @@ const Clusters: React.FC = () => {
   return (
     <div>
       <Card>
+        <Breadcrumb
+          style={{ marginBottom: 16 }}
+          items={[
+            { title: <Link to="/connections">API Подключения</Link> },
+            { title: <Link to={`/connections/${connectionId}`}>Подключение</Link> },
+            { title: 'Кластеры Ozon' },
+          ]}
+        />
         <PageToolbar
           title={
             <Title level={2} style={{ margin: 0 }}>

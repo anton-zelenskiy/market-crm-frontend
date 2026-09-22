@@ -9,6 +9,8 @@ export interface ConnectionSettings {
   demand: number | null
   stocks_spreadsheet_id?: string | null
   stocks_sheet_id?: number | null
+  shipment_date_days_offset?: number | null
+  products_summary_columns?: string[] | null
 }
 
 export interface ConnectionSettingsUpdate {
@@ -18,6 +20,8 @@ export interface ConnectionSettingsUpdate {
   demand?: number
   stocks_spreadsheet_id?: string
   stocks_sheet_id?: number
+  shipment_date_days_offset?: number
+  products_summary_columns?: string[]
 }
 
 export const connectionSettingsApi = {
