@@ -29,6 +29,7 @@ import {
   SearchOutlined,
   SettingOutlined,
   EditOutlined,
+  CopyOutlined,
 } from '@ant-design/icons'
 import { AgGridReact } from 'ag-grid-react'
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community'
@@ -189,6 +190,8 @@ const ClusterHeaderComponent = (params: any) => {
   const onCreateDraft = params.onCreateDraft || params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.onCreateDraft
   const boxCount = params.boxCount ?? params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.boxCount
   const supplyStatus = params.supplyStatus ?? params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.supplyStatus
+  const clusterId = params.clusterId ?? params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.clusterId
+  const onRemoveCluster = params.onRemoveCluster || params.columnGroup?.getColGroupDef()?.headerGroupComponentParams?.onRemoveCluster
 
   if (!clusterName) {
     return <span>{params.displayName || 'Unknown'}</span>
@@ -231,6 +234,27 @@ const ClusterHeaderComponent = (params: any) => {
         >
           Создать черновик
         </Button>
+      )}
+      {onRemoveCluster && (
+        <Tooltip title="Удалить кластер из шаблона">
+          <Button
+            size="small"
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              Modal.confirm({
+                title: `Удалить кластер ${clusterName} из шаблона?`,
+                okText: 'Удалить',
+                okType: 'danger',
+                cancelText: 'Отмена',
+                onOk: () => onRemoveCluster(clusterId),
+              })
+            }}
+          />
+        </Tooltip>
       )}
     </div>
   )
@@ -282,6 +306,8 @@ const SupplyTemplateDetail: React.FC = () => {
   const [loadingClusters, setLoadingClusters] = useState(false)
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
+  const [savingSettingsOnly, setSavingSettingsOnly] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
 
   const vendorStocksLabel = VENDOR_STOCKS_COLUMN_LABEL
 
@@ -553,38 +579,48 @@ const SupplyTemplateDetail: React.FC = () => {
     }
   }
 
-  const handleSaveSettings = async (values: SupplyConfigFormValues) => {
-    if (!snapshotId) return
-
+  const buildSnapshotConfig = (
+    values: SupplyConfigFormValues
+  ): RefreshSnapshotConfig | null => {
     const warehouseId = values.drop_off_warehouse_id
     const selectedWarehouse = warehouses.find(
       (w) => w.warehouse_id === warehouseId
     )
     if (!selectedWarehouse) {
       message.error('Необходимо выбрать склад отгрузки')
-      return
+      return null
     }
+
+    return {
+      supply_products_to_neighbor_cluster:
+        values.supply_products_to_neighbor_cluster ?? false,
+      fetch_availability: values.fetch_availability ?? true,
+      cluster_ids:
+        (values.cluster_ids?.length ?? 0) > 0 ? values.cluster_ids : null,
+      offer_ids:
+        (values.offer_ids?.length ?? 0) > 0 ? values.offer_ids : null,
+      drop_off_warehouse: {
+        warehouse_id: selectedWarehouse.warehouse_id,
+        name: selectedWarehouse.name,
+        address: selectedWarehouse.address || null,
+      },
+      planned_supply_date: values.planned_supply_date
+        ? dayjs(values.planned_supply_date).format('YYYY-MM-DD')
+        : snapshot?.planned_supply_date ?? null,
+    }
+  }
+
+  // "Сохранить и пересчитать" - persists config and re-runs calculate_supply_task
+  const handleSaveSettingsAndRecalculate = async (
+    values: SupplyConfigFormValues
+  ) => {
+    if (!snapshotId) return
+
+    const config = buildSnapshotConfig(values)
+    if (!config) return
 
     setSavingSettings(true)
     try {
-      const config: RefreshSnapshotConfig = {
-        supply_products_to_neighbor_cluster:
-          values.supply_products_to_neighbor_cluster ?? false,
-        fetch_availability: values.fetch_availability ?? true,
-        cluster_ids:
-          (values.cluster_ids?.length ?? 0) > 0 ? values.cluster_ids : null,
-        offer_ids:
-          (values.offer_ids?.length ?? 0) > 0 ? values.offer_ids : null,
-        drop_off_warehouse: {
-          warehouse_id: selectedWarehouse.warehouse_id,
-          name: selectedWarehouse.name,
-          address: selectedWarehouse.address || null,
-        },
-        planned_supply_date: values.planned_supply_date
-          ? dayjs(values.planned_supply_date).format('YYYY-MM-DD')
-          : snapshot?.planned_supply_date ?? null,
-      }
-
       const response = await suppliesApi.refreshSnapshot(
         parseInt(snapshotId, 10),
         config
@@ -609,6 +645,91 @@ const SupplyTemplateDetail: React.FC = () => {
       )
     } finally {
       setSavingSettings(false)
+    }
+  }
+
+  // "Сохранить" - persists config only, without recalculating supply data
+  const handleSaveSettingsOnly = async (values: SupplyConfigFormValues) => {
+    if (!snapshotId) return
+
+    const config = buildSnapshotConfig(values)
+    if (!config) return
+
+    setSavingSettingsOnly(true)
+    try {
+      const updatedSnapshot = await suppliesApi.saveSnapshotConfig(
+        parseInt(snapshotId, 10),
+        config
+      )
+      setSnapshot(updatedSnapshot)
+      setTableData(updatedSnapshot.data)
+      message.success('Настройки сохранены')
+      setSettingsModalVisible(false)
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка сохранения настроек'
+      )
+    } finally {
+      setSavingSettingsOnly(false)
+    }
+  }
+
+  const handleDuplicateSnapshot = async () => {
+    if (!snapshotId || !connectionId) return
+
+    setDuplicating(true)
+    try {
+      const duplicated = await suppliesApi.duplicateSnapshot(
+        parseInt(snapshotId, 10)
+      )
+      message.success('Шаблон поставки скопирован')
+      window.open(
+        `/connections/${connectionId}/supply-templates/${duplicated.id}`,
+        '_blank',
+        'noopener,noreferrer'
+      )
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка копирования шаблона'
+      )
+    } finally {
+      setDuplicating(false)
+    }
+  }
+
+  const handleRemoveOffer = async (offerId: string) => {
+    if (!snapshotId) return
+
+    try {
+      const updatedSnapshot = await suppliesApi.removeSnapshotOffer(
+        parseInt(snapshotId, 10),
+        offerId
+      )
+      setSnapshot(updatedSnapshot)
+      setTableData(updatedSnapshot.data)
+      message.success('Товар удален из шаблона')
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка удаления товара'
+      )
+    }
+  }
+
+  const handleRemoveCluster = async (clusterId: number) => {
+    if (!snapshotId) return
+
+    try {
+      const updatedSnapshot = await suppliesApi.removeSnapshotCluster(
+        parseInt(snapshotId, 10),
+        clusterId
+      )
+      setSnapshot(updatedSnapshot)
+      setTableData(updatedSnapshot.data)
+      message.success('Кластер удален из шаблона')
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка удаления кластера'
+      )
     }
   }
 
@@ -1113,15 +1234,45 @@ const SupplyTemplateDetail: React.FC = () => {
       },
     ].filter(h => 'field' in h && visibleBaseColumns.includes(h.field as string))
 
+    baseHeaders.push({
+      field: 'actions',
+      headerName: 'Действия',
+      width: 60,
+      pinned: 'left' as const,
+      sortable: false,
+      cellRenderer: (params: any) => {
+        const offerId = params.data?.offer_id
+        return (
+          <Button
+            type="text"
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={(e) => {
+              e.stopPropagation()
+              Modal.confirm({
+                title: `Удалить товар ${offerId} из шаблона?`,
+                okText: 'Удалить',
+                okType: 'danger',
+                cancelText: 'Отмена',
+                onOk: () => handleRemoveOffer(offerId),
+              })
+            }}
+          />
+        )
+      },
+    })
+
     // Get all unique cluster names from all items' clusters arrays
     // This ensures neighbor clusters that only appear in some items are included
-    const allClusterNamesMap = new Map<string, { isNeighbor: boolean }>()
+    const allClusterNamesMap = new Map<string, { isNeighbor: boolean; clusterId: number | null }>()
     snapshot.data.forEach((item) => {
       item.clusters.forEach((cluster) => {
         if (cluster.cluster_name) {
           if (!allClusterNamesMap.has(cluster.cluster_name)) {
             allClusterNamesMap.set(cluster.cluster_name, {
-              isNeighbor: cluster.is_neighbor_cluster ?? false
+              isNeighbor: cluster.is_neighbor_cluster ?? false,
+              clusterId: cluster.cluster_id ?? null,
             })
           }
         }
@@ -1162,6 +1313,7 @@ const SupplyTemplateDetail: React.FC = () => {
     clusterNames.forEach((clusterName) => {
       const clusterInfo = allClusterNamesMap.get(clusterName)
       const isNeighborCluster = clusterInfo?.isNeighbor ?? false
+      const clusterId = clusterInfo?.clusterId ?? null
       const children: ColDef[] = []
       
       if (visibleSubColumns.includes('marketplace_stocks_count')) {
@@ -1332,6 +1484,8 @@ const SupplyTemplateDetail: React.FC = () => {
             boxCount: clusterBoxCounts.get(clusterName) || 0,
             supplyStatus: clusterSupplyStatus.get(clusterName),
             onCreateDraft: handleCreateDraft,
+            clusterId,
+            onRemoveCluster: clusterId !== null ? handleRemoveCluster : undefined,
           },
           children,
         } as ColGroupDef)
@@ -1385,7 +1539,7 @@ const SupplyTemplateDetail: React.FC = () => {
     }
 
     return baseHeaders
-  }, [snapshot, handleCreateDraft, clusterFilter, visibleBaseColumns, visibleSubColumns, copyTextToClipboard, floorToBoxCount, clusterBoxCounts, clusterSupplyStatus])
+  }, [snapshot, handleCreateDraft, clusterFilter, visibleBaseColumns, visibleSubColumns, copyTextToClipboard, floorToBoxCount, clusterBoxCounts, clusterSupplyStatus, handleRemoveOffer, handleRemoveCluster])
 
   // Transform data for AG Grid - keep nested structure with clusters array
   const tableRows = useMemo(() => {
@@ -1439,6 +1593,13 @@ const SupplyTemplateDetail: React.FC = () => {
                   onClick={handleOpenSettingsModal}
                 >
                   Редактировать
+                </Button>
+                <Button
+                  icon={<CopyOutlined />}
+                  loading={duplicating}
+                  onClick={handleDuplicateSnapshot}
+                >
+                  Дублировать
                 </Button>
               </Space>
             </div>
@@ -1725,10 +1886,13 @@ const SupplyTemplateDetail: React.FC = () => {
       <SupplyConfigModal
         visible={settingsModalVisible}
         title="Настройки шаблона поставки"
-        okText="Сохранить"
+        okText="Сохранить и пересчитать"
         cancelText="Отмена"
         confirmLoading={savingSettings}
-        onOk={handleSaveSettings}
+        onOk={handleSaveSettingsAndRecalculate}
+        onOkSecondary={handleSaveSettingsOnly}
+        secondaryOkText="Сохранить"
+        secondaryConfirmLoading={savingSettingsOnly}
         onCancel={() => setSettingsModalVisible(false)}
         mode="settings"
         initialValues={

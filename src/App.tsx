@@ -3,8 +3,6 @@ import { Layout, Menu, Button, theme, ConfigProvider, Drawer, Grid } from 'antd'
 import ruRU from 'antd/locale/ru_RU'
 import './lib/dayjs'
 import {
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
   MenuOutlined,
   // UploadOutlined,
   // DatabaseOutlined,
@@ -49,7 +47,7 @@ import FBSOrders from './pages/FBSOrders'
 import FulfillmentSupplies from './pages/FulfillmentSupplies'
 import FBSShipments from './pages/FBSShipments'
 
-const { Header, Sider, Content } = Layout
+const { Header, Content } = Layout
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth()
@@ -83,7 +81,6 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 const DashboardLayout: React.FC = () => {
   const screens = Grid.useBreakpoint()
   const isDesktopNav = screens.md ?? true
-  const [collapsed, setCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const {
     token: { colorBgContainer, borderRadiusLG },
@@ -130,17 +127,18 @@ const DashboardLayout: React.FC = () => {
     //   label: <Link to="/reports">Отчеты</Link>,
     //   adminOnly: true,
     // },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: 'Выйти',
-      onClick: logout,
-    },
   ]
 
   const menuItems = allMenuItems.filter(
     (item) => !('adminOnly' in item) || isAdmin
   )
+
+  const logoutItem = {
+    key: 'logout',
+    icon: <LogoutOutlined />,
+    label: 'Выйти',
+    onClick: logout,
+  }
 
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key === 'logout') {
@@ -168,76 +166,58 @@ const DashboardLayout: React.FC = () => {
 
   const selectedKey = getSelectedKey()
 
-  const navMenu = (
-    <Menu
-      theme="dark"
-      mode="inline"
-      selectedKeys={[selectedKey]}
-      items={menuItems}
-      onClick={handleMenuClick}
-    />
-  )
-
-  const logoBlock = (
-    <div
-      className="demo-logo-vertical"
-      style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.3)' }}
-    />
-  )
-
   const contentMargin = isDesktopNav ? '24px 16px' : '12px 8px'
   const contentPadding = isDesktopNav ? '32px' : '16px'
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      {isDesktopNav ? (
-        <Sider trigger={null} collapsible collapsed={collapsed}>
-          {logoBlock}
-          {navMenu}
-        </Sider>
-      ) : (
-        <Drawer
-          title={null}
-          placement="left"
-          closable
-          onClose={() => setMobileMenuOpen(false)}
-          open={mobileMenuOpen}
-          styles={{ body: { padding: 0, background: '#001529' } }}
-          width={280}
-        >
-          {logoBlock}
-          {navMenu}
-        </Drawer>
-      )}
-      <Layout className="crm-dashboard-inner">
-        <Header style={{ padding: 0, background: colorBgContainer }}>
+      <Header style={{ display: 'flex', alignItems: 'center', padding: '0 16px', background: '#001529' }}>
+        {isDesktopNav ? (
+          <>
+            <Menu
+              theme="dark"
+              mode="horizontal"
+              selectedKeys={[selectedKey]}
+              items={menuItems}
+              onClick={handleMenuClick}
+              style={{ flex: 1, minWidth: 0 }}
+            />
+            <Menu
+              theme="dark"
+              mode="horizontal"
+              selectable={false}
+              items={[logoutItem]}
+              onClick={handleMenuClick}
+              style={{ flexShrink: 0 }}
+            />
+          </>
+        ) : (
           <Button
             type="text"
-            icon={
-              isDesktopNav ? (
-                collapsed ? (
-                  <MenuUnfoldOutlined />
-                ) : (
-                  <MenuFoldOutlined />
-                )
-              ) : (
-                <MenuOutlined />
-              )
-            }
-            onClick={() => {
-              if (isDesktopNav) {
-                setCollapsed(!collapsed)
-              } else {
-                setMobileMenuOpen(true)
-              }
-            }}
-            style={{
-              fontSize: '16px',
-              width: 64,
-              height: 64,
-            }}
+            icon={<MenuOutlined style={{ color: '#fff' }} />}
+            onClick={() => setMobileMenuOpen(true)}
+            style={{ fontSize: '16px' }}
           />
-        </Header>
+        )}
+      </Header>
+      <Drawer
+        title={null}
+        placement="left"
+        closable
+        onClose={() => setMobileMenuOpen(false)}
+        open={!isDesktopNav && mobileMenuOpen}
+        styles={{ body: { padding: 0, background: '#001529' } }}
+        width={280}
+      >
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[selectedKey]}
+          items={[...menuItems, logoutItem]}
+          onClick={handleMenuClick}
+        />
+      </Drawer>
+      <Layout className="crm-dashboard-inner">
         <Content
           className="crm-dashboard-content"
           style={{

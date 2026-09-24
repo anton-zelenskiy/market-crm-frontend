@@ -582,6 +582,48 @@ export const suppliesApi = {
     return response.data
   },
 
+  saveSnapshotConfig: async (
+    snapshotId: number,
+    config: RefreshSnapshotConfig
+  ): Promise<SupplySnapshotResponse> => {
+    if (!config?.drop_off_warehouse) {
+      throw new Error('drop_off_warehouse is required')
+    }
+
+    const response = await api.put(
+      `/supplies/snapshot/${snapshotId}/config`,
+      config
+    )
+    return response.data
+  },
+
+  duplicateSnapshot: async (
+    snapshotId: number
+  ): Promise<SupplySnapshotResponse> => {
+    const response = await api.post(`/supplies/snapshot/${snapshotId}/duplicate`)
+    return response.data
+  },
+
+  removeSnapshotOffer: async (
+    snapshotId: number,
+    offerId: string
+  ): Promise<SupplySnapshotResponse> => {
+    const response = await api.delete(
+      `/supplies/snapshot/${snapshotId}/offer/${encodeURIComponent(offerId)}`
+    )
+    return response.data
+  },
+
+  removeSnapshotCluster: async (
+    snapshotId: number,
+    clusterId: number
+  ): Promise<SupplySnapshotResponse> => {
+    const response = await api.delete(
+      `/supplies/snapshot/${snapshotId}/cluster/${clusterId}`
+    )
+    return response.data
+  },
+
   createAllSupplies: async (
     snapshotId: number
   ): Promise<RefreshSnapshotResponse> => {

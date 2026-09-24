@@ -8,6 +8,7 @@ import {
   Empty,
   Alert,
   DatePicker,
+  Button,
 } from 'antd'
 import type { OzonCluster } from '../api/clusters'
 import type { OzonProduct } from '../api/products'
@@ -43,6 +44,10 @@ export interface SupplyConfigModalProps {
   cancelText: string
   confirmLoading?: boolean
   onOk: (values: SupplyConfigFormValues) => void | Promise<void>
+  /** When set (settings mode), renders a second save button that persists config without recalculating. */
+  onOkSecondary?: (values: SupplyConfigFormValues) => void | Promise<void>
+  secondaryOkText?: string
+  secondaryConfirmLoading?: boolean
   onCancel: () => void
   mode: 'create' | 'settings'
   initialValues?: Partial<SupplyConfigFormValues>
@@ -62,6 +67,9 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
   cancelText,
   confirmLoading = false,
   onOk,
+  onOkSecondary,
+  secondaryOkText,
+  secondaryConfirmLoading = false,
   onCancel,
   mode,
   initialValues,
@@ -100,6 +108,16 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
     }
   }
 
+  const handleOkSecondary = async () => {
+    if (!onOkSecondary) return
+    try {
+      const values = await form.validateFields()
+      await onOkSecondary(values as SupplyConfigFormValues)
+    } catch {
+      // validation failed or onOkSecondary threw
+    }
+  }
+
   return (
     <Modal
       title={title}
@@ -110,6 +128,30 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
       okText={okText}
       cancelText={cancelText}
       width={700}
+      footer={
+        onOkSecondary
+          ? [
+              <Button key="cancel" onClick={onCancel}>
+                {cancelText}
+              </Button>,
+              <Button
+                key="secondary"
+                onClick={handleOkSecondary}
+                loading={secondaryConfirmLoading}
+              >
+                {secondaryOkText}
+              </Button>,
+              <Button
+                key="ok"
+                type="primary"
+                onClick={handleOk}
+                loading={confirmLoading}
+              >
+                {okText}
+              </Button>,
+            ]
+          : undefined
+      }
     >
       <Form
         form={form}
@@ -242,7 +284,7 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
         {mode === 'settings' && (
           <Alert
             title="Информация"
-            description="При сохранении данные будут обновлены с Ozon и пересчитаны с указанными параметрами."
+            description="Используйте 'Сохранить и пересчитать' для расчета поставок; 'Сохранить' — только для обновления настроек."
             type="info"
             showIcon
             style={{ marginTop: '16px' }}
