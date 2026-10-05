@@ -34,6 +34,8 @@ export interface OzonProduct {
   barcodes: string[]
   box_quantity: number | null
   vendor_offer_id: string | null
+  volume_in_liters: number | null
+  volume_weight_kg: number | null
   created_at: string
   updated_at: string
   vendor_quantity: number

@@ -247,6 +247,20 @@ const OzonProducts: React.FC = () => {
       render: (quantity: number | null) => quantity ?? <span style={{ color: '#999' }}>Не задано</span>,
     },
     {
+      title: 'Объем, л',
+      dataIndex: 'volume_in_liters',
+      key: 'volume_in_liters',
+      width: 100,
+      render: (volume: number | null) => volume ?? <span style={{ color: '#999' }}>—</span>,
+    },
+    {
+      title: 'Объемный вес, кг',
+      dataIndex: 'volume_weight_kg',
+      key: 'volume_weight_kg',
+      width: 130,
+      render: (weight: number | null) => weight ?? <span style={{ color: '#999' }}>—</span>,
+    },
+    {
       title: 'Артикул поставщика',
       dataIndex: 'vendor_offer_id',
       key: 'vendor_offer_id',
@@ -355,7 +369,7 @@ const OzonProducts: React.FC = () => {
             dataSource={filteredProducts}
             rowKey="id"
             loading={loading}
-            scroll={{ x: 1400 }}
+            scroll={{ x: 1630 }}
             pagination={{ pageSize: 100, showSizeChanger: true, showTotal: (total) => `Всего ${total} товаров` }}
           />
         </Space>
