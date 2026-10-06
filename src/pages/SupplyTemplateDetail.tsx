@@ -69,7 +69,7 @@ import SupplyConfigModal, {
 const { Title, Text } = Typography
 const { Option } = Select
 
-const VENDOR_STOCKS_COLUMN_LABEL = 'Остатки на заводе'
+const VENDOR_STOCKS_COLUMN_LABEL = 'Остатки'
 
 const OZON_MAX_BOXES = 30
 
@@ -152,7 +152,7 @@ const MemoizedTable = memo(({ columnDefs, rowData, onCellValueChanged }: {
   onCellValueChanged: (event: CellValueChangedEvent) => void
 }) => {
   return (
-    <div style={{ height: '600px', width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+    <div style={{ height: '1000px', width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
       <AgGridReact
         theme={themeAlpine}
         columnDefs={columnDefs}
