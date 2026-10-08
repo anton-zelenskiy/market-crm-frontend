@@ -299,6 +299,13 @@ const ConnectionDetail: React.FC = () => {
                 onClick: () => navigate(`/connections/${connection.id}/supplies`),
               },
               {
+                title: 'Остатки и дефицит',
+                description:
+                  'История остатков, продаж и дефицита по товарам: что поставить и что произвести.',
+                buttonText: 'Остатки',
+                onClick: () => navigate(`/connections/${connection.id}/stock-history`),
+              },
+              {
                 title: 'Кластеры Ozon',
                 description:
                   'Приоритеты, доступность и соседние кластеры для расчёта поставок.',

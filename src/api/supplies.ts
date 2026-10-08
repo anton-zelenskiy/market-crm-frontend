@@ -402,6 +402,52 @@ export interface SupplyDraftListResponse {
   drafts: SupplyDraft[]
 }
 
+export type StockType =
+  | 'available_stock_count'
+  | 'transit_stock_count'
+  | 'requested_stock_count'
+
+export type StockHistoryGroupBy = 'day' | 'week'
+
+export interface StockMetrics {
+  stocks_count: number
+  ads: number | null
+  avg_orders_count: number
+  idc: number | null
+  reserve_in_days: number | null
+  deficit_days: number
+  deficit_quantity: number
+  to_production: number
+}
+
+export interface StockHistoryPeriod {
+  key: string
+  date_from: string
+  date_to: string
+}
+
+export interface ProductStockHistory {
+  offer_id: string
+  sku: string | null
+  name: string
+  vendor_stocks: number
+  metrics: Record<string, StockMetrics>
+}
+
+export interface StockHistoryResponse {
+  periods: StockHistoryPeriod[]
+  logistics_distance_days: number
+  stock_types: StockType[]
+  items: ProductStockHistory[]
+}
+
+export interface StockHistoryParams {
+  date_from: string
+  date_to: string
+  group_by: StockHistoryGroupBy
+  stock_types: StockType[]
+}
+
 export const suppliesApi = {
   getByConnectionId: async (
     connectionId: number,
@@ -836,6 +882,18 @@ export const suppliesApi = {
   ): Promise<SupplyPlanningRunResponse> => {
     const response = await api.post(
       `/supplies/wildberries/supply-plans/${planId}/toggle-active`
+    )
+    return response.data
+  },
+
+  getStockHistory: async (
+    connectionId: number,
+    params: StockHistoryParams
+  ): Promise<StockHistoryResponse> => {
+    const response = await api.get<StockHistoryResponse>(
+      `/supplies/connection/${connectionId}/stock-history`,
+      // repeated stock_types=...&stock_types=... keys for FastAPI list query
+      { params, paramsSerializer: { indexes: null } }
     )
     return response.data
   },
