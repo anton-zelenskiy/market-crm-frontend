@@ -163,7 +163,7 @@ const Header: React.FC = () => {
       <Drawer
         title="Меню"
         placement="right"
-        width={280}
+        size={280}
         onClose={() => setDrawerOpen(false)}
         open={drawerOpen}
         className="landing-nav-drawer"

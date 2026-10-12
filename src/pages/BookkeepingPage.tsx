@@ -659,7 +659,7 @@ const BookkeepingPage: React.FC = () => {
         open={modalOpen}
         onOk={submitForm}
         onCancel={() => setModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item name="wallet_id" label="Кошелёк" rules={[{ required: true }]}>

@@ -10,7 +10,7 @@ import {
   Tag,
   Select,
   Spin,
-  List,
+  Flex,
   InputNumber,
   Input,
   Form,
@@ -248,21 +248,30 @@ const ConnectionDetail: React.FC = () => {
   const renderActionList = (
     items: { title: string; description: string; buttonText: string; onClick: () => void }[],
   ) => (
-    <List
-      itemLayout="horizontal"
-      dataSource={items}
-      renderItem={(item) => (
-        <List.Item
-          actions={[
-            <Button type="primary" onClick={item.onClick} style={{ width: 140 }}>
-              {item.buttonText}
-            </Button>,
-          ]}
+    <div>
+      {items.map((item, index) => (
+        <Flex
+          key={item.title}
+          align="center"
+          justify="space-between"
+          gap={16}
+          style={{
+            padding: '12px 0',
+            borderTop: index > 0 ? '1px solid rgba(5, 5, 5, 0.06)' : undefined,
+          }}
         >
-          <List.Item.Meta title={<strong>{item.title}</strong>} description={item.description} />
-        </List.Item>
-      )}
-    />
+          <div style={{ minWidth: 0 }}>
+            <div>
+              <strong>{item.title}</strong>
+            </div>
+            <Typography.Text type="secondary">{item.description}</Typography.Text>
+          </div>
+          <Button type="primary" onClick={item.onClick} style={{ width: 140, flexShrink: 0 }}>
+            {item.buttonText}
+          </Button>
+        </Flex>
+      ))}
+    </div>
   )
 
   const tabItems = [

@@ -84,7 +84,7 @@ const WbAuthModal: React.FC<WbAuthModalProps> = ({ connectionId, open, onClose }
       open={open}
       onCancel={handleClose}
       footer={null}
-      destroyOnClose
+      destroyOnHidden
     >
       <Steps
         size="small"

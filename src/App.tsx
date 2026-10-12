@@ -211,7 +211,7 @@ const DashboardLayout: React.FC = () => {
         onClose={() => setMobileMenuOpen(false)}
         open={!isDesktopNav && mobileMenuOpen}
         styles={{ body: { padding: 0, background: '#001529' } }}
-        width={280}
+        size={280}
       >
         <Menu
           theme="dark"

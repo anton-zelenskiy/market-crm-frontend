@@ -380,7 +380,7 @@ const BookkeepingDdsSettings: React.FC<BookkeepingDdsSettingsProps> = ({ connect
         open={walletModalOpen}
         onOk={() => void submitWallet()}
         onCancel={() => setWalletModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={walletForm} layout="vertical">
           <Form.Item name="name" label="Название" rules={[{ required: true }]}>
@@ -400,7 +400,7 @@ const BookkeepingDdsSettings: React.FC<BookkeepingDdsSettingsProps> = ({ connect
         open={articleModalOpen}
         onOk={() => void submitArticle()}
         onCancel={() => setArticleModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={articleForm} layout="vertical">
           <Form.Item name="name" label="Название" rules={[{ required: true }]}>

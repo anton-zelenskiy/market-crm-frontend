@@ -32,22 +32,13 @@ interface FormValues {
 
 const CzSettingsForm: React.FC<{ connectionId: number }> = ({ connectionId }) => {
   const navigate = useNavigate()
-  const [form] = Form.useForm<FormValues>()
   const [data, setData] = useState<CzSettingsResponse | null>(null)
   const [environment, setEnvironment] = useState<CzEnvironment>('sandbox')
   const [saving, setSaving] = useState(false)
   const [switching, setSwitching] = useState(false)
+  // Bumped to remount the form, discarding unsaved edits and re-reading initialValues
+  const [formKey, setFormKey] = useState(0)
   const auth = useCzAuthStatus(connectionId)
-
-  const fillForm = (response: CzSettingsResponse, env: CzEnvironment) => {
-    const values = response.environments[env]
-    form.resetFields()
-    form.setFieldsValue({
-      inn: values?.inn ?? '',
-      oms_id: values?.oms_id ?? '',
-      oms_connection: values?.oms_connection ?? '',
-    })
-  }
 
   useEffect(() => {
     chestnyZnakApi
@@ -56,10 +47,8 @@ const CzSettingsForm: React.FC<{ connectionId: number }> = ({ connectionId }) =>
         setData(response)
         const env = response.active_environment ?? 'sandbox'
         setEnvironment(env)
-        fillForm(response, env)
       })
       .catch(async (e) => message.error(await czErrorMessage(e, 'Ошибка загрузки настроек')))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionId])
 
   const handleSave = async (values: FormValues) => {
@@ -88,7 +77,7 @@ const CzSettingsForm: React.FC<{ connectionId: number }> = ({ connectionId }) =>
       const response = await chestnyZnakApi.setActiveEnvironment(connectionId, env)
       setData(response)
       setEnvironment(env)
-      fillForm(response, env)
+      setFormKey((k) => k + 1)
       message.success(`Активный контур: ${CZ_ENVIRONMENT_LABELS[env]}`)
       auth.reload()
     } catch (e) {
@@ -114,6 +103,8 @@ const CzSettingsForm: React.FC<{ connectionId: number }> = ({ connectionId }) =>
   }
 
   if (!data) return <Spin />
+
+  const envValues = data.environments[environment]
 
   return (
     <Space orientation="vertical" size="large" style={{ width: '100%', maxWidth: 720 }}>
@@ -171,7 +162,6 @@ const CzSettingsForm: React.FC<{ connectionId: number }> = ({ connectionId }) =>
             buttonStyle="solid"
             onChange={(e) => {
               setEnvironment(e.target.value)
-              fillForm(data, e.target.value)
             }}
             options={(['sandbox', 'prod'] as CzEnvironment[]).map((env) => ({
               value: env,
@@ -192,7 +182,16 @@ const CzSettingsForm: React.FC<{ connectionId: number }> = ({ connectionId }) =>
             title="Где взять omsId и ID соединения"
             description="ЛК Честного знака → «Управление заказами» (СУЗ) → «Устройства» → добавить устройство. omsId указан на странице СУЗ, ID соединения — в карточке устройства. У песочницы и Production значения разные."
           />
-          <Form form={form} layout="vertical" onFinish={handleSave}>
+          <Form
+            key={`${environment}-${formKey}`}
+            layout="vertical"
+            onFinish={handleSave}
+            initialValues={{
+              inn: envValues?.inn ?? '',
+              oms_id: envValues?.oms_id ?? '',
+              oms_connection: envValues?.oms_connection ?? '',
+            }}
+          >
             <Form.Item
               name="inn"
               label="ИНН организации"
