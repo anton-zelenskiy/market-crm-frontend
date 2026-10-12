@@ -41,6 +41,8 @@ import {
   type TaskDescriptor,
 } from '../context/TaskProgressContext'
 import { downloadBlob } from '../lib/downloadBlob'
+import { chestnyZnakApi, czErrorMessage } from '../api/chestnyZnak'
+import CzMarkingJobModal, { type CzJobDraft } from '../components/chestnyZnak/CzMarkingJobModal'
 
 const { Title } = Typography
 const { Option } = Select
@@ -77,6 +79,11 @@ interface SupplyActionsProps {
   onDownloadCargoLabels: (supply: SupplyOrder) => Promise<void>
   onCreateKaitenCard: (supply: SupplyOrder) => Promise<void>
   onLinkExistingKaitenCard: (supply: SupplyOrder) => Promise<void>
+  czJobId: number | undefined
+  onOrderCzCodes: (supply: SupplyOrder) => void
+  onOpenCzJob: (jobId: number) => void
+  onDownloadCzCodes: (supply: SupplyOrder, jobId: number) => Promise<void>
+  isDownloadingCz: boolean
   isCreating: boolean
   isSavingExternalOrderId: boolean
   isDownloading: boolean
@@ -122,6 +129,11 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
   onDownloadCargoLabels,
   onCreateKaitenCard,
   onLinkExistingKaitenCard,
+  czJobId,
+  onOrderCzCodes,
+  onOpenCzJob,
+  onDownloadCzCodes,
+  isDownloadingCz,
   isCreating,
   isSavingExternalOrderId,
   isDownloading,
@@ -279,6 +291,32 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
           </Space>
         )
       })()}
+
+      <Divider style={{ margin: '8px 0' }} />
+
+      <Typography.Text strong style={supplyActionsSectionTitle}>
+        Честный знак
+      </Typography.Text>
+      {czJobId ? (
+        <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+          <Button
+            type="primary"
+            size="middle"
+            loading={isDownloadingCz}
+            onClick={() => onDownloadCzCodes(supply, czJobId)}
+            block
+          >
+            Скачать коды ЧЗ (PDF)
+          </Button>
+          <Button size="middle" onClick={() => onOpenCzJob(czJobId)} block>
+            Открыть задание ЧЗ
+          </Button>
+        </Space>
+      ) : (
+        <Button size="middle" onClick={() => onOrderCzCodes(supply)} block>
+          Заказать коды и ввести в оборот
+        </Button>
+      )}
     </div>
   )
 }
@@ -422,6 +460,10 @@ const Supplies: React.FC = () => {
   const [bulkDownloadingDocs, setBulkDownloadingDocs] = useState(false)
   const [bulkDownloadingLabels, setBulkDownloadingLabels] = useState(false)
   const [stateGroupId, setStateGroupId] = useState<SupplyStateGroupId>('PREPARATION')
+  const [czJobsBySupply, setCzJobsBySupply] = useState<Record<string, number>>({})
+  const [czDraft, setCzDraft] = useState<CzJobDraft | null>(null)
+  const [czOpenJobId, setCzOpenJobId] = useState<number | null>(null)
+  const [downloadingCz, setDownloadingCz] = useState<Record<string, boolean>>({})
   const selectedStates =
     SUPPLY_STATE_GROUPS.find((g) => g.id === stateGroupId)?.states ?? []
 
@@ -479,12 +521,51 @@ const Supplies: React.FC = () => {
     try {
       const response = await suppliesApi.getByConnectionId(connection.id, { states })
       setSupplies(response.orders)
+      loadCzJobs()
     } catch (error: any) {
       message.error(
         error.response?.data?.detail || 'Ошибка загрузки поставок'
       )
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadCzJobs = async () => {
+    if (!connection) return
+    try {
+      setCzJobsBySupply(await chestnyZnakApi.jobsBySupply(connection.id))
+    } catch {
+      // ЧЗ is optional: the supplies page works without it
+    }
+  }
+
+  const openCzDraft = (selected: SupplyOrder[]) => {
+    setCzDraft({
+      source: 'SUPPLIES',
+      supplies: selected.map((s) => ({
+        supply_id: s.supply_id,
+        order_id: s.order_id.toString(),
+      })),
+      title: `Коды Честного знака: поставок ${selected.length}`,
+    })
+  }
+
+  const handleDownloadCzCodes = async (supply: SupplyOrder, jobId: number) => {
+    if (!connection) return
+    const supplyId = supply.supply_id
+    setDownloadingCz((prev) => ({ ...prev, [supplyId]: true }))
+    try {
+      const { blob, filename } = await chestnyZnakApi.downloadLabels(
+        connection.id,
+        jobId,
+        supplyId
+      )
+      downloadBlob(blob, filename)
+    } catch (error) {
+      message.error(await czErrorMessage(error, 'Ошибка скачивания кодов ЧЗ'))
+    } finally {
+      setDownloadingCz((prev) => ({ ...prev, [supplyId]: false }))
     }
   }
 
@@ -889,6 +970,8 @@ const Supplies: React.FC = () => {
     cargoes: bulkSelectedSupplies.filter(canGenerateCargoesForSupply).length,
     docs: bulkSelectedSupplies.filter(canDownloadDocsForSupply).length,
     labels: bulkSelectedSupplies.filter(canDownloadLabelsForSupply).length,
+    cz: bulkSelectedSupplies.filter((s) => s.order_id != null && !czJobsBySupply[s.supply_id])
+      .length,
   }
   const bulkBusy =
     bulkCreatingKaiten ||
@@ -935,6 +1018,18 @@ const Supplies: React.FC = () => {
       label: `Скачать ярлыки грузомест (${bulkEligible.labels})`,
       disabled: bulkEligible.labels === 0,
       onClick: handleBulkDownloadCargoLabels,
+    },
+    { type: 'divider' as const },
+    {
+      key: 'chestny-znak',
+      label: `Коды ЧЗ: заказать и ввести в оборот (${bulkEligible.cz})`,
+      disabled: bulkEligible.cz === 0,
+      onClick: () =>
+        openCzDraft(
+          bulkSelectedSupplies.filter(
+            (s) => s.order_id != null && !czJobsBySupply[s.supply_id]
+          )
+        ),
     },
   ]
 
@@ -1140,6 +1235,11 @@ const Supplies: React.FC = () => {
                 onDownloadCargoLabels={handleDownloadCargoLabels}
                 onCreateKaitenCard={handleCreateKaitenCard}
                 onLinkExistingKaitenCard={handleLinkExistingKaitenCard}
+                czJobId={czJobsBySupply[supplyId]}
+                onOrderCzCodes={(supply) => openCzDraft([supply])}
+                onOpenCzJob={setCzOpenJobId}
+                onDownloadCzCodes={handleDownloadCzCodes}
+                isDownloadingCz={downloadingCz[supplyId] || false}
                 isCreating={isCreating}
                 isSavingExternalOrderId={isSavingExternalOrderId}
                 isDownloading={isDownloading}
@@ -1318,6 +1418,20 @@ const Supplies: React.FC = () => {
           )}
         </Space>
       </Card>
+      {connection && (
+        <CzMarkingJobModal
+          open={!!czDraft || czOpenJobId != null}
+          connectionId={connection.id}
+          draft={czDraft}
+          jobId={czOpenJobId}
+          onClose={() => {
+            setCzDraft(null)
+            setCzOpenJobId(null)
+            setSelectedSupplyIds([])
+            loadCzJobs()
+          }}
+        />
+      )}
     </div>
   )
 }

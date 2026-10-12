@@ -32,6 +32,7 @@ import type { Report } from '../api/reports'
 import { companiesApi } from '../api/companies'
 import type { Company } from '../api/companies'
 import KaitenIntegrationForm from '../components/KaitenIntegrationForm'
+import CzSettingsForm from '../components/chestnyZnak/CzSettingsForm'
 import BookkeepingDdsSettings from '../components/BookkeepingDdsSettings'
 import WbAuthModal from '../components/WbAuthModal'
 
@@ -412,6 +413,11 @@ const ConnectionDetail: React.FC = () => {
             key: 'kaiten',
             label: 'Kaiten',
             children: <KaitenIntegrationForm connectionId={parseInt(connectionId)} />,
+          },
+          {
+            key: 'chestny-znak',
+            label: 'Честный знак',
+            children: <CzSettingsForm connectionId={parseInt(connectionId)} />,
           },
         ]
       : []),

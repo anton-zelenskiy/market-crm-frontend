@@ -47,6 +47,9 @@ import ProductCategories from './pages/ProductCategories'
 import FBSOrders from './pages/FBSOrders'
 import FulfillmentSupplies from './pages/FulfillmentSupplies'
 import FBSShipments from './pages/FBSShipments'
+import ChestnyZnakGtins from './pages/ChestnyZnakGtins'
+import ChestnyZnakGenerate from './pages/ChestnyZnakGenerate'
+import ChestnyZnakJobs from './pages/ChestnyZnakJobs'
 
 const { Header, Content } = Layout
 
@@ -245,6 +248,9 @@ const DashboardLayout: React.FC = () => {
             <Route path="/connections/:connectionId/fulfillment-supplies" element={<FulfillmentSupplies />} />
             <Route path="/connections/:connectionId/fbs-shipments" element={<FBSShipments />} />
             <Route path="/connections/:connectionId/supplies" element={<Supplies />} />
+            <Route path="/connections/:connectionId/chestny-znak/gtins" element={<ChestnyZnakGtins />} />
+            <Route path="/connections/:connectionId/chestny-znak/generate" element={<ChestnyZnakGenerate />} />
+            <Route path="/connections/:connectionId/chestny-znak/jobs" element={<ChestnyZnakJobs />} />
             <Route path="/connections/:connectionId/stock-history" element={<StockHistory />} />
             <Route path="/connections/:connectionId/bookkeeping" element={<BookkeepingPage />} />
             <Route path="/connections/:connectionId/supply-templates" element={<SupplyTemplates />} />
