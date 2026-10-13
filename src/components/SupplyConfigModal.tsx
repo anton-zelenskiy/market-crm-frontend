@@ -13,6 +13,7 @@ import {
 import type { OzonCluster } from '../api/clusters'
 import type { OzonProduct } from '../api/products'
 import type { Warehouse } from '../api/supplies'
+import { OZON_RU_CLUSTER_IDS } from '../constants/ozonClusters'
 import { DATE_FORMAT } from '../lib/dayjs'
 
 const { Option } = Select
@@ -108,6 +109,24 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
     }
   }
 
+  const handleSelectRussianClusters = () => {
+    form.setFieldValue(
+      'cluster_ids',
+      clusters
+        .filter((cluster) => OZON_RU_CLUSTER_IDS.has(cluster.cluster_id))
+        .map((cluster) => cluster.cluster_id),
+    )
+  }
+
+  const handleSelectProductsInStock = () => {
+    form.setFieldValue(
+      'offer_ids',
+      products
+        .filter((product) => (product.vendor_quantity || 0) > 0)
+        .map((product) => product.offer_id),
+    )
+  }
+
   const handleOkSecondary = async () => {
     if (!onOkSecondary) return
     try {
@@ -191,7 +210,19 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
 
         <Form.Item
           name="cluster_ids"
-          label="Кластеры (если не выбрано — все)"
+          label={
+            <span>
+              Кластеры (если не выбрано — все)
+              <Button
+                type="link"
+                size="small"
+                disabled={!clusters.length}
+                onClick={handleSelectRussianClusters}
+              >
+                Все РФ
+              </Button>
+            </span>
+          }
         >
           <Select
             mode="multiple"
@@ -216,7 +247,19 @@ const SupplyConfigModal: React.FC<SupplyConfigModalProps> = ({
 
         <Form.Item
           name="offer_ids"
-          label="Товары (если не выбрано — все)"
+          label={
+            <span>
+              Товары (если не выбрано — все)
+              <Button
+                type="link"
+                size="small"
+                disabled={!products.length}
+                onClick={handleSelectProductsInStock}
+              >
+                Все в наличии
+              </Button>
+            </span>
+          }
         >
           <Select
             mode="multiple"

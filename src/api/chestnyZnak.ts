@@ -88,6 +88,8 @@ export interface CzProductRow {
   name: string | null
   sku: number | null
   gtin: string | null
+  /** Name printed on labels (e.g. «Носки мужские»); the Ozon name when empty */
+  product_name: string | null
   tnved_code: string | null
   certificate_type: CzCertificateType | null
   certificate_number: string | null

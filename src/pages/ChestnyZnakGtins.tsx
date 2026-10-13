@@ -34,6 +34,7 @@ function toUpdate(row: CzProductRow): CzProductUpdate {
   return {
     offer_id: row.offer_id,
     gtin: row.gtin || null,
+    product_name: row.product_name?.trim() || null,
     tnved_code: row.tnved_code || null,
     certificate_type: row.certificate_number ? row.certificate_type : null,
     certificate_number: row.certificate_number || null,
@@ -41,13 +42,20 @@ function toUpdate(row: CzProductRow): CzProductUpdate {
   }
 }
 
-/** CSV: offer_id;gtin;tnved_code (comma or semicolon, header optional). */
-function parseCsv(text: string): { offer_id: string; gtin: string; tnved_code: string }[] {
+/** CSV: offer_id;gtin;tnved_code;product_name (comma or semicolon, header optional). */
+function parseCsv(
+  text: string
+): { offer_id: string; gtin: string; tnved_code: string; product_name: string }[] {
   return text
     .split(/\r?\n/)
     .map((line) => line.split(/[;,\t]/).map((c) => c.trim().replace(/^"|"$/g, '')))
     .filter((cols) => cols[0] && !/^offer_?id$/i.test(cols[0]) && !/артикул/i.test(cols[0]))
-    .map(([offer_id, gtin = '', tnved_code = '']) => ({ offer_id, gtin, tnved_code }))
+    .map(([offer_id, gtin = '', tnved_code = '', product_name = '']) => ({
+      offer_id,
+      gtin,
+      tnved_code,
+      product_name,
+    }))
 }
 
 const invalidCell = (check: (value: string) => boolean) => ({
@@ -119,6 +127,14 @@ const ChestnyZnakGtins: React.FC = () => {
         cellClassRules: invalidCell(isValidGtin),
       },
       {
+        field: 'product_name',
+        headerName: 'Название на этикетке',
+        headerTooltip:
+          'Печатается на этикетке ЧЗ и в имени PDF, например «Носки мужские». Если пусто — название из Ozon.',
+        editable: true,
+        width: 220,
+      },
+      {
         field: 'tnved_code',
         headerName: 'ТН ВЭД',
         editable: true,
@@ -183,6 +199,7 @@ const ChestnyZnakGtins: React.FC = () => {
         ...row,
         gtin: line.gtin ? normalizeGtin(line.gtin) : row.gtin,
         tnved_code: line.tnved_code ? line.tnved_code.replace(/\s/g, '') : row.tnved_code,
+        product_name: line.product_name || row.product_name,
       })
     }
     message.info(
@@ -222,8 +239,9 @@ const ChestnyZnakGtins: React.FC = () => {
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
           GTIN и код ТН ВЭД берутся из карточки товара в Национальном каталоге. У каждого размера
-          свой GTIN. Документ соответствия указывается, если он отличается от документа по
-          умолчанию. CSV для импорта: <code>offer_id;gtin;tnved_code</code>.
+          свой GTIN. «Название на этикетке» печатается на этикетке ЧЗ (например, «Носки мужские»),
+          если пусто — название из Ozon. Документ соответствия подставляется в задание ЧЗ.
+          CSV для импорта: <code>offer_id;gtin;tnved_code;product_name</code>.
         </Typography.Paragraph>
 
         {errors.length > 0 && (
