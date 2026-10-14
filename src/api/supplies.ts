@@ -407,7 +407,7 @@ export type StockType =
   | 'transit_stock_count'
   | 'requested_stock_count'
 
-export type StockHistoryGroupBy = 'day' | 'week'
+export type StockHistoryGroupBy = 'day' | 'week' | 'month'
 
 export interface StockMetrics {
   stocks_count: number

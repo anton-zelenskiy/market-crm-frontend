@@ -7,7 +7,6 @@ import {
   Space,
   message,
   DatePicker,
-  Switch,
   Select,
   Spin,
   Breadcrumb,
@@ -20,6 +19,7 @@ import type { CellStyle, ColDef, ColGroupDef, GetRowIdParams, ValueFormatterPara
 import {
   suppliesApi,
   type ProductStockHistory,
+  type StockHistoryGroupBy,
   type StockHistoryPeriod,
   type StockHistoryResponse,
   type StockMetrics,
@@ -35,15 +35,27 @@ const { RangePicker } = DatePicker
 
 type MetricKey = keyof StockMetrics
 
-const METRICS: { key: MetricKey; label: string; decimals: number; highlight?: boolean }[] = [
+// currentOnly: shown only for the latest period (deficit is actionable only now)
+const METRICS: {
+  key: MetricKey
+  label: string
+  decimals: number
+  currentOnly?: boolean
+}[] = [
   { key: 'stocks_count', label: 'Остаток', decimals: 0 },
   { key: 'ads', label: 'ADS', decimals: 1 },
   { key: 'avg_orders_count', label: 'Ср. заказы в день', decimals: 1 },
   { key: 'idc', label: 'IDC', decimals: 1 },
   { key: 'reserve_in_days', label: 'Запас, дн.', decimals: 1 },
-  { key: 'deficit_days', label: 'Дефицит, дн.', decimals: 1, highlight: true },
-  { key: 'deficit_quantity', label: 'Дефицит, шт.', decimals: 0, highlight: true },
-  { key: 'to_production', label: 'В производство', decimals: 0, highlight: true },
+  { key: 'deficit_days', label: 'Дефицит, дн.', decimals: 1, currentOnly: true },
+  { key: 'deficit_quantity', label: 'Дефицит, шт.', decimals: 0, currentOnly: true },
+  { key: 'to_production', label: 'В производство', decimals: 0, currentOnly: true },
+]
+
+const GROUP_BY_OPTIONS: { value: StockHistoryGroupBy; label: string }[] = [
+  { value: 'day', label: 'По дням' },
+  { value: 'week', label: 'По неделям' },
+  { value: 'month', label: 'По месяцам' },
 ]
 
 const STOCK_TYPE_OPTIONS: { value: StockType; label: string }[] = [
@@ -64,12 +76,14 @@ function formatNumber(value: number | null | undefined, decimals: number): strin
   })
 }
 
-function periodHeader(period: StockHistoryPeriod): string {
+function periodHeader(period: StockHistoryPeriod, groupBy: StockHistoryGroupBy): string {
   const from = dayjs(period.date_from)
   const to = dayjs(period.date_to)
-  return from.isSame(to, 'day')
-    ? from.format('DD.MM')
-    : `${from.format('DD.MM')}–${to.format('DD.MM')}`
+  if (from.isSame(to, 'day')) return from.format('DD.MM.YY')
+  if (groupBy === 'month' && from.date() === 1 && to.isSame(to.endOf('month'), 'day')) {
+    return from.format('MMMM YYYY')
+  }
+  return `${from.format('DD.MM')}–${to.format('DD.MM.YY')}`
 }
 
 const StockHistory: React.FC = () => {
@@ -83,7 +97,9 @@ const StockHistory: React.FC = () => {
     dayjs().subtract(13, 'day'),
     dayjs(),
   ])
-  const [groupByWeek, setGroupByWeek] = useState(false)
+  const [groupBy, setGroupBy] = useState<StockHistoryGroupBy>('day')
+  // Group-by of the loaded data: headers must not change before "Применить"
+  const [loadedGroupBy, setLoadedGroupBy] = useState<StockHistoryGroupBy>('day')
   const [stockTypes, setStockTypes] = useState<StockType[]>(DEFAULT_STOCK_TYPES)
   const [visibleMetrics, setVisibleMetrics] = useState<MetricKey[]>(METRICS.map((m) => m.key))
 
@@ -105,10 +121,11 @@ const StockHistory: React.FC = () => {
       const res = await suppliesApi.getStockHistory(cid, {
         date_from: dateRange[0].format(API_DATE_FORMAT),
         date_to: dateRange[1].format(API_DATE_FORMAT),
-        group_by: groupByWeek ? 'week' : 'day',
+        group_by: groupBy,
         stock_types: stockTypes,
       })
       setData(res)
+      setLoadedGroupBy(groupBy)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } } }
       const detail = err.response?.data?.detail
@@ -116,7 +133,7 @@ const StockHistory: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [cid, dateRange, groupByWeek, stockTypes])
+  }, [cid, dateRange, groupBy, stockTypes])
 
   // Initial load; filter changes apply on "Применить"
   useEffect(() => {
@@ -126,9 +143,11 @@ const StockHistory: React.FC = () => {
 
   const columnDefs = useMemo<(ColDef<ProductStockHistory> | ColGroupDef<ProductStockHistory>)[]>(() => {
     const metrics = METRICS.filter((m) => visibleMetrics.includes(m.key))
-    const periodGroups: ColGroupDef<ProductStockHistory>[] = (data?.periods ?? []).map((period) => ({
-      headerName: periodHeader(period),
-      children: metrics.map(
+    // Newest period first; deficit metrics only for the latest one
+    const periods = [...(data?.periods ?? [])].reverse()
+    const periodGroups: ColGroupDef<ProductStockHistory>[] = periods.map((period, index) => ({
+      headerName: periodHeader(period, loadedGroupBy),
+      children: metrics.filter((m) => index === 0 || !m.currentOnly).map(
         (metric): ColDef<ProductStockHistory> => ({
           colId: `${period.key}:${metric.key}`,
           headerName: metric.label,
@@ -137,7 +156,7 @@ const StockHistory: React.FC = () => {
           valueGetter: (p) => p.data?.metrics[period.key]?.[metric.key] ?? null,
           valueFormatter: (p: ValueFormatterParams<ProductStockHistory, number | null>) =>
             formatNumber(p.value, metric.decimals),
-          cellStyle: metric.highlight
+          cellStyle: metric.currentOnly
             ? (p) => (typeof p.value === 'number' && p.value > 0 ? DEFICIT_CELL_STYLE : null)
             : undefined,
         })
@@ -157,7 +176,7 @@ const StockHistory: React.FC = () => {
       },
       ...periodGroups,
     ]
-  }, [data, visibleMetrics])
+  }, [data, visibleMetrics, loadedGroupBy])
 
   const defaultColDef = useMemo<ColDef<ProductStockHistory>>(
     () => ({
@@ -198,8 +217,13 @@ const StockHistory: React.FC = () => {
               format={DATE_FORMAT}
               disabledDate={(d) => d.isAfter(dayjs(), 'day')}
             />
-            <span>По неделям:</span>
-            <Switch checked={groupByWeek} onChange={setGroupByWeek} />
+            <span>Группировка:</span>
+            <Select
+              style={{ width: 150 }}
+              value={groupBy}
+              onChange={setGroupBy}
+              options={GROUP_BY_OPTIONS}
+            />
             <span>Учитывать остатки:</span>
             <Checkbox.Group
               options={STOCK_TYPE_OPTIONS.map((o) => ({
