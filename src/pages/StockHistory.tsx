@@ -80,6 +80,15 @@ function periodHeader(period: StockHistoryPeriod, groupBy: StockHistoryGroupBy):
   const from = dayjs(period.date_from)
   const to = dayjs(period.date_to)
   if (from.isSame(to, 'day')) return from.format('DD.MM.YY')
+  // Incomplete or partly collected week/month: show the snapshot day
+  const snapshot =
+    period.snapshot_date && !dayjs(period.snapshot_date).isSame(to, 'day')
+      ? ` (на ${dayjs(period.snapshot_date).format('DD.MM')})`
+      : ''
+  return `${periodRangeLabel(from, to, groupBy)}${snapshot}`
+}
+
+function periodRangeLabel(from: Dayjs, to: Dayjs, groupBy: StockHistoryGroupBy): string {
   if (groupBy === 'month' && from.date() === 1 && to.isSame(to.endOf('month'), 'day')) {
     return from.format('MMMM YYYY')
   }
@@ -147,6 +156,9 @@ const StockHistory: React.FC = () => {
     const periods = [...(data?.periods ?? [])].reverse()
     const periodGroups: ColGroupDef<ProductStockHistory>[] = periods.map((period, index) => ({
       headerName: periodHeader(period, loadedGroupBy),
+      headerTooltip: period.snapshot_date
+        ? `Остатки на ${dayjs(period.snapshot_date).format(DATE_FORMAT)}`
+        : 'Нет данных за период',
       children: metrics.filter((m) => index === 0 || !m.currentOnly).map(
         (metric): ColDef<ProductStockHistory> => ({
           colId: `${period.key}:${metric.key}`,

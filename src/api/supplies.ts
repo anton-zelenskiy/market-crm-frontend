@@ -424,6 +424,8 @@ export interface StockHistoryPeriod {
   key: string
   date_from: string
   date_to: string
+  // Day whose stocks snapshot the period shows; null - nothing collected
+  snapshot_date: string | null
 }
 
 export interface ProductStockHistory {
