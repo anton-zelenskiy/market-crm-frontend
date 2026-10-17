@@ -23,12 +23,12 @@ const PlanCard: React.FC<PlanCardProps> = ({ tariff, onConnect }) => {
 
   return (
     <div className={`mk-plan${featured ? ' mk-plan--featured' : ''}`}>
-      <h3 className="mk-plan__name">{tariff.tariff_type}</h3>
+      <h3 className="mk-plan__name">{tariff.name}</h3>
 
       {selected && (
         <div className="mk-price">
           <span className="mk-price__value">{formatPrice(selected.price)}</span>
-          <span className="mk-price__period">за {formatPeriod(selected.period)}</span>
+          <span className="mk-price__period">за {formatPeriod(selected.period, tariff.period_type)}</span>
         </div>
       )}
 
@@ -41,8 +41,10 @@ const PlanCard: React.FC<PlanCardProps> = ({ tariff, onConnect }) => {
               className={`mk-period${variant.id === selectedId ? ' mk-period--active' : ''}`}
               onClick={() => setSelectedId(variant.id)}
             >
-              {formatPeriod(variant.period)}
-              <small>{formatPrice(perMonth(variant))}/мес.</small>
+              {formatPeriod(variant.period, tariff.period_type)}
+              {tariff.period_type === 'month' && (
+                <small>{formatPrice(perMonth(variant))}/мес.</small>
+              )}
             </button>
           ))}
         </div>

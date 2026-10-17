@@ -7,10 +7,15 @@ export interface TariffVariant {
   price: number
 }
 
+export type TariffPeriodType = 'day' | 'month'
+
 export interface Tariff {
   id: number
+  name: string
   slug: string
   tariff_type: string
+  period_type: TariffPeriodType
+  connections_limit: number | null
   options: string[]
   variants: TariffVariant[]
 }

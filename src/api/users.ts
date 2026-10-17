@@ -17,8 +17,11 @@ export interface TariffVariantResponse {
 
 export interface TariffResponse {
   id: number
+  name: string
   slug: string
   tariff_type: string
+  period_type: 'day' | 'month'
+  connections_limit: number | null
   options: unknown[]
   variants?: TariffVariantResponse[]
 }

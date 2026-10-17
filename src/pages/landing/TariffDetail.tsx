@@ -85,7 +85,7 @@ const TariffDetail: React.FC = () => {
         </Link>
         <div className="mk-plan mk-plan--featured">
           <h1 className="mk-plan__name" style={{ fontSize: 32 }}>
-            {tariff.tariff_type}
+            {tariff.name}
           </h1>
 
           <ul className="mk-features">
@@ -106,7 +106,7 @@ const TariffDetail: React.FC = () => {
                 className={`mk-period${variant.period === selectedPeriod ? ' mk-period--active' : ''}`}
                 onClick={() => setSelectedPeriod(variant.period)}
               >
-                {formatPeriod(variant.period)}
+                {formatPeriod(variant.period, tariff.period_type)}
                 <small>{formatPrice(variant.price)}</small>
               </button>
             ))}
@@ -114,7 +114,7 @@ const TariffDetail: React.FC = () => {
 
           {selectedVariant && (
             <div className="mk-summary">
-              Итого: {formatPrice(selectedVariant.price)} за {formatPeriod(selectedVariant.period)}
+              Итого: {formatPrice(selectedVariant.price)} за {formatPeriod(selectedVariant.period, tariff.period_type)}
             </div>
           )}
 
