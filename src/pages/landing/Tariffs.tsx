@@ -1,14 +1,72 @@
 import React, { useEffect, useState } from 'react'
-import { Layout, Card, Row, Col, Button, Typography, Space } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { subscriptionsApi } from '../../api/subscriptions'
-import type { Tariff } from '../../api/subscriptions'
+import type { Tariff, TariffVariant } from '../../api/subscriptions'
 import Header from '../../components/landing/Header'
 import Footer from '../../components/landing/Footer'
-import './landing.css'
+import { formatPeriod, formatPrice } from '../../lib/tariffFormat'
+import './mk.css'
 
-const { Content } = Layout
-const { Title, Text } = Typography
+const FEATURED_TARIFF = 'standard'
+
+const perMonth = (variant: TariffVariant) => Math.round(variant.price / variant.period)
+
+interface PlanCardProps {
+  tariff: Tariff
+  onConnect: (slug: string, period?: number) => void
+}
+
+const PlanCard: React.FC<PlanCardProps> = ({ tariff, onConnect }) => {
+  const [selectedId, setSelectedId] = useState(tariff.variants[0]?.id)
+  const selected = tariff.variants.find((v) => v.id === selectedId)
+  const featured = tariff.tariff_type === FEATURED_TARIFF
+
+  return (
+    <div className={`mk-plan${featured ? ' mk-plan--featured' : ''}`}>
+      <h3 className="mk-plan__name">{tariff.tariff_type}</h3>
+
+      {selected && (
+        <div className="mk-price">
+          <span className="mk-price__value">{formatPrice(selected.price)}</span>
+          <span className="mk-price__period">за {formatPeriod(selected.period)}</span>
+        </div>
+      )}
+
+      {tariff.variants.length > 1 && (
+        <div className="mk-periods">
+          {tariff.variants.map((variant) => (
+            <button
+              key={variant.id}
+              type="button"
+              className={`mk-period${variant.id === selectedId ? ' mk-period--active' : ''}`}
+              onClick={() => setSelectedId(variant.id)}
+            >
+              {formatPeriod(variant.period)}
+              <small>{formatPrice(perMonth(variant))}/мес.</small>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <ul className="mk-features">
+        {tariff.options.map((option, index) => (
+          <li key={index}>
+            <span className="mk-check mk-check--sm">✓</span>
+            {option}
+          </li>
+        ))}
+      </ul>
+
+      <button
+        type="button"
+        className={`mk-btn mk-btn--lg mk-btn--block ${featured ? 'mk-btn--primary mk-btn--raised' : 'mk-btn--outline'}`}
+        onClick={() => onConnect(tariff.slug, selected?.period)}
+      >
+        Подключить
+      </button>
+    </div>
+  )
+}
 
 const Tariffs: React.FC = () => {
   const [tariffs, setTariffs] = useState<Tariff[]>([])
@@ -29,65 +87,35 @@ const Tariffs: React.FC = () => {
     fetchTariffs()
   }, [])
 
-  const handleConnect = (slug: string) => {
-    navigate(`/tariff/${slug}`)
+  const handleConnect = (slug: string, period?: number) => {
+    navigate(period ? `/tariff/${slug}?period=${period}` : `/tariff/${slug}`)
   }
 
   return (
-    <Layout className="landing-layout">
+    <div className="mk-page">
       <Header />
-      <Content className="landing-content">
-        <div className="landing-container">
-          <div className="landing-section-medium landing-text-center">
-            <Title level={1} className="landing-title-large">
-              Тарифы
-            </Title>
-          </div>
+      <main className="mk-main">
+        <section className="mk-container mk-pricing-head">
+          <h1 className="mk-h1">Тарифы</h1>
+          <p className="mk-lead">
+            Выберите план и период подписки.
+          </p>
+        </section>
 
-          <Row gutter={[24, 24]} justify="center">
-            {tariffs.map((tariff) => (
-              <Col key={tariff.id} xs={24} sm={12} lg={8}>
-                <Card
-                  title={tariff.tariff_type.toUpperCase()}
-                  className="landing-card"
-                  loading={loading}
-                >
-                  <Space direction="vertical" size="middle" className="landing-full-width">
-                    <div>
-                      <Title level={4} className="landing-subtitle">Преимущества:</Title>
-                      <ul className="landing-list">
-                        {tariff.options.map((option, index) => (
-                          <li key={index} className="landing-list-item">{option}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <Text strong className="landing-text-dark">Варианты подписки:</Text>
-                      <ul className="landing-list landing-margin-top-small">
-                        {tariff.variants.map((variant) => (
-                          <li key={variant.id} className="landing-list-item-small">
-                            {variant.period} мес. - {variant.price} ₽
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <Button
-                      type="primary"
-                      block
-                      onClick={() => handleConnect(tariff.slug)}
-                      style={{ marginTop: '16px' }}
-                    >
-                      Подключить
-                    </Button>
-                  </Space>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        </div>
-      </Content>
+        <section className="mk-container mk-pricing">
+          {loading ? (
+            [0, 1, 2].map((i) => <div key={i} className="mk-plan mk-skeleton" />)
+          ) : tariffs.length === 0 ? (
+            <p className="mk-empty">Не удалось загрузить тарифы. Попробуйте обновить страницу.</p>
+          ) : (
+            tariffs.map((tariff) => (
+              <PlanCard key={tariff.id} tariff={tariff} onConnect={handleConnect} />
+            ))
+          )}
+        </section>
+      </main>
       <Footer />
-    </Layout>
+    </div>
   )
 }
 

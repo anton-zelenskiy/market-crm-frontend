@@ -282,3 +282,7 @@ button:focus-visible {
     width: 100% !important;
   }
 }
+
+.editable-cell:hover {
+  outline: 1px dashed #d9d9d9;
+}

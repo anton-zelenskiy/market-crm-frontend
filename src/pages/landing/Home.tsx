@@ -1,41 +1,135 @@
-import React from 'react'
-import { Layout, Typography, Button } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import Header from '../../components/landing/Header'
 import Footer from '../../components/landing/Footer'
-import './landing.css'
+import { useAuth } from '../../context/AuthContext'
+import './mk.css'
 
-const { Content } = Layout
-const { Title, Paragraph } = Typography
+const HERO_CHECKS = [
+  'Поставки по кластерам с учётом остатков и продаж',
+  'Грузоместа с учётом кратности коробов',
+  'Накладные сформированы',
+]
+
+const FEATURES = [
+  {
+    icon: '',
+    title: 'Поставки',
+    text: 'Формирование поставок с учётом остатков и продаж — для поддержания индекса локализации.',
+  },
+  {
+    icon: 'mk-icon--diamond',
+    title: 'Остатки',
+    text: 'История изменения остатков по каждому артикулу.',
+  },
+  {
+    icon: 'mk-icon--circle',
+    title: 'Честный ЗНАК',
+    text: 'Удобная генерация кодов маркировки и ввод их в оборот.',
+  },
+]
+
+const STEPS = [
+  {
+    title: 'Подключите кабинет',
+    text: 'Добавьте API-ключ Ozon, Wildberries или Яндекс Маркета — товары, остатки и продажи подтянутся автоматически.',
+  },
+  {
+    title: 'Укажите остатки',
+    text: 'Внесите количество товара по артикулам, доступное для отправки на маркетплейс.',
+  },
+  {
+    title: 'Сформируйте шаблон поставки',
+    text: 'Система подготовит список кластеров и рекомендуемое количество к поставке по каждому артикулу.',
+  },
+]
 
 const Home: React.FC = () => {
-  const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
+  const { hash } = useLocation()
+  const startUrl = isAuthenticated ? '/connections' : '/register'
+
+  useEffect(() => {
+    if (!hash) return
+    document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth' })
+  }, [hash])
 
   return (
-    <Layout className="landing-layout">
+    <div className="mk-page">
       <Header />
-      <Content className="landing-content">
-        <div className="landing-container-center">
-          <div className="landing-section">
-            <Title level={1} className="landing-title-large">
-              О продукте
-            </Title>
-            <Paragraph className="landing-paragraph">
-              Здесь будет описание продукта. Заполним позднее.
-            </Paragraph>
+      <main className="mk-main">
+        <section className="mk-container mk-hero">
+          <div className="mk-hero__text">
+            <h1 className="mk-h1">Поставки на маркетплейсы в&nbsp;один клик</h1>
+            <p className="mk-lead">
+              Market CRM сам распределит товары по кластерам, соберёт грузоместа и подготовит
+              документы.
+            </p>
+            <div className="mk-actions">
+              <Link to={startUrl} className="mk-btn mk-btn--primary mk-btn--lg mk-btn--raised">
+                Начать
+              </Link>
+              <Link to="/#how" className="mk-btn mk-btn--outline mk-btn--lg">
+                Как это работает
+              </Link>
+            </div>
           </div>
 
-          <Button
-            type="primary"
-            size="large"
-            onClick={() => navigate('/tariffs')}
-          >
-            Посмотреть тарифы
-          </Button>
-        </div>
-      </Content>
+          <div className="mk-demo">
+            <div className="mk-demo__head">
+              <span className="mk-demo__pill">Сформировать поставку</span>
+              <span className="mk-demo__hint">1 клик — и готово:</span>
+            </div>
+            <ul className="mk-checklist">
+              {HERO_CHECKS.map((text) => (
+                <li key={text} className="mk-checklist__item">
+                  <span className="mk-check">✓</span>
+                  {text}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section id="features" className="mk-container mk-section">
+          <h2 className="mk-h2">Всё, что нужно менеджеру маркетплейсов</h2>
+          <div className="mk-grid-3">
+            {FEATURES.map(({ icon, title, text }) => (
+              <div key={title} className="mk-card">
+                <span className={`mk-icon ${icon}`}>
+                  <span />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="how" className="mk-container mk-section">
+          <h2 className="mk-h2">Три шага до поставки</h2>
+          <div className="mk-grid-3">
+            {STEPS.map(({ title, text }, index) => (
+              <div key={title} className="mk-step">
+                <span className="mk-step__num">{index + 1}</span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mk-container mk-cta-wrap">
+          <div className="mk-cta">
+            <h2>Первая поставка — за пару минут после подключения</h2>
+            <Link to={startUrl} className="mk-btn mk-btn--primary mk-btn--lg">
+              Начать
+            </Link>
+          </div>
+        </section>
+      </main>
       <Footer />
-    </Layout>
+    </div>
   )
 }
 

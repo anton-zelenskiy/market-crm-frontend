@@ -35,6 +35,7 @@ import {
   type OzonProductUpdate,
 } from '../api/products'
 import { connectionsApi } from '../api/connections'
+import EditableCell from '../components/EditableCell'
 import { companiesApi, type Company } from '../api/companies'
 import { vendorProductsApi, type VendorProduct } from '../api/products'
 
@@ -204,6 +205,23 @@ const OzonProducts: React.FC = () => {
     }
   }
 
+  const handleBoxQuantityUpdate = async (record: OzonProduct, boxQuantity: number) => {
+    if (!connectionId) return
+
+    try {
+      const updated = await ozonProductsApi.update(parseInt(connectionId), record.id, {
+        box_quantity: boxQuantity,
+      })
+      setProducts((prev) =>
+        prev.map((p) => (p.id === record.id ? { ...p, box_quantity: updated.box_quantity } : p))
+      )
+      message.success('Сохранено')
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка сохранения товара')
+      throw error
+    }
+  }
+
   const columns = [
     {
       title: 'Артикул Ozon',
@@ -244,7 +262,15 @@ const OzonProducts: React.FC = () => {
       dataIndex: 'box_quantity',
       key: 'box_quantity',
       width: 120,
-      render: (quantity: number | null) => quantity ?? <span style={{ color: '#999' }}>Не задано</span>,
+      render: (quantity: number | null, record: OzonProduct) => (
+        <EditableCell
+          key={`${record.id}-box_quantity`}
+          value={quantity}
+          type="number"
+          renderValue={(v) => v ?? <span style={{ color: '#999' }}>Не задано</span>}
+          onSave={(newValue) => handleBoxQuantityUpdate(record, Number(newValue))}
+        />
+      ),
     },
     {
       title: 'Объем, л',

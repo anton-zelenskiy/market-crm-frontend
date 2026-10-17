@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Layout, Card, Button, Radio, Typography, Space, message, Spin } from 'antd'
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { message, Spin } from 'antd'
 import { subscriptionsApi } from '../../api/subscriptions'
 import type { Tariff } from '../../api/subscriptions'
 import { useAuth } from '../../context/AuthContext'
 import Header from '../../components/landing/Header'
 import Footer from '../../components/landing/Footer'
-import './landing.css'
-
-const { Content } = Layout
-const { Title, Text, Paragraph } = Typography
+import { formatPeriod, formatPrice } from '../../lib/tariffFormat'
+import './mk.css'
 
 const TariffDetail: React.FC = () => {
   const { slug } = useParams<{ slug: string }>()
+  const [searchParams] = useSearchParams()
   const [tariff, setTariff] = useState<Tariff | null>(null)
   const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
@@ -26,8 +25,10 @@ const TariffDetail: React.FC = () => {
       try {
         const data = await subscriptionsApi.getTariffBySlug(slug)
         setTariff(data)
-        if (data.variants.length > 0) {
-          setSelectedPeriod(data.variants[0].period)
+        const requested = Number(searchParams.get('period'))
+        const initial = data.variants.find((v) => v.period === requested) ?? data.variants[0]
+        if (initial) {
+          setSelectedPeriod(initial.period)
         }
       } catch (error) {
         console.error('Failed to fetch tariff:', error)
@@ -38,6 +39,7 @@ const TariffDetail: React.FC = () => {
     }
 
     fetchTariff()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug])
 
   const handleConnect = () => {
@@ -56,101 +58,84 @@ const TariffDetail: React.FC = () => {
 
   const selectedVariant = tariff?.variants.find((v) => v.period === selectedPeriod)
 
-  if (loading) {
-    return (
-      <Layout className="landing-layout">
-        <Header />
-        <Content className="landing-content-center">
+  const renderBody = () => {
+    if (loading) {
+      return (
+        <div className="mk-center">
           <Spin size="large" />
-        </Content>
-        <Footer />
-      </Layout>
-    )
-  }
+        </div>
+      )
+    }
 
-  if (!tariff) {
+    if (!tariff) {
+      return (
+        <div className="mk-center">
+          <h2 className="mk-h2">Тариф не найден</h2>
+          <Link to="/tariffs" className="mk-btn mk-btn--outline mk-btn--lg">
+            Все тарифы
+          </Link>
+        </div>
+      )
+    }
+
     return (
-      <Layout className="landing-layout">
-        <Header />
-        <Content className="landing-content-error">
-          <Title level={2} className="landing-text-dark">Тариф не найден</Title>
-        </Content>
-        <Footer />
-      </Layout>
+      <div className="mk-detail">
+        <Link to="/tariffs" className="mk-back">
+          ← Все тарифы
+        </Link>
+        <div className="mk-plan mk-plan--featured">
+          <h1 className="mk-plan__name" style={{ fontSize: 32 }}>
+            {tariff.tariff_type}
+          </h1>
+
+          <ul className="mk-features">
+            {tariff.options.map((option, index) => (
+              <li key={index}>
+                <span className="mk-check mk-check--sm">✓</span>
+                {option}
+              </li>
+            ))}
+          </ul>
+
+          <span className="mk-label">Период подписки</span>
+          <div className="mk-periods">
+            {tariff.variants.map((variant) => (
+              <button
+                key={variant.id}
+                type="button"
+                className={`mk-period${variant.period === selectedPeriod ? ' mk-period--active' : ''}`}
+                onClick={() => setSelectedPeriod(variant.period)}
+              >
+                {formatPeriod(variant.period)}
+                <small>{formatPrice(variant.price)}</small>
+              </button>
+            ))}
+          </div>
+
+          {selectedVariant && (
+            <div className="mk-summary">
+              Итого: {formatPrice(selectedVariant.price)} за {formatPeriod(selectedVariant.period)}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="mk-btn mk-btn--primary mk-btn--lg mk-btn--block mk-btn--raised"
+            onClick={handleConnect}
+          >
+            Подключить
+          </button>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Layout className="landing-layout">
+    <div className="mk-page">
       <Header />
-      <Content className="landing-content">
-        <div className="landing-container-narrow">
-          <Card className="landing-card-content">
-            <Space direction="vertical" size="large" className="landing-full-width">
-              <div>
-                <Title level={2} className="landing-title">
-                  {tariff.tariff_type.toUpperCase()}
-                </Title>
-                <Paragraph className="landing-text landing-paragraph-medium">
-                  Выберите период подписки
-                </Paragraph>
-              </div>
-
-              <div>
-                <Title level={4} className="landing-subtitle">Преимущества тарифа:</Title>
-                <ul className="landing-list landing-list-margin-top">
-                  {tariff.options.map((option, index) => (
-                    <li key={index} className="landing-list-item">{option}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <Title level={4} className="landing-subtitle">Период подписки:</Title>
-                <Radio.Group
-                  value={selectedPeriod}
-                  onChange={(e) => setSelectedPeriod(e.target.value)}
-                  className="tariff-radio-group"
-                >
-                  <Space direction="vertical" className="landing-full-width">
-                    {tariff.variants.map((variant) => (
-                      <Radio
-                        key={variant.id}
-                        value={variant.period}
-                        className="tariff-radio-item"
-                      >
-                        <span className="tariff-radio-text">
-                          {variant.period} месяц(ев) - {variant.price} ₽
-                        </span>
-                      </Radio>
-                    ))}
-                  </Space>
-                </Radio.Group>
-              </div>
-
-              {selectedVariant && (
-                <div className="tariff-summary">
-                  <Text strong className="tariff-summary-text">
-                    Итого: {selectedVariant.price} ₽ за {selectedVariant.period} месяц(ев)
-                  </Text>
-                </div>
-              )}
-
-              <Button
-                type="primary"
-                size="large"
-                block
-                onClick={handleConnect}
-                style={{ marginTop: '8px' }}
-              >
-                Подключить
-              </Button>
-            </Space>
-          </Card>
-        </div>
-      </Content>
+      <main className="mk-main">{renderBody()}</main>
       <Footer />
-    </Layout>
+    </div>
   )
 }
 

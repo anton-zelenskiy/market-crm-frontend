@@ -1,56 +1,24 @@
-import React, { useEffect, useState } from 'react'
-import { Layout, Typography, Space, Button, Dropdown, theme, Drawer, Grid } from 'antd'
+import React, { useState } from 'react'
+import { Dropdown, Drawer, Space, Typography } from 'antd'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import {
-  RightOutlined,
-  UserOutlined,
-  CrownOutlined,
-  MenuOutlined,
-} from '@ant-design/icons'
+import { RightOutlined, CrownOutlined, MenuOutlined, UserOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { useAuth } from '../../context/AuthContext'
+import '../../pages/landing/mk.css'
 
-const { Header: AntHeader } = Layout
-const { Title, Text } = Typography
+const { Text } = Typography
 
-const navLinkStyle: React.CSSProperties = {
-  textDecoration: 'none',
-  color: 'rgba(0, 0, 0, 0.88)',
-  fontWeight: 500,
-  transition: 'color 0.2s ease',
-}
-
-const isActivePath = (pathname: string, to: string): boolean => {
-  if (to === '/') return pathname === '/'
-  return pathname === to || pathname.startsWith(`${to}/`)
-}
+const NAV_LINKS = [
+  { to: '/#features', label: 'Возможности' },
+  { to: '/#how', label: 'Как это работает' },
+  { to: '/tariffs', label: 'Тарифы' },
+]
 
 const Header: React.FC = () => {
-  const { token } = theme.useToken()
-  const screens = Grid.useBreakpoint()
-  const isDesktopNav = screens.md ?? true
   const [drawerOpen, setDrawerOpen] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-
-  useEffect(() => {
-    setDrawerOpen(false)
-  }, [pathname])
-
-  useEffect(() => {
-    if (isDesktopNav) {
-      setDrawerOpen(false)
-    }
-  }, [isDesktopNav])
-
-  const activeNavLinkStyle: React.CSSProperties = {
-    ...navLinkStyle,
-    color: token.colorPrimary,
-    fontWeight: 600,
-    borderBottom: `2px solid ${token.colorPrimary}`,
-    paddingBottom: '2px',
-  }
 
   const sub = user?.active_subscription
   const tariffLabel = sub
@@ -71,137 +39,84 @@ const Header: React.FC = () => {
 
   const closeDrawer = () => setDrawerOpen(false)
 
-  const drawerLink = (to: string, label: string) => (
-    <Link
-      to={to}
-      onClick={closeDrawer}
-      className={`landing-drawer-link${isActivePath(pathname, to) ? ' landing-drawer-link--active' : ''}`}
-    >
-      {label}
-    </Link>
-  )
-
   return (
     <>
-      <AntHeader className="landing-header">
-        <Link to="/" className="landing-header__brand" onClick={closeDrawer}>
-          <div className="landing-header__logo">M</div>
-          <Title level={3} className="landing-header__title">
-            Market CRM
-          </Title>
-        </Link>
+      <header className="mk-header">
+        <div className="mk-container mk-header__inner">
+          <Link to="/" className="mk-brand" onClick={closeDrawer}>
+            <img src="/favicon.svg" alt="" />
+            <span>Market CRM</span>
+          </Link>
 
-        {isDesktopNav ? (
-          <Space size="large" className="landing-header__nav-desktop" style={{ fontSize: '15px' }}>
-            <Link
-              to="/"
-              style={isActivePath(pathname, '/') ? activeNavLinkStyle : navLinkStyle}
-            >
-              Главная
-            </Link>
-            <Link
-              to="/instruction"
-              style={
-                isActivePath(pathname, '/instruction') ? activeNavLinkStyle : navLinkStyle
-              }
-            >
-              Инструкция
-            </Link>
-            <Link
-              to="/tariffs"
-              style={isActivePath(pathname, '/tariffs') ? activeNavLinkStyle : navLinkStyle}
-            >
-              Тарифы
-            </Link>
-            {isAuthenticated ? (
-              <Dropdown
-                menu={{ items: userMenuItems }}
-                trigger={['click']}
-                placement="bottomRight"
+          <nav className="mk-nav">
+            {NAV_LINKS.map(({ to, label }) => (
+              <Link
+                key={to}
+                to={to}
+                className={pathname === to ? 'mk-nav__link--active' : undefined}
               >
-                <Button
-                  type="text"
-                  icon={<UserOutlined />}
-                  className="landing-header__user-btn"
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                  {user?.email ?? ''}
-                  <CrownOutlined style={{ fontSize: '12px', color: '#8c8c8c' }} />
-                </Button>
-              </Dropdown>
-            ) : (
-              <Button type="primary" onClick={() => navigate('/login')} icon={<RightOutlined />}>
-                Войти
-              </Button>
-            )}
-          </Space>
-        ) : (
-          <div className="landing-header__mobile-actions">
+                {label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="mk-header__actions">
             {isAuthenticated ? (
-              <Dropdown
-                menu={{ items: userMenuItems }}
-                trigger={['click']}
-                placement="bottomRight"
-              >
-                <Button type="text" icon={<UserOutlined />} aria-label="Аккаунт" />
-              </Dropdown>
+              <>
+                <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomRight">
+                  <button type="button" className="mk-btn mk-btn--ghost">
+                    <UserOutlined />
+                    <span className="mk-header__user">{user?.email ?? ''}</span>
+                  </button>
+                </Dropdown>
+                <Link to="/connections" className="mk-btn mk-btn--primary">
+                  CRM
+                </Link>
+              </>
             ) : (
-              <Button type="primary" size="small" onClick={() => navigate('/login')}>
-                Войти
-              </Button>
+              <>
+                <Link to="/login" className="mk-btn mk-btn--ghost">
+                  Войти
+                </Link>
+                <Link to="/register" className="mk-btn mk-btn--primary">
+                  Начать
+                </Link>
+              </>
             )}
-            <Button
-              type="text"
-              icon={<MenuOutlined />}
+            <button
+              type="button"
+              className="mk-btn mk-btn--ghost mk-header__burger"
               aria-label="Открыть меню"
               onClick={() => setDrawerOpen(true)}
-            />
+            >
+              <MenuOutlined />
+            </button>
           </div>
-        )}
-      </AntHeader>
+        </div>
+      </header>
 
       <Drawer
         title="Меню"
         placement="right"
         size={280}
-        onClose={() => setDrawerOpen(false)}
+        onClose={closeDrawer}
         open={drawerOpen}
-        className="landing-nav-drawer"
       >
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-          {drawerLink('/', 'Главная')}
-          {drawerLink('/instruction', 'Инструкция')}
-          {drawerLink('/tariffs', 'Тарифы')}
-          {isAuthenticated ? (
+          <div>
+            {NAV_LINKS.map(({ to, label }) => (
+              <Link key={to} to={to} onClick={closeDrawer} className="mk-drawer-link">
+                {label}
+              </Link>
+            ))}
+          </div>
+          {isAuthenticated && (
             <>
               <Text type="secondary" style={{ wordBreak: 'break-all' }}>
                 {user?.email}
               </Text>
               <Text type="secondary">{tariffLabel}</Text>
-              <Button
-                type="primary"
-                block
-                icon={<RightOutlined />}
-                onClick={() => {
-                  navigate('/connections')
-                  closeDrawer()
-                }}
-              >
-                CRM
-              </Button>
             </>
-          ) : (
-            <Button
-              type="primary"
-              block
-              icon={<RightOutlined />}
-              onClick={() => {
-                navigate('/login')
-                closeDrawer()
-              }}
-            >
-              Войти
-            </Button>
           )}
         </Space>
       </Drawer>

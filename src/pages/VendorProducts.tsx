@@ -29,8 +29,11 @@ import {
 import { vendorProductsApi, type VendorProduct, type VendorProductCreate, type VendorProductUpdate } from '../api/products'
 import { companiesApi } from '../api/companies'
 import { connectionsApi } from '../api/connections'
+import EditableCell from '../components/EditableCell'
 
 const { Title } = Typography
+
+type EditableField = 'offer_id' | 'name' | 'quantity'
 
 const VendorProducts: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
@@ -170,25 +173,56 @@ const VendorProducts: React.FC = () => {
     }
   }
 
+  const handleInlineUpdate = async (
+    record: VendorProduct,
+    field: EditableField,
+    value: string | number
+  ) => {
+    if (!connectionId) return
+
+    try {
+      const updated = await vendorProductsApi.update(parseInt(connectionId), record.id, {
+        [field]: value,
+      } as VendorProductUpdate)
+      setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+      message.success('Сохранено')
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Ошибка сохранения товара')
+      throw error
+    }
+  }
+
+  const renderEditable = (field: EditableField) => (value: string | number, record: VendorProduct) => (
+    <EditableCell
+      key={`${record.id}-${field}`}
+      value={value}
+      type={field === 'quantity' ? 'number' : 'text'}
+      renderValue={field === 'quantity' ? (v) => Number(v).toLocaleString() : undefined}
+      onSave={(newValue) => handleInlineUpdate(record, field, newValue)}
+    />
+  )
+
   const columns = [
     {
       title: 'Артикул',
       dataIndex: 'offer_id',
       key: 'offer_id',
       width: 150,
+      render: renderEditable('offer_id'),
     },
     {
       title: 'Наименование',
       dataIndex: 'name',
       key: 'name',
       width: 400,
+      render: renderEditable('name'),
     },
     {
       title: 'Кол-во на складе',
       dataIndex: 'quantity',
       key: 'quantity',
       width: 120,
-      render: (quantity: number) => quantity.toLocaleString(),
+      render: renderEditable('quantity'),
     },
     {
       title: 'Действия',

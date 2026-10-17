@@ -33,7 +33,7 @@ import {
 } from '@ant-design/icons'
 import { AgGridReact } from 'ag-grid-react'
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community'
-import type { ColDef, ColGroupDef, CellValueChangedEvent } from 'ag-grid-community'
+import type { ColDef, ColGroupDef, CellValueChangedEvent, GridApi, GridReadyEvent } from 'ag-grid-community'
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule])
@@ -145,16 +145,67 @@ const getWarehouseTypeLabel = (warehouseType: string | undefined): string => {
   return warehouseType ? typeMap[warehouseType] || warehouseType : ''
 }
 
-// Memoized table component to prevent re-renders when warehouse state changes
+const TABLE_MIN_HEIGHT = 300
+// Gap kept below the grid when it is capped to the viewport height
+const TABLE_VIEWPORT_MARGIN = 16
+// Room for the horizontal scrollbar and grid borders
+const TABLE_CHROME_HEIGHT = 20
+
+// Memoized table component to prevent re-renders when warehouse state changes.
+// Grid height follows its content (header + rows) but is capped to the viewport, so
+// long tables scroll inside the grid and the column header stays visible.
 const MemoizedTable = memo(({ columnDefs, rowData, onCellValueChanged }: {
   columnDefs: (ColDef | ColGroupDef)[]
   rowData: any[]
   onCellValueChanged: (event: CellValueChangedEvent) => void
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const gridApiRef = useRef<GridApi | null>(null)
+  const [height, setHeight] = useState(TABLE_MIN_HEIGHT)
+
+  const updateHeight = useCallback(() => {
+    const api = gridApiRef.current
+    const container = containerRef.current
+    if (!api || api.isDestroyed() || !container) return
+
+    const headerHeight = container.querySelector<HTMLElement>('.ag-header')?.offsetHeight ?? 0
+    const rowCount = api.getDisplayedRowCount()
+    const lastRow = rowCount > 0 ? api.getDisplayedRowAtIndex(rowCount - 1) : null
+    const rowsHeight = lastRow ? (lastRow.rowTop ?? 0) + (lastRow.rowHeight ?? 0) : 0
+
+    const contentHeight = headerHeight + rowsHeight + TABLE_CHROME_HEIGHT
+    const maxHeight = Math.max(TABLE_MIN_HEIGHT, window.innerHeight - TABLE_VIEWPORT_MARGIN)
+    setHeight(Math.min(Math.max(contentHeight, TABLE_MIN_HEIGHT), maxHeight))
+  }, [])
+
+  // Header height changes with column visibility/width because of wrapped header text
+  const headerObserverRef = useRef<ResizeObserver | null>(null)
+
+  useEffect(() => {
+    window.addEventListener('resize', updateHeight)
+    return () => {
+      window.removeEventListener('resize', updateHeight)
+      headerObserverRef.current?.disconnect()
+    }
+  }, [updateHeight])
+
+  const handleGridReady = useCallback((event: GridReadyEvent) => {
+    gridApiRef.current = event.api
+    const header = containerRef.current?.querySelector('.ag-header')
+    if (header) {
+      headerObserverRef.current?.disconnect()
+      headerObserverRef.current = new ResizeObserver(() => updateHeight())
+      headerObserverRef.current.observe(header)
+    }
+    updateHeight()
+  }, [updateHeight])
+
   return (
-    <div style={{ height: '1000px', width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+    <div ref={containerRef} style={{ height, width: '100%' }}>
       <AgGridReact
         theme={themeAlpine}
+        onGridReady={handleGridReady}
+        onModelUpdated={updateHeight}
         columnDefs={columnDefs}
         rowData={rowData}
         getRowId={(params) => params.data.offer_id}
