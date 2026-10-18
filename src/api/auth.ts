@@ -22,6 +22,19 @@ export interface ValidateTokenResponse {
   email: string | null
 }
 
+export interface RegisteredUser {
+  id: number
+  email: string | null
+  is_verified: boolean
+}
+
+export interface MessageResponse {
+  message: string
+}
+
+// Login error detail for accounts whose email isn't confirmed yet.
+export const EMAIL_NOT_VERIFIED = 'email_not_verified'
+
 export interface CompleteRegistrationRequest {
   token: string
   email: string
@@ -42,6 +55,19 @@ export const validateRegistrationToken = async (token: string): Promise<Validate
   return response.data
 }
 
-export const completeRegistration = async (data: CompleteRegistrationRequest): Promise<void> => {
-  await api.post('/auth/complete-registration', data)
+export const completeRegistration = async (
+  data: CompleteRegistrationRequest,
+): Promise<RegisteredUser> => {
+  const response = await api.post<RegisteredUser>('/auth/complete-registration', data)
+  return response.data
+}
+
+export const verifyEmail = async (token: string): Promise<MessageResponse> => {
+  const response = await api.post<MessageResponse>('/auth/verify-email', { token })
+  return response.data
+}
+
+export const resendVerification = async (email: string): Promise<MessageResponse> => {
+  const response = await api.post<MessageResponse>('/auth/resend-verification', { email })
+  return response.data
 }

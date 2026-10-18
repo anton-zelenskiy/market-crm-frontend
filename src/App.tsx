@@ -21,6 +21,7 @@ import { TaskProgressBar } from './components/TaskProgressBar'
 import Login from './pages/landing/Login'
 import Register from './pages/landing/Register'
 import CompleteRegistration from './pages/landing/CompleteRegistration'
+import VerifyEmail from './pages/landing/VerifyEmail'
 import Home from './pages/landing/Home'
 import TariffDetail from './pages/landing/TariffDetail'
 import Tariffs from './pages/landing/Tariffs'
@@ -324,6 +325,7 @@ const App: React.FC = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/complete-registration" element={<CompleteRegistration />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/" element={<Home />} />
             <Route path="/tariffs" element={<Tariffs />} />
             <Route path="/tariff/:slug" element={<TariffDetail />} />

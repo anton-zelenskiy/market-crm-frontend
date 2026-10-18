@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { Form, Input, Button, Card, Alert, Typography, message } from 'antd'
+import { Form, Input, Button, Card, Alert, Typography } from 'antd'
 import { LockOutlined, MailOutlined } from '@ant-design/icons'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { register as registerApi } from '../../api/auth'
+import ResendVerificationButton from '../../components/ResendVerificationButton'
 import { APP_NAME } from '../../constants'
 import './landing.css'
 
@@ -11,7 +12,7 @@ const { Title, Text } = Typography
 const Register: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
 
   const onFinish = async (values: any) => {
     setLoading(true)
@@ -21,13 +22,36 @@ const Register: React.FC = () => {
         email: values.email,
         password: values.password,
       })
-      message.success('Регистрация успешна! Пожалуйста, войдите.')
-      navigate('/login')
+      setRegisteredEmail(values.email)
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Ошибка регистрации')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (registeredEmail) {
+    return (
+      <div className="auth-container">
+        <Card className="auth-card">
+          <div className="auth-header">
+            <Title level={2}>{APP_NAME}</Title>
+            <Title level={4} type="secondary">Подтвердите email</Title>
+          </div>
+          <Alert
+            message={`Мы отправили письмо на ${registeredEmail}`}
+            description="Перейдите по ссылке из письма, чтобы завершить регистрацию. Если письма нет, проверьте папку «Спам»."
+            type="success"
+            showIcon
+            className="auth-error"
+          />
+          <ResendVerificationButton email={registeredEmail} startCooldown block />
+          <div className="auth-link">
+            <Text>Уже подтвердили? <Link to="/login">Войти</Link></Text>
+          </div>
+        </Card>
+      </div>
+    )
   }
 
   return (

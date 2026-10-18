@@ -7,6 +7,7 @@ import {
   completeRegistration,
   type ValidateTokenResponse,
 } from '../../api/auth'
+import ResendVerificationButton from '../../components/ResendVerificationButton'
 import { APP_NAME } from '../../constants'
 import './landing.css'
 
@@ -23,6 +24,7 @@ const CompleteRegistration: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [verificationEmail, setVerificationEmail] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) {
@@ -46,9 +48,17 @@ const CompleteRegistration: React.FC = () => {
     setLoading(true)
     setSubmitError(null)
     try {
-      await completeRegistration({ token, email: values.email, password: values.password })
+      const user = await completeRegistration({
+        token,
+        email: values.email,
+        password: values.password,
+      })
       setDone(true)
-      setTimeout(() => navigate('/login'), 2000)
+      if (user.is_verified) {
+        setTimeout(() => navigate('/login'), 2000)
+      } else {
+        setVerificationEmail(values.email)
+      }
     } catch (err: any) {
       setSubmitError(err.response?.data?.detail || 'Ошибка завершения регистрации.')
     } finally {
@@ -77,12 +87,25 @@ const CompleteRegistration: React.FC = () => {
           <Alert message={tokenError} type="error" showIcon className="auth-error" />
         )}
 
-        {!validating && !tokenError && done && (
+        {!validating && !tokenError && done && !verificationEmail && (
           <Alert
             message="Регистрация завершена! Перенаправляем на страницу входа…"
             type="success"
             showIcon
           />
+        )}
+
+        {!validating && !tokenError && done && verificationEmail && (
+          <>
+            <Alert
+              message={`Мы отправили письмо на ${verificationEmail}`}
+              description="Перейдите по ссылке из письма, чтобы подтвердить email и войти. Если письма нет, проверьте папку «Спам»."
+              type="success"
+              showIcon
+              className="auth-error"
+            />
+            <ResendVerificationButton email={verificationEmail} startCooldown block />
+          </>
         )}
 
         {!validating && !tokenError && !done && (

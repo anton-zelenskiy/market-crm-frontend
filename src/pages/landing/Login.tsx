@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { Form, Input, Button, Card, Alert, Typography } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useNavigate, Link } from 'react-router-dom'
-import { login as loginApi } from '../../api/auth'
+import { EMAIL_NOT_VERIFIED, login as loginApi } from '../../api/auth'
+import ResendVerificationButton from '../../components/ResendVerificationButton'
 import { useAuth } from '../../context/AuthContext'
 import { APP_NAME } from '../../constants'
 import './landing.css'
@@ -12,12 +13,14 @@ const { Title } = Typography
 const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
   const { login } = useAuth()
   const navigate = useNavigate()
 
   const onFinish = async (values: any) => {
     setLoading(true)
     setError(null)
+    setUnverifiedEmail(null)
     try {
       const response = await loginApi({
         email: values.email,
@@ -26,6 +29,10 @@ const Login: React.FC = () => {
       await login(response.access_token, response.refresh_token)
       navigate('/')
     } catch (err: any) {
+      if (err.response?.data?.detail === EMAIL_NOT_VERIFIED) {
+        setUnverifiedEmail(values.email)
+        return
+      }
       setError(err.response?.data?.detail || 'Ошибка входа')
     } finally {
       setLoading(false)
@@ -41,6 +48,24 @@ const Login: React.FC = () => {
         </div>
         
         {error && <Alert message={error} type="error" showIcon className="auth-error" />}
+
+        {unverifiedEmail && (
+          <Alert
+            message="Email не подтверждён"
+            description={
+              <>
+                <div style={{ marginBottom: 12 }}>
+                  Перейдите по ссылке из письма, отправленного на {unverifiedEmail}. Если письма
+                  нет, проверьте папку «Спам».
+                </div>
+                <ResendVerificationButton email={unverifiedEmail} />
+              </>
+            }
+            type="warning"
+            showIcon
+            className="auth-error"
+          />
+        )}
         
         <Form
           name="login_form"
