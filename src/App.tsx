@@ -1,23 +1,11 @@
-import React, { useEffect, useState } from 'react'
-import { Layout, Menu, Button, theme, ConfigProvider, Drawer, Grid } from 'antd'
+import React from 'react'
+import { ConfigProvider } from 'antd'
 import ruRU from 'antd/locale/ru_RU'
 import './lib/dayjs'
-import {
-  MenuOutlined,
-  // UploadOutlined,
-  // DatabaseOutlined,
-  ShopOutlined,
-  LinkOutlined,
-  HomeOutlined,
-  LogoutOutlined,
-} from '@ant-design/icons'
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import {
-  TaskProgressProvider,
-  useTaskProgress,
-} from './context/TaskProgressContext'
-import { TaskProgressBar } from './components/TaskProgressBar'
+import { TaskProgressProvider } from './context/TaskProgressContext'
+import CrmShell from './components/CrmShell'
 import Login from './pages/landing/Login'
 import Register from './pages/landing/Register'
 import CompleteRegistration from './pages/landing/CompleteRegistration'
@@ -52,8 +40,6 @@ import ChestnyZnakGtins from './pages/ChestnyZnakGtins'
 import ChestnyZnakGenerate from './pages/ChestnyZnakGenerate'
 import ChestnyZnakJobs from './pages/ChestnyZnakJobs'
 
-const { Header, Content } = Layout
-
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth()
   const location = useLocation()
@@ -84,234 +70,75 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 }
 
 const DashboardLayout: React.FC = () => {
-  const screens = Grid.useBreakpoint()
-  const isDesktopNav = screens.md ?? true
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const {
-    token: { colorBgContainer, borderRadiusLG },
-  } = theme.useToken()
-  const { logout, isAdmin } = useAuth()
-  const { tasks } = useTaskProgress()
-  const location = useLocation()
-
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
-
-  useEffect(() => {
-    if (isDesktopNav) {
-      setMobileMenuOpen(false)
-    }
-  }, [isDesktopNav])
-
-  const allMenuItems = [
-    {
-      key: '/',
-      icon: <HomeOutlined />,
-      label: <Link to="/">Главная</Link>,
-    },
-    {
-      key: '/connections',
-      icon: <LinkOutlined />,
-      label: <Link to="/connections">API Подключения</Link>,
-    },
-    {
-      key: '/companies',
-      icon: <ShopOutlined />,
-      label: <Link to="/companies">Компании</Link>,
-    },
-    // {
-    //   key: '/data-sources',
-    //   icon: <DatabaseOutlined />,
-    //   label: <Link to="/data-sources">Источники данных</Link>,
-    //   adminOnly: true,
-    // },
-    // {
-    //   key: '/reports',
-    //   icon: <UploadOutlined />,
-    //   label: <Link to="/reports">Отчеты</Link>,
-    //   adminOnly: true,
-    // },
-  ]
-
-  const menuItems = allMenuItems.filter(
-    (item) => !('adminOnly' in item) || isAdmin
-  )
-
-  const logoutItem = {
-    key: 'logout',
-    icon: <LogoutOutlined />,
-    label: 'Выйти',
-    onClick: logout,
-  }
-
-  const handleMenuClick = ({ key }: { key: string }) => {
-    if (key === 'logout') {
-      logout()
-    }
-  }
-
-  // Determine selected menu key based on current path
-  const getSelectedKey = () => {
-    const path = location.pathname
-    if (path.startsWith('/connections')) {
-      return '/connections'
-    }
-    if (path.startsWith('/companies')) {
-      return '/companies'
-    }
-    if (path.startsWith('/data-sources')) {
-      return '/data-sources'
-    }
-    if (path.startsWith('/reports')) {
-      return '/reports'
-    }
-    return path
-  }
-
-  const selectedKey = getSelectedKey()
-
-  const contentMargin = isDesktopNav ? '24px 16px' : '12px 8px'
-  const contentPadding = isDesktopNav ? '32px' : '16px'
-
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ display: 'flex', alignItems: 'center', padding: '0 16px', background: '#001529' }}>
-        {isDesktopNav ? (
-          <>
-            <Menu
-              theme="dark"
-              mode="horizontal"
-              selectedKeys={[selectedKey]}
-              items={menuItems}
-              onClick={handleMenuClick}
-              style={{ flex: 1, minWidth: 0 }}
-            />
-            <Menu
-              theme="dark"
-              mode="horizontal"
-              selectable={false}
-              items={[logoutItem]}
-              onClick={handleMenuClick}
-              style={{ flexShrink: 0 }}
-            />
-          </>
-        ) : (
-          <Button
-            type="text"
-            icon={<MenuOutlined style={{ color: '#fff' }} />}
-            onClick={() => setMobileMenuOpen(true)}
-            style={{ fontSize: '16px' }}
-          />
-        )}
-      </Header>
-      <Drawer
-        title={null}
-        placement="left"
-        closable
-        onClose={() => setMobileMenuOpen(false)}
-        open={!isDesktopNav && mobileMenuOpen}
-        styles={{ body: { padding: 0, background: '#001529' } }}
-        size={280}
-      >
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          items={[...menuItems, logoutItem]}
-          onClick={handleMenuClick}
+    <CrmShell>
+      <Routes>
+        <Route path="/companies" element={<Companies />} />
+        <Route path="/companies/:id" element={<CompanyDetail />} />
+        <Route path="/connections" element={<Connections />} />
+        <Route path="/connections/:connectionId" element={<ConnectionDetail />} />
+        <Route path="/connections/:connectionId/vendor-products" element={<VendorProducts />} />
+        <Route path="/connections/:connectionId/ozon-products" element={<OzonProducts />} />
+        <Route path="/connections/:connectionId/wb-products" element={<WbProducts />} />
+        <Route path="/connections/:connectionId/fulfillments" element={<Fulfillments />} />
+        <Route path="/connections/:connectionId/product-categories" element={<ProductCategories />} />
+        <Route path="/connections/:connectionId/fbs-orders" element={<FBSOrders />} />
+        <Route path="/connections/:connectionId/fulfillment-supplies" element={<FulfillmentSupplies />} />
+        <Route path="/connections/:connectionId/fbs-shipments" element={<FBSShipments />} />
+        <Route path="/connections/:connectionId/supplies" element={<Supplies />} />
+        <Route path="/connections/:connectionId/chestny-znak/gtins" element={<ChestnyZnakGtins />} />
+        <Route path="/connections/:connectionId/chestny-znak/generate" element={<ChestnyZnakGenerate />} />
+        <Route path="/connections/:connectionId/chestny-znak/jobs" element={<ChestnyZnakJobs />} />
+        <Route path="/connections/:connectionId/stock-history" element={<StockHistory />} />
+        <Route path="/connections/:connectionId/bookkeeping" element={<BookkeepingPage />} />
+        <Route path="/connections/:connectionId/supply-templates" element={<SupplyTemplates />} />
+        <Route path="/connections/:connectionId/supply-templates/:snapshotId" element={<SupplyTemplateDetail />} />
+        <Route path="/connections/:connectionId/supply-templates/:snapshotId/drafts/:draftId" element={<SupplyDraftDetail />} />
+        <Route
+          path="/data-sources"
+          element={
+            <AdminRoute>
+              <DataSources />
+            </AdminRoute>
+          }
         />
-      </Drawer>
-      <Layout className="crm-dashboard-inner">
-        <Content
-          className="crm-dashboard-content"
-          style={{
-            margin: contentMargin,
-            padding: contentPadding,
-            minHeight: 280,
-            background: colorBgContainer,
-            borderRadius: borderRadiusLG,
-            maxWidth: '100%',
-            paddingBottom: tasks.length > 0 ? 96 : contentPadding,
-          }}
-        >
-          <Routes>
-            <Route path="/companies" element={<Companies />} />
-            <Route path="/companies/:id" element={<CompanyDetail />} />
-            <Route path="/connections" element={<Connections />} />
-            <Route path="/connections/:connectionId" element={<ConnectionDetail />} />
-            <Route path="/connections/:connectionId/vendor-products" element={<VendorProducts />} />
-            <Route path="/connections/:connectionId/ozon-products" element={<OzonProducts />} />
-            <Route path="/connections/:connectionId/wb-products" element={<WbProducts />} />
-            <Route path="/connections/:connectionId/fulfillments" element={<Fulfillments />} />
-            <Route path="/connections/:connectionId/product-categories" element={<ProductCategories />} />
-            <Route path="/connections/:connectionId/fbs-orders" element={<FBSOrders />} />
-            <Route path="/connections/:connectionId/fulfillment-supplies" element={<FulfillmentSupplies />} />
-            <Route path="/connections/:connectionId/fbs-shipments" element={<FBSShipments />} />
-            <Route path="/connections/:connectionId/supplies" element={<Supplies />} />
-            <Route path="/connections/:connectionId/chestny-znak/gtins" element={<ChestnyZnakGtins />} />
-            <Route path="/connections/:connectionId/chestny-znak/generate" element={<ChestnyZnakGenerate />} />
-            <Route path="/connections/:connectionId/chestny-znak/jobs" element={<ChestnyZnakJobs />} />
-            <Route path="/connections/:connectionId/stock-history" element={<StockHistory />} />
-            <Route path="/connections/:connectionId/bookkeeping" element={<BookkeepingPage />} />
-            <Route path="/connections/:connectionId/supply-templates" element={<SupplyTemplates />} />
-            <Route path="/connections/:connectionId/supply-templates/:snapshotId" element={<SupplyTemplateDetail />} />
-            <Route path="/connections/:connectionId/supply-templates/:snapshotId/drafts/:draftId" element={<SupplyDraftDetail />} />
-            <Route
-              path="/data-sources"
-              element={
-                <AdminRoute>
-                  <DataSources />
-                </AdminRoute>
-              }
-            />
-            <Route path="/connections/:connectionId/ozon-clusters" element={<Clusters />} />
-            <Route
-              path="/connections/:connectionId/wb-supply-plans"
-              element={<SupplyPlanningRunner />}
-            />
-            <Route
-              path="/connections/:connectionId/redistribution-orders"
-              element={<RedistributionOrders />}
-            />
-            <Route
-              path="/reports"
-              element={
-                <AdminRoute>
-                  <Reports />
-                </AdminRoute>
-              }
-            />
-          </Routes>
-        </Content>
-        <TaskProgressBar />
-      </Layout>
-    </Layout>
+        <Route path="/connections/:connectionId/ozon-clusters" element={<Clusters />} />
+        <Route
+          path="/connections/:connectionId/wb-supply-plans"
+          element={<SupplyPlanningRunner />}
+        />
+        <Route
+          path="/connections/:connectionId/redistribution-orders"
+          element={<RedistributionOrders />}
+        />
+        <Route
+          path="/reports"
+          element={
+            <AdminRoute>
+              <Reports />
+            </AdminRoute>
+          }
+        />
+      </Routes>
+    </CrmShell>
   )
 }
 
-// Soft color theme configuration
+// Warm theme matching the landing page
 const softTheme = {
   token: {
-    colorBgContainer: '#faf9f7',
-    colorBgLayout: '#e8e6e3',
-    colorBgBase: '#faf9f7',
-    colorBgElevated: '#faf9f7',
-    colorBorderSecondary: '#e0ddd8',
-    colorFillQuaternary: '#f0eeeb',
+    colorPrimary: '#12a37f',
+    colorLink: '#0e8466',
+    colorBgLayout: '#faf6f0',
+    colorBgContainer: '#ffffff',
+    colorBorderSecondary: '#eee6da',
+    colorText: '#2a2622',
+    borderRadius: 12,
+    fontFamily: 'Nunito, system-ui, sans-serif',
   },
   components: {
-    Layout: {
-      headerBg: '#f5f4f1',
-      bodyBg: '#e8e6e3',
-      siderBg: '#001529',
-    },
-    Table: {
-      headerBg: '#f0eeeb',
-    },
-    Card: {
-      colorBgContainer: '#faf9f7',
-    },
+    Button: { primaryShadow: 'none', fontWeight: 700 },
+    Table: { headerBg: '#f6f0e7', borderColor: '#eee6da' },
   },
 }
 

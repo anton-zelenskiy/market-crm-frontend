@@ -1657,7 +1657,7 @@ const SupplyTemplateDetail: React.FC = () => {
           </div>
 
           <Title level={2} style={{ margin: 0 }}>
-            Формирование поставки - {company?.name || ''}
+            Формирование поставки
           </Title>
 
           <div className="crm-split-header">

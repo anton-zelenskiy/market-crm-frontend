@@ -339,7 +339,7 @@ const Fulfillments: React.FC = () => {
             </div>
           </div>
           <Title level={2} style={{ margin: 0 }}>
-            Фулфилменты{company && ': ' + company.name}
+            Фулфилменты
           </Title>
           <Table
             columns={columns}

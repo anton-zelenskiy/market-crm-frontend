@@ -14,7 +14,6 @@ import dayjs, { formatDate } from '../lib/dayjs'
 import {
   PlusOutlined,
   DeleteOutlined,
-  FileTextOutlined,
 } from '@ant-design/icons'
 import {
   suppliesApi,
@@ -29,7 +28,7 @@ import {
 import SupplyConfigModal, {
   type SupplyConfigFormValues,
 } from '../components/SupplyConfigModal'
-import { connectionsApi, type Connection } from '../api/connections'
+import { connectionsApi } from '../api/connections'
 import { companiesApi, type Company } from '../api/companies'
 import { ozonClustersApi, type OzonCluster } from '../api/clusters'
 import { ozonProductsApi, type OzonProduct } from '../api/products'
@@ -40,7 +39,6 @@ const SupplyTemplates: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
   const navigate = useNavigate()
   const [snapshots, setSnapshots] = useState<SupplySnapshotResponse[]>([])
-  const [connection, setConnection] = useState<Connection | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -81,7 +79,6 @@ const SupplyTemplates: React.FC = () => {
         connectionsApi.getById(parseInt(connectionId)),
       ])
       setSnapshots(snapshotsData)
-      setConnection(connectionData)
       
       const companyData = await companiesApi.getById(connectionData.company_id)
       setCompany(companyData)
@@ -289,7 +286,7 @@ const SupplyTemplates: React.FC = () => {
           </div>
 
           <Title level={2} style={{ margin: 0 }}>
-            <FileTextOutlined /> Шаблоны поставок - {company?.name} ({connection?.data_source?.title})
+            Шаблоны поставок
           </Title>
 
           <SupplyConfigModal

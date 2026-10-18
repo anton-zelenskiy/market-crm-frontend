@@ -36,6 +36,7 @@ import {
 } from '../api/products'
 import { connectionsApi } from '../api/connections'
 import EditableCell from '../components/EditableCell'
+import { PageToolbar } from '../components/PageToolbar'
 import { companiesApi, type Company } from '../api/companies'
 import { vendorProductsApi, type VendorProduct } from '../api/products'
 
@@ -370,24 +371,31 @@ const OzonProducts: React.FC = () => {
                     </Button>
                   </Tooltip>
                 </Upload>
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                  Добавить товар
-                </Button>
               </Space>
             </div>
           </div>
 
           <Title level={2} style={{ margin: 0 }}>
-            Товары Ozon{company && ': ' + company.name}
+            Товары Ozon
           </Title>
 
-          <Input
-            placeholder="Поиск по артикулу, SKU или названию"
-            prefix={<SearchOutlined />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            allowClear
-            style={{ width: '100%', maxWidth: 420 }}
+          <PageToolbar
+            marginBottom={0}
+            title={
+              <Input
+                placeholder="Поиск по артикулу, SKU или названию"
+                prefix={<SearchOutlined />}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                allowClear
+                style={{ width: '100%', maxWidth: 420 }}
+              />
+            }
+            actions={
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+                Добавить товар
+              </Button>
+            }
           />
 
           <Table

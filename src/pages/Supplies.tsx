@@ -1325,7 +1325,7 @@ const Supplies: React.FC = () => {
           </div>
 
           <Title level={2} style={{ margin: 0 }}>
-            Поставки - {company?.name || ''}
+            Поставки Ozon
           </Title>
 
           {!connection ? (

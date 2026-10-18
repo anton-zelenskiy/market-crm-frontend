@@ -257,7 +257,7 @@ const FulfillmentSupplies: React.FC = () => {
             </div>
           </div>
           <Title level={2} style={{ margin: 0 }}>
-            Поставки фулфилментов{company && ': ' + company.name}
+            Поставки фулфилментов
           </Title>
 
           <div>

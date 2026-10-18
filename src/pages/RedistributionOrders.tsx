@@ -81,7 +81,7 @@ const RedistributionOrders: React.FC = () => {
           const companyData = await companiesApi.getById(conn.company_id)
           setCompany(companyData)
         } catch {
-          // company lookup is best-effort for the page title
+          // company lookup is best-effort for the breadcrumb
         }
       }
     } catch (error: any) {
@@ -284,7 +284,7 @@ const RedistributionOrders: React.FC = () => {
           ]}
         />
         <Title level={2} style={{ margin: 0 }}>
-          Перераспределение остатков{company && `: ${company.name}`}
+          Перераспределение остатков
         </Title>
       </Space>
 

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import {
-  Card,
   Typography,
   Button,
   Space,
@@ -15,12 +14,9 @@ import {
   Input,
   Form,
   Switch,
-  Tabs,
-  Breadcrumb,
 } from 'antd'
 import {
   PlayCircleOutlined,
-  LinkOutlined,
   SaveOutlined,
 } from '@ant-design/icons'
 import { connectionsApi } from '../api/connections'
@@ -35,8 +31,9 @@ import KaitenIntegrationForm from '../components/KaitenIntegrationForm'
 import CzSettingsForm from '../components/chestnyZnak/CzSettingsForm'
 import BookkeepingDdsSettings from '../components/BookkeepingDdsSettings'
 import WbAuthModal from '../components/WbAuthModal'
+import ConnectionHub from '../components/ConnectionHub'
+import type { DataSourceName } from '../crm/connectionSections'
 
-const { Title } = Typography
 const { Option } = Select
 
 const PRODUCTS_SUMMARY_COLUMN_OPTIONS: { key: string; label: string }[] = [
@@ -95,7 +92,6 @@ const ConnectionDetail: React.FC = () => {
   const [savingSettings, setSavingSettings] = useState(false)
   const [runningReportId, setRunningReportId] = useState<number | null>(null)
   const [encoding, setEncoding] = useState<'cp1251' | 'utf-8' | 'utf-8-sig'>('utf-8-sig')
-  const [wbAuthModalOpen, setWbAuthModalOpen] = useState(false)
   const [form] = Form.useForm()
 
   useEffect(() => {
@@ -275,129 +271,6 @@ const ConnectionDetail: React.FC = () => {
   )
 
   const tabItems = [
-    ...(connection.data_source?.name === 'ozon'
-      ? [
-          {
-            key: 'marketplace',
-            label: 'Товары и поставки',
-            children: renderActionList([
-              {
-                title: 'Формирование поставок',
-                description:
-                  'Планируйте и создавайте поставки на основе остатков и доступности складов',
-                buttonText: 'Поставки',
-                onClick: () => navigate(`/connections/${connection.id}/supply-templates`),
-              },
-              {
-                title: 'Управление товарами поставщика',
-                description:
-                  'Используйте раздел для заполнения остатков товаров на складах поставщика.',
-                buttonText: 'Товары поставщика',
-                onClick: () => navigate(`/connections/${connection.id}/vendor-products`),
-              },
-              {
-                title: 'Товары Ozon',
-                description: 'Используйте раздел для заполнения кратности товаров.',
-                buttonText: 'Товары Ozon',
-                onClick: () => navigate(`/connections/${connection.id}/ozon-products`),
-              },
-              {
-                title: 'Поставки Ozon',
-                description:
-                  'Работа с поставками: создание грузомест, формирование документов к поставке.',
-                buttonText: 'Поставки Ozon',
-                onClick: () => navigate(`/connections/${connection.id}/supplies`),
-              },
-              {
-                title: 'Остатки и дефицит',
-                description:
-                  'История остатков, продаж и дефицита по товарам: что поставить и что произвести.',
-                buttonText: 'Остатки',
-                onClick: () => navigate(`/connections/${connection.id}/stock-history`),
-              },
-              {
-                title: 'Кластеры Ozon',
-                description:
-                  'Приоритеты, доступность и соседние кластеры для расчёта поставок.',
-                buttonText: 'Кластеры',
-                onClick: () => navigate(`/connections/${connection.id}/ozon-clusters`),
-              },
-            ]),
-          },
-        ]
-      : []),
-    ...(connection.data_source?.name === 'wildberries'
-      ? [
-          {
-            key: 'marketplace',
-            label: 'Действия Wildberries',
-            children: renderActionList([
-              {
-                title: 'Авторизация Wildberries',
-                description:
-                  'Вход в личный кабинет WB по номеру телефона и коду из СМС для работы действий, требующих авторизации.',
-                buttonText: 'Авторизоваться',
-                onClick: () => setWbAuthModalOpen(true),
-              },
-              {
-                title: 'Товары Wildberries',
-                description:
-                  'Синхронизация карточек по тегу «В работе» и заполнение кратности (короба).',
-                buttonText: 'Товары WB',
-                onClick: () => navigate(`/connections/${connection.id}/wb-products`),
-              },
-              {
-                title: 'Запланировать поставку',
-                description: 'Забронировать дату поставки (небезопасно)',
-                buttonText: 'Запланировать',
-                onClick: () => navigate(`/connections/${connection.id}/wb-supply-plans`),
-              },
-              {
-                title: 'Перераспределить остатки',
-                description: 'Перемещение товара между складами',
-                buttonText: 'Перераспределить',
-                onClick: () => navigate(`/connections/${connection.id}/redistribution-orders`),
-              },
-            ]),
-          },
-          {
-            key: 'fbs',
-            label: 'FBS',
-            children: renderActionList([
-              {
-                title: 'Фулфилменты',
-                description: 'Организации фулфилмента, склады, тарифы',
-                buttonText: 'Фулфилменты',
-                onClick: () => navigate(`/connections/${connection.id}/fulfillments`),
-              },
-              {
-                title: 'Категории товаров',
-                description: 'Категории для расчёта тарифов фулфилмента',
-                buttonText: 'Категории',
-                onClick: () => navigate(`/connections/${connection.id}/product-categories`),
-              },
-              {
-                title: 'Заказы FBS',
-                description: 'Статусы и история заказов, обрабатываемых фулфилментами',
-                buttonText: 'Заказы FBS',
-                onClick: () => navigate(`/connections/${connection.id}/fbs-orders`),
-              },
-              {
-                title: 'Поставки',
-                description: 'Поставки FBS с расчётом стоимости фулфилмента по тарифам',
-                buttonText: 'Поставки',
-                onClick: () => navigate(`/connections/${connection.id}/fulfillment-supplies`),
-              },
-              {
-                title: 'Отгрузки товаров',
-                description: 'Учёт отгрузок товаров фулфилментам по категориям и датам',
-                buttonText: 'Отгрузки',
-                onClick: () => navigate(`/connections/${connection.id}/fbs-shipments`),
-              },
-            ]),
-          },
-        ]
-      : []),
     {
       key: 'finance',
       label: 'Финансы',
@@ -567,46 +440,30 @@ const ConnectionDetail: React.FC = () => {
   ]
 
   const hashKey = location.hash.slice(1)
-  const activeKey = tabItems.some((item) => item.key === hashKey)
-    ? hashKey
-    : tabItems[0]?.key
+  const panel = tabItems.find((item) => item.key === hashKey)
+  const source = (connection.data_source?.name ?? 'ozon') as DataSourceName
 
   return (
     <div>
-      <Card>
-        <Space orientation="vertical" style={{ width: '100%' }} size="large">
-          <div className="crm-page-lead">
-            <Breadcrumb
-              items={[
-                { title: <Link to="/connections">API Подключения</Link> },
-                {
-                  title: company
-                    ? `${company.name} (${connection.data_source?.title})`
-                    : connection.data_source?.title,
-                },
-              ]}
-            />
-            <Title level={2} style={{ margin: 0 }}>
-              <LinkOutlined /> API Подключение:{' '}
-              {company
-                ? `${company.name} (${connection.data_source?.title})`
-                : connection.data_source?.title}
-            </Title>
-          </div>
+      <div className="crm-page-head">
+        <span className="crm-crumbs">
+          <Link to="/connections">API подключения</Link> /{' '}
+          {panel ? <Link to={location.pathname}>{company.name}</Link> : company.name} ·{' '}
+          {connection.data_source?.title}
+        </span>
+        <h1 className="crm-title">{panel ? panel.label : company.name}</h1>
+      </div>
 
-          <Tabs
-            items={tabItems}
-            activeKey={activeKey}
-            onChange={(key) => navigate(`${location.pathname}#${key}`, { replace: true })}
-          />
-
-        </Space>
-      </Card>
+      {panel ? (
+        <div className="crm-panel">{panel.children}</div>
+      ) : (
+        <ConnectionHub connectionId={connection.id} source={source} />
+      )}
 
       <WbAuthModal
         connectionId={connection.id}
-        open={wbAuthModalOpen}
-        onClose={() => setWbAuthModalOpen(false)}
+        open={hashKey === 'wb-auth'}
+        onClose={() => navigate(location.pathname, { replace: true })}
       />
     </div>
   )

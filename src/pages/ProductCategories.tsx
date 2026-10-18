@@ -209,7 +209,7 @@ const ProductCategories: React.FC = () => {
             </div>
           </div>
           <Title level={2} style={{ margin: 0 }}>
-            Категории товаров{company && ': ' + company.name}
+            Категории товаров
           </Title>
           <Table columns={columns} dataSource={categories} rowKey="id" loading={loading} pagination={false} />
         </Space>

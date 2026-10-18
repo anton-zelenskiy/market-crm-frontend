@@ -122,7 +122,7 @@ const FBSOrders: React.FC = () => {
             </div>
           </div>
           <Title level={2} style={{ margin: 0 }}>
-            Заказы FBS{company && ': ' + company.name}
+            Заказы FBS
           </Title>
           <Table
             columns={columns}

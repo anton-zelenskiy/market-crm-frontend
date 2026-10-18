@@ -49,6 +49,7 @@ export const TaskProgressBar: React.FC = () => {
 
   return (
     <div
+      className="crm-task-bar"
       style={{
         position: 'fixed',
         left: 0,

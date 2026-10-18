@@ -242,7 +242,7 @@ const WbProducts: React.FC = () => {
             </div>
           </div>
           <Title level={2} style={{ margin: 0 }}>
-            Товары Wildberries{company && ': ' + company.name}
+            Товары Wildberries
           </Title>
           <Table
             columns={columns}

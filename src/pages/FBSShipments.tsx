@@ -196,7 +196,7 @@ const FBSShipments: React.FC = () => {
             </div>
           </div>
           <Title level={2} style={{ margin: 0 }}>
-            Отгрузки товаров{company && ': ' + company.name}
+            Отгрузки товаров
           </Title>
           <Table
             columns={columns}
