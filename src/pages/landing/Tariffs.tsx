@@ -79,7 +79,7 @@ const Tariffs: React.FC = () => {
     const fetchTariffs = async () => {
       try {
         const data = await subscriptionsApi.getTariffs()
-        setTariffs(data)
+        setTariffs([...data].sort((a, b) => a.order - b.order || a.id - b.id))
       } catch (error) {
         console.error('Failed to fetch tariffs:', error)
       } finally {

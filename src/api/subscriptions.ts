@@ -16,6 +16,7 @@ export interface Tariff {
   tariff_type: string
   period_type: TariffPeriodType
   connections_limit: number | null
+  order: number
   options: string[]
   variants: TariffVariant[]
 }

@@ -289,7 +289,7 @@ const ConnectionDetail: React.FC = () => {
         </Space>
       ),
     },
-    ...(connection.data_source?.name === 'ozon' && connectionId
+    ...(connectionId
       ? [
           {
             key: 'kaiten',

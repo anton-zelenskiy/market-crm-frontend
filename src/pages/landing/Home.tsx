@@ -29,6 +29,34 @@ const FEATURES = [
   },
 ]
 
+type Marketplace = 'ozon' | 'wildberries'
+
+const MARKETPLACE_FEATURES: { key: Marketplace; title: string; items: { text: string; only?: boolean }[] }[] = [
+  {
+    key: 'ozon',
+    title: 'Ozon',
+    items: [
+      { text: 'Формирование поставок (FBO): грузоместа и документы к поставке', only: true },
+      { text: 'Остатки и дефициты товаров (FBO)', only: true },
+      { text: 'Честный ЗНАК: коды маркировки и ввод в оборот' },
+      { text: 'Интеграция с Kaiten' },
+      { text: 'Финансы: банковские операции и ДДС' },
+      { text: 'Выгрузка отчётов в CSV' },
+    ],
+  },
+  {
+    key: 'wildberries',
+    title: 'Wildberries',
+    items: [
+      { text: 'Заказы FBS: отслеживание заказов; фиксация отгрузок на фулфилменты', only: true },
+      { text: 'Честный ЗНАК: коды маркировки и ввод в оборот' },
+      { text: 'Интеграция с Kaiten' },
+      { text: 'Финансы: банковские операции и ДДС' },
+      { text: 'Выгрузка отчётов в CSV' },
+    ],
+  },
+]
+
 const STEPS = [
   {
     title: 'Подключите кабинет',
@@ -101,6 +129,28 @@ const Home: React.FC = () => {
                 </span>
                 <h3>{title}</h3>
                 <p>{text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="marketplaces" className="mk-container mk-section">
+          <h2 className="mk-h2">Возможности для Ozon и Wildberries</h2>
+          <div className="mk-grid-2">
+            {MARKETPLACE_FEATURES.map(({ key, title, items }) => (
+              <div key={key} className={`mk-card mk-mp mk-mp--${key}`}>
+                <h3>{title}</h3>
+                <ul className="mk-features">
+                  {items.map(({ text, only }) => (
+                    <li key={text}>
+                      <span className="mk-check mk-check--sm">✓</span>
+                      <span>
+                        {text}
+                        {only && <span className="mk-mp__only">только {title}</span>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>

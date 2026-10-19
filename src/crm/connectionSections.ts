@@ -81,7 +81,9 @@ const WB: ConnectionSectionGroup[] = [
     title: 'Сервисы',
     items: [
       { key: 'finance', nav: 'Финансы', title: 'Финансы', description: 'Банковские операции и ДДС', to: '#finance', activeAlso: '/bookkeeping' },
+      { key: 'chestny-znak', nav: 'Честный ЗНАК', title: 'Честный ЗНАК', description: 'Коды маркировки и ввод в оборот', to: '#chestny-znak', activeAlso: '/chestny-znak' },
       { key: 'reports', nav: 'Отчёты', title: 'Отчёты', description: 'Выгрузка отчётов в CSV', to: '#reports' },
+      { key: 'kaiten', nav: 'Kaiten', title: 'Kaiten', description: 'Интеграция с досками Kaiten', to: '#kaiten' },
     ],
   },
 ]
