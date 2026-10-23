@@ -72,6 +72,10 @@ const { Option } = Select
 const VENDOR_STOCKS_COLUMN_LABEL = 'Остатки'
 
 const OZON_MAX_BOXES = 30
+const BOXES_PER_PALLET = 40
+
+const formatPalletCount = (boxes: number): string =>
+  String(Number((boxes / BOXES_PER_PALLET).toFixed(1)))
 
 // Box "units" for an item's to_supply quantity: full box_count-sized units, plus a
 // trailing partial unit for the remainder when partial boxes are allowed.
@@ -256,6 +260,11 @@ const ClusterHeaderComponent = (params: any) => {
           <Tag color={boxCount > OZON_MAX_BOXES ? 'red' : 'default'} style={{ margin: 0 }}>
             {boxCount} кор.
           </Tag>
+        </Tooltip>
+      )}
+      {typeof boxCount === 'number' && boxCount > 0 && (
+        <Tooltip title={`Кол-во паллет к поставке (${BOXES_PER_PALLET} кор. = 1 паллета)`}>
+          <Tag style={{ margin: 0 }}>{formatPalletCount(boxCount)} пал.</Tag>
         </Tooltip>
       )}
       {supplyStatus === 'created' && (
@@ -450,6 +459,12 @@ const SupplyTemplateDetail: React.FC = () => {
     }
     return map
   }, [tableData, floorToBoxCount])
+
+  const totalBoxCount = useMemo(() => {
+    let total = 0
+    for (const boxes of clusterBoxCounts.values()) total += boxes
+    return total
+  }, [clusterBoxCounts])
 
   const previewBundles = useMemo(() => {
     return splitItemsIntoBoxBundles(previewItems, boxCountByOfferId, floorToBoxCount)
@@ -1700,6 +1715,9 @@ const SupplyTemplateDetail: React.FC = () => {
                 >
                   Создать все поставки
                 </Button>
+                <Text>
+                  Всего: {totalBoxCount} кор. / {formatPalletCount(totalBoxCount)} пал.
+                </Text>
                 <Text type="warning">Логистическое плечо: {logisticsDistance} дней</Text>
               </Space>
             </div>
