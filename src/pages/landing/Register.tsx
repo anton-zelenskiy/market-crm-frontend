@@ -5,11 +5,16 @@ import { Link } from 'react-router-dom'
 import { register as registerApi } from '../../api/auth'
 import ResendVerificationButton from '../../components/ResendVerificationButton'
 import { APP_NAME } from '../../constants'
+import { SITE_NAME, usePageMeta } from '../../ssr/PageMeta'
 import './landing.css'
 
 const { Title, Text } = Typography
 
 const Register: React.FC = () => {
+  usePageMeta({
+    title: `Регистрация — ${SITE_NAME}`,
+    description: 'Регистрация в Market CRM — сервисе поставок для селлеров Ozon и Wildberries.',
+  })
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)

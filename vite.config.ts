@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ isSsrBuild }) => ({
   plugins: [
     react({
       // Ensure React is properly transformed
@@ -13,7 +13,8 @@ export default defineConfig({
     chunkSizeWarningLimit: 1400,
     rollupOptions: {
       maxParallelFileOps: 2,
-      output: {
+      // Vendor chunks only make sense for the browser bundle
+      output: isSsrBuild ? {} : {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-antd': ['antd', '@ant-design/icons'],
@@ -40,4 +41,4 @@ export default defineConfig({
     // Allow all hosts for preview mode
     allowedHosts: true,
   },
-})
+}))

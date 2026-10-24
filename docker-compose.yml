@@ -21,6 +21,11 @@ services:
     #   - /app/node_modules
     env_file:
       - .env
+    environment:
+      # SSR fetches landing data (tariffs) over the internal network
+      SSR_API_BASE_URL: ${SSR_API_BASE_URL:-http://web:8000/markets/api/v1}
+      # Public origin for canonical URLs and sitemap.xml; derived from the request if empty
+      SITE_URL: ${SITE_URL:-}
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3001 || nc -z localhost 3001 || exit 1"]
       interval: 30s

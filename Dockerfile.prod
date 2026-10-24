@@ -15,21 +15,24 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 # Split typecheck and bundle steps to lower peak memory during Docker builds.
 RUN NODE_OPTIONS="--max-old-space-size=512" npx tsc -b
-RUN NODE_OPTIONS="--max-old-space-size=900" npx vite build
-RUN npm prune --production
+RUN NODE_OPTIONS="--max-old-space-size=900" npx vite build --outDir dist/client
+RUN NODE_OPTIONS="--max-old-space-size=900" npx vite build --ssr src/entry-server.tsx --outDir dist/server
+RUN npm prune --omit=dev
 
-# Stage 2: Serve static files with a simple HTTP server
+# Stage 2: SSR server (landing pages rendered on the server, CRM served as SPA)
 FROM node:24-alpine
 
 WORKDIR /app
 
-# Install serve package for serving static files
-RUN npm install -g serve
+ENV NODE_ENV=production
+ENV PORT=3001
 
-# Copy built files from builder stage
+# The SSR bundle imports runtime dependencies (react, antd, ...) from node_modules
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server.js ./
 
 EXPOSE 3001
 
-# Start serve with SPA routing support
-CMD ["serve", "-s", "dist", "-l", "3001"]
+CMD ["node", "server.js"]

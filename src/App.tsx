@@ -1,11 +1,10 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import { ConfigProvider } from 'antd'
 import ruRU from 'antd/locale/ru_RU'
 import './lib/dayjs'
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { Routes, Route } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
 import { TaskProgressProvider } from './context/TaskProgressContext'
-import CrmShell from './components/CrmShell'
 import Login from './pages/landing/Login'
 import Register from './pages/landing/Register'
 import CompleteRegistration from './pages/landing/CompleteRegistration'
@@ -13,116 +12,9 @@ import VerifyEmail from './pages/landing/VerifyEmail'
 import Home from './pages/landing/Home'
 import TariffDetail from './pages/landing/TariffDetail'
 import Tariffs from './pages/landing/Tariffs'
-import DataSources from './pages/DataSources'
-import Companies from './pages/Companies'
-import CompanyDetail from './pages/CompanyDetail'
-import Connections from './pages/Connections'
-import ConnectionDetail from './pages/ConnectionDetail'
-import Clusters from './pages/Clusters'
-import Reports from './pages/Reports'
-import VendorProducts from './pages/VendorProducts'
-import OzonProducts from './pages/OzonProducts'
-import WbProducts from './pages/WbProducts'
-import Supplies from './pages/Supplies'
-import SupplyTemplates from './pages/SupplyTemplates'
-import SupplyTemplateDetail from './pages/SupplyTemplateDetail'
-import SupplyDraftDetail from './pages/SupplyDraftDetail'
-import SupplyPlanningRunner from './pages/SupplyPlanningRunner'
-import RedistributionOrders from './pages/RedistributionOrders'
-import BookkeepingPage from './pages/BookkeepingPage'
-import StockHistory from './pages/StockHistory'
-import Fulfillments from './pages/Fulfillments'
-import ProductCategories from './pages/ProductCategories'
-import FBSOrders from './pages/FBSOrders'
-import FulfillmentSupplies from './pages/FulfillmentSupplies'
-import FBSShipments from './pages/FBSShipments'
-import ChestnyZnakGtins from './pages/ChestnyZnakGtins'
-import ChestnyZnakGenerate from './pages/ChestnyZnakGenerate'
-import ChestnyZnakJobs from './pages/ChestnyZnakJobs'
 
-const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth()
-  const location = useLocation()
-
-  if (isLoading) {
-    return <div>Загрузка...</div>
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />
-  }
-
-  return <>{children}</>
-}
-
-const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAdmin, isLoading } = useAuth()
-
-  if (isLoading) {
-    return <div>Загрузка...</div>
-  }
-
-  if (!isAdmin) {
-    return <Navigate to="/" replace />
-  }
-
-  return <>{children}</>
-}
-
-const DashboardLayout: React.FC = () => {
-  return (
-    <CrmShell>
-      <Routes>
-        <Route path="/companies" element={<Companies />} />
-        <Route path="/companies/:id" element={<CompanyDetail />} />
-        <Route path="/connections" element={<Connections />} />
-        <Route path="/connections/:connectionId" element={<ConnectionDetail />} />
-        <Route path="/connections/:connectionId/vendor-products" element={<VendorProducts />} />
-        <Route path="/connections/:connectionId/ozon-products" element={<OzonProducts />} />
-        <Route path="/connections/:connectionId/wb-products" element={<WbProducts />} />
-        <Route path="/connections/:connectionId/fulfillments" element={<Fulfillments />} />
-        <Route path="/connections/:connectionId/product-categories" element={<ProductCategories />} />
-        <Route path="/connections/:connectionId/fbs-orders" element={<FBSOrders />} />
-        <Route path="/connections/:connectionId/fulfillment-supplies" element={<FulfillmentSupplies />} />
-        <Route path="/connections/:connectionId/fbs-shipments" element={<FBSShipments />} />
-        <Route path="/connections/:connectionId/supplies" element={<Supplies />} />
-        <Route path="/connections/:connectionId/chestny-znak/gtins" element={<ChestnyZnakGtins />} />
-        <Route path="/connections/:connectionId/chestny-znak/generate" element={<ChestnyZnakGenerate />} />
-        <Route path="/connections/:connectionId/chestny-znak/jobs" element={<ChestnyZnakJobs />} />
-        <Route path="/connections/:connectionId/stock-history" element={<StockHistory />} />
-        <Route path="/connections/:connectionId/bookkeeping" element={<BookkeepingPage />} />
-        <Route path="/connections/:connectionId/supply-templates" element={<SupplyTemplates />} />
-        <Route path="/connections/:connectionId/supply-templates/:snapshotId" element={<SupplyTemplateDetail />} />
-        <Route path="/connections/:connectionId/supply-templates/:snapshotId/drafts/:draftId" element={<SupplyDraftDetail />} />
-        <Route
-          path="/data-sources"
-          element={
-            <AdminRoute>
-              <DataSources />
-            </AdminRoute>
-          }
-        />
-        <Route path="/connections/:connectionId/ozon-clusters" element={<Clusters />} />
-        <Route
-          path="/connections/:connectionId/wb-supply-plans"
-          element={<SupplyPlanningRunner />}
-        />
-        <Route
-          path="/connections/:connectionId/redistribution-orders"
-          element={<RedistributionOrders />}
-        />
-        <Route
-          path="/reports"
-          element={
-            <AdminRoute>
-              <Reports />
-            </AdminRoute>
-          }
-        />
-      </Routes>
-    </CrmShell>
-  )
-}
+// CRM is client-only and loaded on demand, keeping landing pages light
+const CrmApp = lazy(() => import('./CrmApp'))
 
 // Warm theme matching the landing page
 const softTheme = {
@@ -147,7 +39,6 @@ const App: React.FC = () => {
     <ConfigProvider theme={softTheme} locale={ruRU}>
       <AuthProvider>
         <TaskProgressProvider>
-          <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -159,13 +50,12 @@ const App: React.FC = () => {
             <Route
               path="/*"
               element={
-                <PrivateRoute>
-                  <DashboardLayout />
-                </PrivateRoute>
+                <Suspense fallback={<div>Загрузка...</div>}>
+                  <CrmApp />
+                </Suspense>
               }
             />
           </Routes>
-          </Router>
         </TaskProgressProvider>
       </AuthProvider>
     </ConfigProvider>

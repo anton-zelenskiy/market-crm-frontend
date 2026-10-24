@@ -6,11 +6,13 @@ import { EMAIL_NOT_VERIFIED, login as loginApi } from '../../api/auth'
 import ResendVerificationButton from '../../components/ResendVerificationButton'
 import { useAuth } from '../../context/AuthContext'
 import { APP_NAME } from '../../constants'
+import { SITE_NAME, usePageMeta } from '../../ssr/PageMeta'
 import './landing.css'
 
 const { Title } = Typography
 
 const Login: React.FC = () => {
+  usePageMeta({ title: `Вход — ${SITE_NAME}`, noindex: true })
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)

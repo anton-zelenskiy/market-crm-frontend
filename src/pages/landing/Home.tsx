@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import Header from '../../components/landing/Header'
 import Footer from '../../components/landing/Footer'
 import { useAuth } from '../../context/AuthContext'
+import { SITE_NAME, usePageMeta } from '../../ssr/PageMeta'
 import './mk.css'
 
 const HERO_CHECKS = [
@@ -72,7 +73,23 @@ const STEPS = [
   },
 ]
 
+const DESCRIPTION =
+  'Market CRM — сервис для селлеров Ozon и Wildberries: поставки по кластерам с учётом остатков и продаж, ' +
+  'грузоместа с учётом кратности коробов, история остатков и коды маркировки Честный ЗНАК.'
+
 const Home: React.FC = () => {
+  usePageMeta({
+    title: `${SITE_NAME} — поставки на Ozon и Wildberries в один клик`,
+    description: DESCRIPTION,
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: SITE_NAME,
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      description: DESCRIPTION,
+    },
+  })
   const { isAuthenticated } = useAuth()
   const { hash } = useLocation()
   const startUrl = isAuthenticated ? '/connections' : '/register'

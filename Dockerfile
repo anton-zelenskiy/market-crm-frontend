@@ -13,4 +13,5 @@ COPY . .
 
 EXPOSE 3001
 
-CMD ["npm", "run", "dev", "--", "--host", "--port", "3001"]
+# SSR dev server (Vite middleware + HMR) on port 3001
+CMD ["npm", "run", "dev"]

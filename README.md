@@ -32,13 +32,28 @@ npm install
 npm run dev
 ```
 
-Dev server: **http://localhost:3001** (`vite.config.ts`).
+Dev server: **http://localhost:3001** (`server.js` — Express with Vite middleware and HMR).
 
 Other scripts:
 
-- `npm run build` — typecheck and production build (`dist/`)
-- `npm run preview` — serve the production build locally
+- `npm run build` — typecheck, client build (`dist/client/`) and SSR build (`dist/server/`)
+- `npm run start` — run the production SSR server from `dist/`
 - `npm run lint` — ESLint
+
+## Server-side rendering
+
+Public landing pages (`/`, `/tariffs`, `/tariff/:slug`, auth pages — see `src/ssr/routes.ts`) are rendered on the server for SEO and hydrated in the browser. All other paths are the CRM: the server returns an empty shell (`noindex`) and the app renders client-side; CRM code is a lazily loaded chunk (`src/CrmApp.tsx`).
+
+- Page `<title>`, description, canonical and Open Graph tags come from `usePageMeta()` in each page (`src/ssr/PageMeta.ts`).
+- Data needed for the first render (tariffs) is fetched in `src/entry-server.tsx` and passed to the client via `window.__INITIAL_DATA__` (`useInitialData()`).
+- `server.js` also serves `/robots.txt` and `/sitemap.xml`.
+- Code rendered on the server must not touch `window`/`localStorage` during render — only in effects and event handlers.
+
+Server environment variables:
+
+- `SSR_API_BASE_URL` — API base reachable from the server (Compose default `http://web:8000/markets/api/v1`); falls back to `VITE_API_BASE_URL`.
+- `SITE_URL` — public origin for canonical URLs and the sitemap (e.g. `https://marketplace-postavki.space`); derived from the request when empty.
+- `PORT` — listen port (default `3001`).
 
 [Husky](https://typicode.github.io/husky/) is wired via the `prepare` script for git hooks.
 

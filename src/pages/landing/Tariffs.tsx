@@ -5,9 +5,13 @@ import type { Tariff, TariffVariant } from '../../api/subscriptions'
 import Header from '../../components/landing/Header'
 import Footer from '../../components/landing/Footer'
 import { formatPeriod, formatPrice } from '../../lib/tariffFormat'
+import { useInitialData } from '../../ssr/InitialData'
+import { SITE_NAME, usePageMeta } from '../../ssr/PageMeta'
 import './mk.css'
 
 const FEATURED_TARIFF = 'standard'
+
+const sortTariffs = (tariffs: Tariff[]) => [...tariffs].sort((a, b) => a.order - b.order || a.id - b.id)
 
 const perMonth = (variant: TariffVariant) => Math.round(variant.price / variant.period)
 
@@ -71,15 +75,23 @@ const PlanCard: React.FC<PlanCardProps> = ({ tariff, onConnect }) => {
 }
 
 const Tariffs: React.FC = () => {
-  const [tariffs, setTariffs] = useState<Tariff[]>([])
-  const [loading, setLoading] = useState(true)
+  const preloaded = useInitialData().tariffs
+  const [tariffs, setTariffs] = useState<Tariff[]>(() => sortTariffs(preloaded ?? []))
+  const [loading, setLoading] = useState(!preloaded)
   const navigate = useNavigate()
 
+  usePageMeta({
+    title: `Тарифы — ${SITE_NAME}`,
+    description: 'Тарифы Market CRM: планы и периоды подписки на сервис поставок для Ozon и Wildberries.',
+  })
+
   useEffect(() => {
+    if (preloaded) return
+
     const fetchTariffs = async () => {
       try {
         const data = await subscriptionsApi.getTariffs()
-        setTariffs([...data].sort((a, b) => a.order - b.order || a.id - b.id))
+        setTariffs(sortTariffs(data))
       } catch (error) {
         console.error('Failed to fetch tariffs:', error)
       } finally {
@@ -87,7 +99,7 @@ const Tariffs: React.FC = () => {
       }
     }
     fetchTariffs()
-  }, [])
+  }, [preloaded])
 
   const handleConnect = (slug: string, period?: number) => {
     navigate(period ? `/tariff/${slug}?period=${period}` : `/tariff/${slug}`)

@@ -7,29 +7,44 @@ import { useAuth } from '../../context/AuthContext'
 import Header from '../../components/landing/Header'
 import Footer from '../../components/landing/Footer'
 import { formatPeriod, formatPrice } from '../../lib/tariffFormat'
+import { useInitialData } from '../../ssr/InitialData'
+import { SITE_NAME, usePageMeta } from '../../ssr/PageMeta'
 import './mk.css'
+
+const pickPeriod = (tariff: Tariff, requested: number) =>
+  (tariff.variants.find((v) => v.period === requested) ?? tariff.variants[0])?.period ?? null
 
 const TariffDetail: React.FC = () => {
   const { slug } = useParams<{ slug: string }>()
   const [searchParams] = useSearchParams()
-  const [tariff, setTariff] = useState<Tariff | null>(null)
-  const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
+  const initial = useInitialData().tariff
+  const preloaded = initial && initial.slug === slug ? initial : undefined
+  const [tariff, setTariff] = useState<Tariff | null>(preloaded?.data ?? null)
+  const [selectedPeriod, setSelectedPeriod] = useState<number | null>(() =>
+    preloaded?.data ? pickPeriod(preloaded.data, Number(searchParams.get('period'))) : null,
+  )
+  const [loading, setLoading] = useState(!preloaded)
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
 
+  usePageMeta(
+    tariff
+      ? {
+          title: `Тариф «${tariff.name}» — ${SITE_NAME}`,
+          description: `Тариф «${tariff.name}» Market CRM: ${tariff.options.join('; ')}`,
+        }
+      : { title: `Тариф — ${SITE_NAME}`, noindex: !loading },
+  )
+
   useEffect(() => {
-    if (!slug) return
+    if (!slug || preloaded) return
 
     const fetchTariff = async () => {
+      setLoading(true)
       try {
         const data = await subscriptionsApi.getTariffBySlug(slug)
         setTariff(data)
-        const requested = Number(searchParams.get('period'))
-        const initial = data.variants.find((v) => v.period === requested) ?? data.variants[0]
-        if (initial) {
-          setSelectedPeriod(initial.period)
-        }
+        setSelectedPeriod(pickPeriod(data, Number(searchParams.get('period'))))
       } catch (error) {
         console.error('Failed to fetch tariff:', error)
         message.error('Не удалось загрузить информацию о тарифе')

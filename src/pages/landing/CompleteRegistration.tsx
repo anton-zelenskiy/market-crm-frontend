@@ -9,11 +9,13 @@ import {
 } from '../../api/auth'
 import ResendVerificationButton from '../../components/ResendVerificationButton'
 import { APP_NAME } from '../../constants'
+import { SITE_NAME, usePageMeta } from '../../ssr/PageMeta'
 import './landing.css'
 
 const { Title, Text } = Typography
 
 const CompleteRegistration: React.FC = () => {
+  usePageMeta({ title: `Завершение регистрации — ${SITE_NAME}`, noindex: true })
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') ?? ''
   const navigate = useNavigate()

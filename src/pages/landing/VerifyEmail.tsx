@@ -5,11 +5,13 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { verifyEmail } from '../../api/auth'
 import ResendVerificationButton from '../../components/ResendVerificationButton'
 import { APP_NAME } from '../../constants'
+import { SITE_NAME, usePageMeta } from '../../ssr/PageMeta'
 import './landing.css'
 
 const { Title, Text } = Typography
 
 const VerifyEmail: React.FC = () => {
+  usePageMeta({ title: `Подтверждение email — ${SITE_NAME}`, noindex: true })
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') ?? ''
 
