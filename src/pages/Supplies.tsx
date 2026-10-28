@@ -31,7 +31,9 @@ import {
   type SupplyOrder,
   type SupplyOrderState,
   type KaitenCardInfo,
+  type SupplyOrderCancelResponse,
   SUPPLY_ORDER_STATE_LABELS,
+  SUPPLY_CANCEL_ERROR_LABELS,
 } from '../api/supplies'
 import { companiesApi, type Company } from '../api/companies'
 import { connectionsApi, type Connection } from '../api/connections'
@@ -84,6 +86,8 @@ interface SupplyActionsProps {
   onOpenCzJob: (jobId: number) => void
   onDownloadCzCodes: (supply: SupplyOrder, jobId: number) => Promise<void>
   isDownloadingCz: boolean
+  onCancelOrder: (supply: SupplyOrder) => Promise<void>
+  isCancellingOrder: boolean
   isCreating: boolean
   isSavingExternalOrderId: boolean
   isDownloading: boolean
@@ -116,6 +120,18 @@ const supplyActionsPrimaryButton: React.CSSProperties = {
   width: 84,
 }
 
+const CANCELLABLE_STATES: SupplyOrderState[] = ['DATA_FILLING', 'READY_TO_SUPPLY']
+
+const formatCancelErrors = (response: SupplyOrderCancelResponse) => {
+  const reasons = [
+    ...response.error_reasons,
+    ...(response.result?.supplies ?? []).flatMap((s) => s.error_reasons),
+  ]
+  return [...new Set(reasons)]
+    .map((reason) => SUPPLY_CANCEL_ERROR_LABELS[reason] ?? reason)
+    .join('; ')
+}
+
 const kaitenButtonStyle: React.CSSProperties = {
   backgroundColor: 'rgb(156, 39, 176)',
   borderColor: 'rgb(156, 39, 176)',
@@ -134,6 +150,8 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
   onOpenCzJob,
   onDownloadCzCodes,
   isDownloadingCz,
+  onCancelOrder,
+  isCancellingOrder,
   isCreating,
   isSavingExternalOrderId,
   isDownloading,
@@ -317,6 +335,45 @@ const SupplyActions: React.FC<SupplyActionsProps> = ({
           Заказать коды и ввести в оборот
         </Button>
       )}
+
+      <Divider style={{ margin: '8px 0' }} />
+
+      <Typography.Text strong style={supplyActionsSectionTitle}>
+        Отмена
+      </Typography.Text>
+      {(() => {
+        const canCancel = CANCELLABLE_STATES.includes(supply.state)
+        const button = (
+          <Button
+            danger
+            size="middle"
+            loading={isCancellingOrder}
+            disabled={!canCancel}
+            block
+          >
+            Отменить заявку
+          </Button>
+        )
+        if (!canCancel) {
+          return (
+            <Tooltip title="Отменить можно только заявку в статусе подготовки к поставке">
+              {button}
+            </Tooltip>
+          )
+        }
+        return (
+          <Popconfirm
+            title={`Отменить заявку ${supply.order_number}?`}
+            description="Будут отменены все поставки этой заявки"
+            onConfirm={() => onCancelOrder(supply)}
+            okText="Отменить заявку"
+            okButtonProps={{ danger: true }}
+            cancelText="Назад"
+          >
+            {button}
+          </Popconfirm>
+        )
+      })()}
     </div>
   )
 }
@@ -459,11 +516,13 @@ const Supplies: React.FC = () => {
   const [bulkGeneratingCargoes, setBulkGeneratingCargoes] = useState(false)
   const [bulkDownloadingDocs, setBulkDownloadingDocs] = useState(false)
   const [bulkDownloadingLabels, setBulkDownloadingLabels] = useState(false)
+  const [bulkCancelling, setBulkCancelling] = useState(false)
   const [stateGroupId, setStateGroupId] = useState<SupplyStateGroupId>('PREPARATION')
   const [czJobsBySupply, setCzJobsBySupply] = useState<Record<string, number>>({})
   const [czDraft, setCzDraft] = useState<CzJobDraft | null>(null)
   const [czOpenJobId, setCzOpenJobId] = useState<number | null>(null)
   const [downloadingCz, setDownloadingCz] = useState<Record<string, boolean>>({})
+  const [cancellingOrders, setCancellingOrders] = useState<Record<number, boolean>>({})
   const selectedStates =
     SUPPLY_STATE_GROUPS.find((g) => g.id === stateGroupId)?.states ?? []
 
@@ -493,6 +552,8 @@ const Supplies: React.FC = () => {
     (supply.cargoes_count ?? 0) > 0
   const canDownloadLabelsForSupply = (supply: SupplyOrder) =>
     (supply.cargoes_count ?? 0) > 0
+  const canCancelOrderForSupply = (supply: SupplyOrder) =>
+    supply.order_id != null && CANCELLABLE_STATES.includes(supply.state)
 
   const loadConnectionData = async () => {
     if (!connectionId) return
@@ -913,6 +974,37 @@ const Supplies: React.FC = () => {
     }
   }
 
+  const handleBulkCancelOrders = async () => {
+    if (!connection) return
+    const eligible = supplies
+      .filter((s) => selectedSupplyIds.includes(s.supply_id))
+      .filter(canCancelOrderForSupply)
+    if (eligible.length === 0) {
+      message.warning('Нет заявок, которые можно отменить')
+      return
+    }
+    setBulkCancelling(true)
+    try {
+      const res = await suppliesApi.bulkCancelSupplyOrders(
+        bulkSupplyPayload(eligible)
+      )
+      startTask({
+        taskId: res.task_id,
+        kind: 'bulk_cancel_orders',
+        title: 'Отмена заявок',
+        progressUrl: suppliesApi.getTaskProgressUrl(res.task_id),
+        context: { connectionId: connection.id },
+      })
+      setSelectedSupplyIds([])
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка отмены заявок'
+      )
+    } finally {
+      setBulkCancelling(false)
+    }
+  }
+
   const downloadTaskResult = async (task: TaskDescriptor) => {
     const filename =
       (task.context?.download as { filename?: string } | undefined)?.filename ??
@@ -962,6 +1054,15 @@ const Supplies: React.FC = () => {
     }
   })
 
+  useTaskCompletion({ kind: 'bulk_cancel_orders' }, async (task) => {
+    if (task.status === 'completed') {
+      message.success(task.message || 'Заявки отменены')
+      await loadSupplies(selectedStates)
+    } else {
+      message.error(task.error || task.message || 'Ошибка отмены заявок')
+    }
+  })
+
   const bulkSelectedSupplies = supplies.filter((s) =>
     selectedSupplyIds.includes(s.supply_id)
   )
@@ -972,12 +1073,17 @@ const Supplies: React.FC = () => {
     labels: bulkSelectedSupplies.filter(canDownloadLabelsForSupply).length,
     cz: bulkSelectedSupplies.filter((s) => s.order_id != null && !czJobsBySupply[s.supply_id])
       .length,
+    // Ozon cancels whole orders, so count distinct orders
+    cancel: new Set(
+      bulkSelectedSupplies.filter(canCancelOrderForSupply).map((s) => s.order_id)
+    ).size,
   }
   const bulkBusy =
     bulkCreatingKaiten ||
     bulkGeneratingCargoes ||
     bulkDownloadingDocs ||
-    bulkDownloadingLabels
+    bulkDownloadingLabels ||
+    bulkCancelling
 
   const confirmBulk = (title: string, okText: string, run: () => void) => {
     Modal.confirm({ title, okText, cancelText: 'Отмена', onOk: run })
@@ -1031,6 +1137,22 @@ const Supplies: React.FC = () => {
           )
         ),
     },
+    { type: 'divider' as const },
+    {
+      key: 'cancel-orders',
+      label: `Отменить заявки (${bulkEligible.cancel})`,
+      danger: true,
+      disabled: bulkEligible.cancel === 0,
+      onClick: () =>
+        Modal.confirm({
+          title: `Отменить ${bulkEligible.cancel} заявок?`,
+          content: 'Будут отменены все поставки выбранных заявок',
+          okText: 'Отменить заявки',
+          okButtonProps: { danger: true },
+          cancelText: 'Назад',
+          onOk: handleBulkCancelOrders,
+        }),
+    },
   ]
 
   const handleCreateKaitenCard = async (supply: SupplyOrder) => {
@@ -1072,6 +1194,33 @@ const Supplies: React.FC = () => {
       )
     } finally {
       setDeletingKaiten((prev) => ({ ...prev, [supplyId]: false }))
+    }
+  }
+
+  const handleCancelOrder = async (supply: SupplyOrder) => {
+    if (!connection) return
+
+    const orderId = supply.order_id
+    setCancellingOrders((prev) => ({ ...prev, [orderId]: true }))
+
+    try {
+      const response = await suppliesApi.cancelSupplyOrder(orderId, connection.id)
+      if (response.status === 'SUCCESS') {
+        message.success(`Заявка ${supply.order_number} отменена`)
+      } else if (response.status === 'IN_PROGRESS') {
+        message.info(`Заявка ${supply.order_number} в процессе отмены`)
+      } else {
+        message.error(
+          `Не удалось отменить заявку: ${formatCancelErrors(response) || 'неизвестная ошибка'}`
+        )
+      }
+      await loadSupplies(selectedStates)
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail || 'Ошибка отмены заявки'
+      )
+    } finally {
+      setCancellingOrders((prev) => ({ ...prev, [orderId]: false }))
     }
   }
 
@@ -1240,6 +1389,8 @@ const Supplies: React.FC = () => {
                 onOpenCzJob={setCzOpenJobId}
                 onDownloadCzCodes={handleDownloadCzCodes}
                 isDownloadingCz={downloadingCz[supplyId] || false}
+                onCancelOrder={handleCancelOrder}
+                isCancellingOrder={cancellingOrders[record.order_id] || false}
                 isCreating={isCreating}
                 isSavingExternalOrderId={isSavingExternalOrderId}
                 isDownloading={isDownloading}

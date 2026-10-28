@@ -31,6 +31,7 @@ export const KNOWN_TASK_KINDS = [
   'bulk_cargoes',
   'bulk_documents',
   'bulk_cargo_labels',
+  'bulk_cancel_orders',
 ] as const
 
 /** Fallback display titles; callers still pass an explicit `title` to startTask. */
@@ -42,6 +43,7 @@ export const TASK_KIND_TITLE: Partial<Record<string, string>> = {
   bulk_cargoes: 'Генерация грузомест',
   bulk_documents: 'Комплект документов',
   bulk_cargo_labels: 'Ярлыки грузомест',
+  bulk_cancel_orders: 'Отмена заявок',
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -53,6 +55,7 @@ const STAGE_LABELS: Record<string, string> = {
   calculating_supply: 'Расчет количества товаров к поставке',
   planning: 'Формирование плана создания поставок',
   creating_supplies: 'Создание поставок',
+  cancel: 'Отмена заявок',
   creating_cards: 'Создание задач в Kaiten',
   cargoes: 'Генерация грузомест',
   documents: 'Формирование документов',

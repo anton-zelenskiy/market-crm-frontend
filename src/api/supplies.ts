@@ -125,6 +125,34 @@ export interface SetExternalOrderIdRequest {
   external_order_id: string
 }
 
+export type SupplyOrderCancelStatus = 'SUCCESS' | 'IN_PROGRESS' | 'ERROR'
+
+export interface SupplyOrderCancelResponse {
+  status: SupplyOrderCancelStatus
+  result: {
+    is_order_cancelled: boolean
+    supplies: Array<{
+      supply_id: number
+      is_supply_cancelled: boolean
+      error_reasons: string[]
+    }>
+  } | null
+  error_reasons: string[]
+}
+
+export const SUPPLY_CANCEL_ERROR_LABELS: Record<string, string> = {
+  INVALID_ORDER_STATE: 'Неверный статус заявки на поставку',
+  ORDER_IS_VIRTUAL: 'Заявка виртуальная',
+  ORDER_DOES_NOT_BELONG_TO_CONTRACTOR: 'Заявка не принадлежит вашему юридическому лицу',
+  ORDER_DOES_NOT_BELONG_TO_COMPANY: 'Заявка не принадлежит продавцу',
+  OTHER_ASYNCHRONOUS_OPERATION_IN_PROGRESS: 'Заявка уже в процессе отмены',
+  INVALID_SUPPLY_STATE: 'Неверный статус поставки',
+  SUPPLY_DOES_NOT_BELONG_TO_CONTRACTOR: 'Поставка не принадлежит юридическому лицу',
+  SUPPLY_DOES_NOT_BELONG_TO_COMPANY: 'Поставка не принадлежит продавцу',
+  SUPPLY_DOES_NOT_BELONG_TO_ORDER: 'Поставка не принадлежит заявке на поставку',
+  SUPPLY_BELONGS_TO_VIRTUAL_ORDER: 'Поставка принадлежит виртуальной заявке',
+}
+
 export interface DownloadCargoLabelsRequest {
   connection_id: number
   order_id: string
@@ -537,6 +565,17 @@ export const suppliesApi = {
     return response.data
   },
 
+  cancelSupplyOrder: async (
+    orderId: number,
+    connectionId: number
+  ): Promise<SupplyOrderCancelResponse> => {
+    const params = new URLSearchParams({
+      connection_id: connectionId.toString(),
+    })
+    const response = await api.post(`/supplies/orders/${orderId}/cancel?${params}`)
+    return response.data
+  },
+
   deleteKaitenCard: async (supplyId: string, connectionId: number) => {
     const params = new URLSearchParams({
       connection_id: connectionId.toString(),
@@ -730,6 +769,13 @@ export const suppliesApi = {
     body: BulkSupplyActionRequest
   ): Promise<{ task_id: string }> => {
     const response = await api.post('/supplies/cargo-labels/bulk', body)
+    return response.data
+  },
+
+  bulkCancelSupplyOrders: async (
+    body: BulkSupplyActionRequest
+  ): Promise<{ task_id: string }> => {
+    const response = await api.post('/supplies/orders/cancel/bulk', body)
     return response.data
   },
 
