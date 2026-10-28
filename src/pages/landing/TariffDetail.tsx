@@ -68,7 +68,7 @@ const TariffDetail: React.FC = () => {
       return
     }
 
-    message.info('Оплата будет добавлена в следующем шаге')
+    message.info('Технические работы. Подключение тарифа временно недоступно.')
   }
 
   const selectedVariant = tariff?.variants.find((v) => v.period === selectedPeriod)

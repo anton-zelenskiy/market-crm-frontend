@@ -12,7 +12,9 @@ const Footer: React.FC = () => (
       <span>© {new Date().getFullYear()}</span>
       <div className="mk-footer__links">
         <Link to="/tariffs">Тарифы</Link>
+        <Link to="/privacy">Конфиденциальность</Link>
         <Link to="/terms">Оферта</Link>
+        <Link to="/legal">Юридическая информация</Link>
       </div>
     </div>
   </footer>

@@ -112,6 +112,13 @@ const Register: React.FC = () => {
             <Input.Password prefix={<LockOutlined />} placeholder="Подтвердите пароль" />
           </Form.Item>
 
+          <div style={{ marginBottom: 16 }}>
+            <Text type="secondary">
+              Регистрируясь, вы принимаете <Link to="/terms">оферту</Link> и{' '}
+              <Link to="/privacy">политику конфиденциальности</Link>.
+            </Text>
+          </div>
+
           <Form.Item>
             <Button 
               type="primary" 

@@ -12,6 +12,10 @@ import VerifyEmail from './pages/landing/VerifyEmail'
 import Home from './pages/landing/Home'
 import TariffDetail from './pages/landing/TariffDetail'
 import Tariffs from './pages/landing/Tariffs'
+import LegalDocument from './pages/landing/legal/LegalDocument'
+import LegalInfo from './pages/landing/legal/LegalInfo'
+import { PRIVACY } from './pages/landing/legal/privacy'
+import { TERMS } from './pages/landing/legal/terms'
 
 // CRM is client-only and loaded on demand, keeping landing pages light
 const CrmApp = lazy(() => import('./CrmApp'))
@@ -47,6 +51,9 @@ const App: React.FC = () => {
             <Route path="/" element={<Home />} />
             <Route path="/tariffs" element={<Tariffs />} />
             <Route path="/tariff/:slug" element={<TariffDetail />} />
+            <Route path="/privacy" element={<LegalDocument content={PRIVACY} />} />
+            <Route path="/terms" element={<LegalDocument content={TERMS} />} />
+            <Route path="/legal" element={<LegalInfo />} />
             <Route
               path="/*"
               element={
