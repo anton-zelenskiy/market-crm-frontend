@@ -46,11 +46,6 @@
 .crm-crumbs { font-size: 14px; color: var(--crm-ink-3); font-weight: 600; }
 .crm-crumbs a { color: var(--crm-ink-3); }
 .crm-title { margin: 0; font-size: 34px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.15; overflow-wrap: anywhere; }
-.crm-hero { display: flex; align-items: center; gap: 24px; padding: 28px 32px; border-radius: 24px; background: var(--crm-accent); color: #fff !important; text-decoration: none; margin-bottom: 32px; transition: background .15s; }
-.crm-hero:hover { background: var(--crm-accent-hover); }
-.crm-hero-title { display: block; font-size: 24px; font-weight: 900; }
-.crm-hero-desc { display: block; font-size: 16px; color: #e6f7f1; margin-top: 6px; }
-.crm-hero-arrow { width: 52px; height: 52px; border-radius: 50%; background: #fff; color: var(--crm-accent-ink); font-size: 24px; font-weight: 900; display: grid; place-items: center; flex: none; margin-left: auto; }
 .crm-group { margin-bottom: 32px; }
 .crm-group-title { margin: 0 0 14px; font-size: 20px; font-weight: 900; }
 .crm-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
@@ -76,6 +71,4 @@
   .crm-main { padding: 16px; }
   .crm-mobile-bar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--crm-line); background: var(--crm-bg); position: sticky; top: 0; z-index: 10; }
   .crm-title { font-size: 26px; }
-  .crm-hero { padding: 20px; }
-  .crm-hero-title { font-size: 20px; }
 }

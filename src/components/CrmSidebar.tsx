@@ -13,6 +13,7 @@ const ROOT_NAV = [
   { to: '/', label: 'Главная' },
   { to: '/connections', label: 'API подключения' },
   { to: '/companies', label: 'Компании' },
+  { to: '/ozon-clusters', label: 'Кластеры Ozon' },
 ]
 
 const isRootActive = (pathname: string, to: string) =>

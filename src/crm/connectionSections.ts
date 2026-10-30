@@ -17,19 +17,6 @@ export interface ConnectionSectionGroup {
   items: ConnectionSection[]
 }
 
-export const PRIMARY_ACTION: Record<DataSourceName, { title: string; description: string; to: string }> = {
-  ozon: {
-    title: 'Сформировать поставку',
-    description: 'Распределение по кластерам, грузоместа и накладные — по остаткам и продажам',
-    to: '/supply-templates',
-  },
-  wildberries: {
-    title: 'Запланировать поставку',
-    description: 'Забронировать дату поставки',
-    to: '/wb-supply-plans',
-  },
-}
-
 const OZON: ConnectionSectionGroup[] = [
   {
     title: 'Поставки',
@@ -44,7 +31,6 @@ const OZON: ConnectionSectionGroup[] = [
     items: [
       { key: 'vendor-products', nav: 'Товары поставщика', title: 'Товары поставщика', description: 'Остатки на складах поставщика', to: '/vendor-products' },
       { key: 'ozon-products', nav: 'Товары Ozon', title: 'Товары Ozon', description: 'Кратность товаров в коробе', to: '/ozon-products' },
-      { key: 'ozon-clusters', nav: 'Кластеры', title: 'Кластеры Ozon', description: 'Приоритеты, доступность и соседние кластеры', to: '/ozon-clusters' },
     ],
   },
   {

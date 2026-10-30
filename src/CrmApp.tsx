@@ -90,7 +90,8 @@ const DashboardLayout: React.FC = () => {
             </AdminRoute>
           }
         />
-        <Route path="/connections/:connectionId/ozon-clusters" element={<Clusters />} />
+        <Route path="/ozon-clusters" element={<Clusters />} />
+        <Route path="/connections/:connectionId/ozon-clusters" element={<Navigate to="/ozon-clusters" replace />} />
         <Route
           path="/connections/:connectionId/wb-supply-plans"
           element={<SupplyPlanningRunner />}

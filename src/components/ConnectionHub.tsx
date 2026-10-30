@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { getSectionGroups, PRIMARY_ACTION, sectionHref } from '../crm/connectionSections'
+import { getSectionGroups, sectionHref } from '../crm/connectionSections'
 import type { DataSourceName } from '../crm/connectionSections'
 
 interface Props {
@@ -8,19 +8,10 @@ interface Props {
   source: DataSourceName
 }
 
-// Connection home: one primary action + grouped tiles. Whole tile is the link.
+// Connection home: grouped tiles. Whole tile is the link.
 const ConnectionHub: React.FC<Props> = ({ connectionId, source }) => {
-  const primary = PRIMARY_ACTION[source]
   return (
     <>
-      <Link to={sectionHref(connectionId, primary.to)} className="crm-hero">
-        <span>
-          <span className="crm-hero-title">{primary.title}</span>
-          <span className="crm-hero-desc">{primary.description}</span>
-        </span>
-        <span className="crm-hero-arrow">→</span>
-      </Link>
-
       {getSectionGroups(source).map((g) => (
         <section key={g.title} className="crm-group">
           <h3 className="crm-group-title">{g.title}</h3>
