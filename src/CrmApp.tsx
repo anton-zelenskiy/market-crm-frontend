@@ -19,7 +19,6 @@ import SupplyTemplateDetail from './pages/SupplyTemplateDetail'
 import SupplyDraftDetail from './pages/SupplyDraftDetail'
 import SupplyPlanningRunner from './pages/SupplyPlanningRunner'
 import RedistributionOrders from './pages/RedistributionOrders'
-import BookkeepingPage from './pages/BookkeepingPage'
 import StockHistory from './pages/StockHistory'
 import Fulfillments from './pages/Fulfillments'
 import ProductCategories from './pages/ProductCategories'
@@ -80,7 +79,6 @@ const DashboardLayout: React.FC = () => {
         <Route path="/connections/:connectionId/chestny-znak/generate" element={<ChestnyZnakGenerate />} />
         <Route path="/connections/:connectionId/chestny-znak/jobs" element={<ChestnyZnakJobs />} />
         <Route path="/connections/:connectionId/stock-history" element={<StockHistory />} />
-        <Route path="/connections/:connectionId/bookkeeping" element={<BookkeepingPage />} />
         <Route path="/connections/:connectionId/supply-templates" element={<SupplyTemplates />} />
         <Route path="/connections/:connectionId/supply-templates/:snapshotId" element={<SupplyTemplateDetail />} />
         <Route path="/connections/:connectionId/supply-templates/:snapshotId/drafts/:draftId" element={<SupplyDraftDetail />} />

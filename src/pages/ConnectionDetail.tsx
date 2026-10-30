@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import {
-  Typography,
   Button,
-  Space,
   Table,
   message,
   Tag,
   Select,
   Spin,
-  Flex,
   InputNumber,
   Input,
   Form,
@@ -29,7 +26,6 @@ import { companiesApi } from '../api/companies'
 import type { Company } from '../api/companies'
 import KaitenIntegrationForm from '../components/KaitenIntegrationForm'
 import CzSettingsForm from '../components/chestnyZnak/CzSettingsForm'
-import BookkeepingDdsSettings from '../components/BookkeepingDdsSettings'
 import WbAuthModal from '../components/WbAuthModal'
 import ConnectionHub from '../components/ConnectionHub'
 import type { DataSourceName } from '../crm/connectionSections'
@@ -241,54 +237,7 @@ const ConnectionDetail: React.FC = () => {
     return null
   }
 
-  const renderActionList = (
-    items: { title: string; description: string; buttonText: string; onClick: () => void }[],
-  ) => (
-    <div>
-      {items.map((item, index) => (
-        <Flex
-          key={item.title}
-          align="center"
-          justify="space-between"
-          gap={16}
-          style={{
-            padding: '12px 0',
-            borderTop: index > 0 ? '1px solid rgba(5, 5, 5, 0.06)' : undefined,
-          }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <div>
-              <strong>{item.title}</strong>
-            </div>
-            <Typography.Text type="secondary">{item.description}</Typography.Text>
-          </div>
-          <Button type="primary" onClick={item.onClick} style={{ width: 140, flexShrink: 0 }}>
-            {item.buttonText}
-          </Button>
-        </Flex>
-      ))}
-    </div>
-  )
-
   const tabItems = [
-    {
-      key: 'finance',
-      label: 'Финансы',
-      children: (
-        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-          <BookkeepingDdsSettings connectionId={connection.id} />
-          {renderActionList([
-            {
-              title: 'Банковские операции',
-              description:
-                'Загрузка выписок (XLSX, PDF), просмотр, фильтры, ручное добавление и экспорт.',
-              buttonText: 'Открыть',
-              onClick: () => navigate(`/connections/${connection.id}/bookkeeping`),
-            },
-          ])}
-        </Space>
-      ),
-    },
     ...(connectionId
       ? [
           {
