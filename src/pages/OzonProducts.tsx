@@ -12,19 +12,16 @@ import {
   Input,
   InputNumber,
   Popconfirm,
-  Upload,
   Tag,
   Select,
-  Tooltip,
   Breadcrumb,
+  Alert,
 } from 'antd'
 
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  UploadOutlined,
-  DownloadOutlined,
   SyncOutlined,
   SearchOutlined,
 } from '@ant-design/icons'
@@ -35,7 +32,6 @@ import {
   type OzonProductUpdate,
 } from '../api/products'
 import { connectionsApi } from '../api/connections'
-import EditableCell from '../components/EditableCell'
 import { PageToolbar } from '../components/PageToolbar'
 import { companiesApi, type Company } from '../api/companies'
 import { vendorProductsApi, type VendorProduct } from '../api/products'
@@ -79,7 +75,7 @@ const OzonProducts: React.FC = () => {
 
       }
 
-      // Load vendor products for this connection (for vendor_offer_id dropdown)
+      // Load vendor products for the stable-ID link selector.
       try {
         const vendorProductsData = await vendorProductsApi.getAll(parseInt(connectionId))
         setVendorProducts(vendorProductsData)
@@ -111,8 +107,7 @@ const OzonProducts: React.FC = () => {
       offer_id: record.offer_id,
       name: record.name,
       barcodes: record.barcodes.join(', '),
-      box_quantity: record.box_quantity,
-      vendor_offer_id: record.vendor_offer_id,
+      vendor_product_id: record.vendor_product_id,
     })
     setModalVisible(true)
   }
@@ -140,8 +135,14 @@ const OzonProducts: React.FC = () => {
         ? values.barcodes.split(',').map((b: string) => b.trim()).filter((b: string) => b)
         : []
 
+      const { vendor_product_id: selectedVendor, ...fields } = values
+      const selectedVendorId = selectedVendor ?? null
+      const linkChanged = editingProduct
+        ? selectedVendorId !== editingProduct.vendor_product_id
+        : selectedVendorId !== null
       const productData = {
-        ...values,
+        ...fields,
+        ...(linkChanged ? { vendor_product_id: selectedVendorId } : {}),
         barcodes,
       }
 
@@ -179,47 +180,6 @@ const OzonProducts: React.FC = () => {
       message.error(error.response?.data?.detail || 'Ошибка синхронизации товаров')
     } finally {
       setSyncing(false)
-    }
-  }
-
-  const handleCSVUpload = async (file: File) => {
-    if (!connectionId) return
-
-    try {
-      const result = await ozonProductsApi.syncFromCSV(parseInt(connectionId), file)
-      message.success(result.message || `Обновлено ${result.products_updated} товаров`)
-      loadData()
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Ошибка загрузки CSV файла')
-    }
-    return false // Prevent default upload
-  }
-
-  const handleDownloadTemplate = async () => {
-    if (!connectionId) return
-
-    try {
-      await ozonProductsApi.downloadSyncCSVTemplate(parseInt(connectionId))
-      message.success('Шаблон CSV успешно скачан')
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Ошибка скачивания шаблона')
-    }
-  }
-
-  const handleBoxQuantityUpdate = async (record: OzonProduct, boxQuantity: number) => {
-    if (!connectionId) return
-
-    try {
-      const updated = await ozonProductsApi.update(parseInt(connectionId), record.id, {
-        box_quantity: boxQuantity,
-      })
-      setProducts((prev) =>
-        prev.map((p) => (p.id === record.id ? { ...p, box_quantity: updated.box_quantity } : p))
-      )
-      message.success('Сохранено')
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Ошибка сохранения товара')
-      throw error
     }
   }
 
@@ -263,15 +223,7 @@ const OzonProducts: React.FC = () => {
       dataIndex: 'box_quantity',
       key: 'box_quantity',
       width: 120,
-      render: (quantity: number | null, record: OzonProduct) => (
-        <EditableCell
-          key={`${record.id}-box_quantity`}
-          value={quantity}
-          type="number"
-          renderValue={(v) => v ?? <span style={{ color: '#999' }}>Не задано</span>}
-          onSave={(newValue) => handleBoxQuantityUpdate(record, Number(newValue))}
-        />
-      ),
+      render: (quantity: number | null) => quantity ?? 'Не задано',
     },
     {
       title: 'Объем, л',
@@ -293,8 +245,11 @@ const OzonProducts: React.FC = () => {
       key: 'vendor_offer_id',
       width: 180,
       ellipsis: true,
-      render: (vendorOfferId: string | null) =>
-        vendorOfferId ? <Tag color="blue">{vendorOfferId}</Tag> : <span style={{ color: '#999' }}>Не задан</span>,
+      render: (vendorOfferId: string | null, record: OzonProduct) => (
+        <Link to={`/connections/${connectionId}/vendor-products`}>
+          {record.vendor_product_id ? <Tag color="blue">{vendorOfferId}</Tag> : <Tag color="orange">Не связан</Tag>}
+        </Link>
+      ),
     },
     {
       title: 'Действия',
@@ -355,22 +310,6 @@ const OzonProducts: React.FC = () => {
                 >
                   Синхронизировать с Ozon
                 </Button>
-                <Tooltip title="Скачать CSV шаблон с артикулами для заполнения">
-                  <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
-                    Скачать шаблон CSV
-                  </Button>
-                </Tooltip>
-                <Upload
-                  accept=".csv"
-                  beforeUpload={handleCSVUpload}
-                  showUploadList={false}
-                >
-                  <Tooltip title="Загрузите csv с колонками: 'Артикул', 'Количество в коробке', 'Артикул продавца'">
-                    <Button icon={<UploadOutlined />}>
-                      Обновить из CSV
-                    </Button>
-                  </Tooltip>
-                </Upload>
               </Space>
             </div>
           </div>
@@ -378,6 +317,12 @@ const OzonProducts: React.FC = () => {
           <Title level={2} style={{ margin: 0 }}>
             Товары Ozon
           </Title>
+
+          <Alert type="info" showIcon message={
+            <span>Остатки и количество в коробке редактируются в разделе <Link to={`/connections/${connectionId}/vendor-products`}>«Товары поставщика»</Link>.
+              {products.some((p) => !p.vendor_product_id) && ' Есть товары без связи с поставщиком — их остаток считается равным нулю.'}
+            </span>
+          } />
 
           <PageToolbar
             marginBottom={0}
@@ -459,19 +404,9 @@ const OzonProducts: React.FC = () => {
           </Form.Item>
 
           <Form.Item
-            name="box_quantity"
-            label="Количество в коробке"
-          >
-            <InputNumber
-              placeholder="Введите количество в коробке"
-              min={1}
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="vendor_offer_id"
+            name="vendor_product_id"
             label="Артикул поставщика"
+            extra="Автоматическая привязка управляется настройкой подключения «Артикулы Ozon совпадают с артикулами поставщика». Если она включена, синхронизация может восстановить очищенную связь."
           >
             <Select
               placeholder="Выберите артикул поставщика"
@@ -480,7 +415,7 @@ const OzonProducts: React.FC = () => {
               optionFilterProp="children"
             >
               {vendorProducts.map((vp) => (
-                <Option key={vp.offer_id} value={vp.offer_id}>
+                <Option key={vp.id} value={vp.id} disabled={products.some((p) => p.vendor_product_id === vp.id && p.id !== editingProduct?.id)}>
                   {vp.offer_id} - {vp.name}
                 </Option>
               ))}

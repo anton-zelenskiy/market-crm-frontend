@@ -7,6 +7,8 @@ export interface VendorProduct {
   offer_id: string
   name: string
   quantity: number
+  box_quantity: number | null
+  ozon_product_id: number | null
   created_at: string
   updated_at: string
 }
@@ -15,12 +17,16 @@ export interface VendorProductCreate {
   offer_id: string
   name: string
   quantity: number
+  box_quantity?: number | null
+  ozon_product_id?: number | null
 }
 
 export interface VendorProductUpdate {
   offer_id?: string
   name?: string
   quantity?: number
+  box_quantity?: number | null
+  ozon_product_id?: number | null
 }
 
 // Ozon Products Types
@@ -34,6 +40,7 @@ export interface OzonProduct {
   barcodes: string[]
   box_quantity: number | null
   vendor_offer_id: string | null
+  vendor_product_id: number | null
   volume_in_liters: number | null
   volume_weight_kg: number | null
   created_at: string
@@ -49,6 +56,7 @@ export interface OzonProductCreate {
   barcodes: string[]
   box_quantity?: number | null
   vendor_offer_id?: string | null
+  vendor_product_id?: number | null
 }
 
 export interface OzonProductUpdate {
@@ -59,6 +67,7 @@ export interface OzonProductUpdate {
   barcodes?: string[]
   box_quantity?: number | null
   vendor_offer_id?: string | null
+  vendor_product_id?: number | null
 }
 
 // Vendor Products API

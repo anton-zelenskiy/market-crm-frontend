@@ -15,6 +15,8 @@ import {
   Upload,
   Tooltip,
   Breadcrumb,
+  Select,
+  Tag,
 } from 'antd'
 import {
   PlusOutlined,
@@ -26,7 +28,14 @@ import {
   SearchOutlined,
   SyncOutlined,
 } from '@ant-design/icons'
-import { vendorProductsApi, type VendorProduct, type VendorProductCreate, type VendorProductUpdate } from '../api/products'
+import {
+  ozonProductsApi,
+  vendorProductsApi,
+  type OzonProduct,
+  type VendorProduct,
+  type VendorProductCreate,
+  type VendorProductUpdate,
+} from '../api/products'
 import { companiesApi } from '../api/companies'
 import { connectionsApi } from '../api/connections'
 import EditableCell from '../components/EditableCell'
@@ -34,11 +43,13 @@ import { PageToolbar } from '../components/PageToolbar'
 
 const { Title } = Typography
 
-type EditableField = 'offer_id' | 'name' | 'quantity'
+type EditableField = 'offer_id' | 'name' | 'quantity' | 'box_quantity'
 
 const VendorProducts: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>()
   const [products, setProducts] = useState<VendorProduct[]>([])
+  const [ozonProducts, setOzonProducts] = useState<OzonProduct[]>([])
+  const [isOzon, setIsOzon] = useState(false)
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
   const [editingProduct, setEditingProduct] = useState<VendorProduct | null>(null)
@@ -61,6 +72,11 @@ const VendorProducts: React.FC = () => {
       const connection = await connectionsApi.getById(parseInt(connectionId))
       const company = await companiesApi.getById(connection.company_id)
       setCompanyName(company.name)
+      const ozonConnection = connection.data_source?.name === 'ozon'
+      setIsOzon(ozonConnection)
+      if (ozonConnection) {
+        setOzonProducts(await ozonProductsApi.getAll(parseInt(connectionId)))
+      }
 
       const productsData = await vendorProductsApi.getAll(parseInt(connectionId))
       setProducts(productsData)
@@ -83,6 +99,8 @@ const VendorProducts: React.FC = () => {
       offer_id: record.offer_id,
       name: record.name,
       quantity: record.quantity,
+      box_quantity: record.box_quantity,
+      ozon_product_id: record.ozon_product_id,
     })
     setModalVisible(true)
   }
@@ -102,6 +120,15 @@ const VendorProducts: React.FC = () => {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
+      values.box_quantity = values.box_quantity ?? null
+      if (editingProduct && isOzon) {
+        const selectedOzonId = values.ozon_product_id ?? null
+        if (selectedOzonId === editingProduct.ozon_product_id) {
+          delete values.ozon_product_id
+        } else {
+          values.ozon_product_id = selectedOzonId
+        }
+      }
 
       if (!connectionId) return
 
@@ -193,12 +220,12 @@ const VendorProducts: React.FC = () => {
     }
   }
 
-  const renderEditable = (field: EditableField) => (value: string | number, record: VendorProduct) => (
+  const renderEditable = (field: EditableField) => (value: string | number | null, record: VendorProduct) => (
     <EditableCell
       key={`${record.id}-${field}`}
       value={value}
-      type={field === 'quantity' ? 'number' : 'text'}
-      renderValue={field === 'quantity' ? (v) => Number(v).toLocaleString() : undefined}
+      type={field === 'quantity' || field === 'box_quantity' ? 'number' : 'text'}
+      renderValue={field === 'quantity' || field === 'box_quantity' ? (v) => v == null ? 'Не задано' : Number(v).toLocaleString() : undefined}
       onSave={(newValue) => handleInlineUpdate(record, field, newValue)}
     />
   )
@@ -225,6 +252,24 @@ const VendorProducts: React.FC = () => {
       width: 120,
       render: renderEditable('quantity'),
     },
+    {
+      title: 'Кол-во в коробке',
+      dataIndex: 'box_quantity',
+      key: 'box_quantity',
+      width: 140,
+      render: renderEditable('box_quantity'),
+    },
+    ...(isOzon ? [{
+      title: 'Товар Ozon',
+      key: 'ozon_product',
+      width: 220,
+      render: (_: unknown, record: VendorProduct) => {
+        const ozon = ozonProducts.find((p) => p.id === record.ozon_product_id)
+        return <Button type="link" onClick={() => handleEdit(record)}>
+          {ozon ? ozon.offer_id : <Tag color="orange">Не связан</Tag>}
+        </Button>
+      },
+    }] : []),
     {
       title: 'Действия',
       key: 'actions',
@@ -308,7 +353,7 @@ const VendorProducts: React.FC = () => {
                   beforeUpload={handleCSVUpload}
                   showUploadList={false}
                 >
-                  <Tooltip title="Загрузите csv с колонками: 'Артикул', 'Наименование', 'Количество на складе'">
+                  <Tooltip title="Загрузите csv с колонками: 'Артикул', 'Наименование', 'Количество на складе', 'Количество в коробке'">
                     <Button icon={<UploadOutlined />}>
                       Загрузить из CSV
                     </Button>
@@ -389,6 +434,18 @@ const VendorProducts: React.FC = () => {
               style={{ width: '100%' }}
             />
           </Form.Item>
+          <Form.Item name="box_quantity" label="Количество в коробке">
+            <InputNumber min={1} precision={0} style={{ width: '100%' }} placeholder="Не задано" />
+          </Form.Item>
+          {isOzon && <Form.Item name="ozon_product_id" label="Товар Ozon"
+            extra="Автоматическая привязка управляется настройкой подключения. Если она включена, синхронизация может восстановить очищенную связь.">
+            <Select allowClear showSearch optionFilterProp="label" placeholder="Выберите товар Ozon"
+              options={ozonProducts.map((p) => ({
+                value: p.id,
+                label: `${p.offer_id} — ${p.name}`,
+                disabled: p.vendor_product_id !== null && p.vendor_product_id !== editingProduct?.id,
+              }))} />
+          </Form.Item>}
         </Form>
       </Modal>
     </div>

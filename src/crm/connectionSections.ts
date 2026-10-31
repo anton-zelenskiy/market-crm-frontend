@@ -27,7 +27,7 @@ const OZON: ConnectionSectionGroup[] = [
     ],
   },
   {
-    title: 'Каталог',
+    title: 'Товары',
     items: [
       { key: 'vendor-products', nav: 'Товары поставщика', title: 'Товары поставщика', description: 'Остатки на складах поставщика', to: '/vendor-products' },
       { key: 'ozon-products', nav: 'Товары Ozon', title: 'Товары Ozon', description: 'Кратность товаров в коробе', to: '/ozon-products' },

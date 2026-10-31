@@ -128,6 +128,7 @@ const ConnectionDetail: React.FC = () => {
     logistics_distance: number
     auto_create_cargoes: boolean
     floor_to_box_count: boolean
+    offer_ids_matched_with_vendor: boolean
     demand: number
     stocks_spreadsheet_id?: string
     stocks_sheet_id?: number
@@ -142,6 +143,7 @@ const ConnectionDetail: React.FC = () => {
         logistics_distance: values.logistics_distance,
         auto_create_cargoes: values.auto_create_cargoes,
         floor_to_box_count: values.floor_to_box_count,
+        offer_ids_matched_with_vendor: values.offer_ids_matched_with_vendor,
         demand: values.demand,
         stocks_spreadsheet_id: values.stocks_spreadsheet_id,
         stocks_sheet_id: values.stocks_sheet_id,
@@ -266,6 +268,7 @@ const ConnectionDetail: React.FC = () => {
             logistics_distance: settings.logistics_distance,
             auto_create_cargoes: settings.auto_create_cargoes,
             floor_to_box_count: settings.floor_to_box_count,
+            offer_ids_matched_with_vendor: settings.offer_ids_matched_with_vendor,
             demand: settings.demand,
             stocks_spreadsheet_id: settings.stocks_spreadsheet_id,
             stocks_sheet_id: settings.stocks_sheet_id,
@@ -285,6 +288,14 @@ const ConnectionDetail: React.FC = () => {
             name="auto_create_cargoes"
             label="Автоматически создавать грузоместа"
             valuePropName="checked"
+          >
+            <Switch />
+          </Form.Item>
+          <Form.Item
+            name="offer_ids_matched_with_vendor"
+            label="Артикулы Ozon совпадают с артикулами поставщика"
+            valuePropName="checked"
+            tooltip="Автоматически связывать товары по артикулу. При синхронизации Ozon создавать отсутствующие товары поставщика с остатком 0 и количеством в коробке 1."
           >
             <Switch />
           </Form.Item>

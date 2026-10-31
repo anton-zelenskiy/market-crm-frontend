@@ -6,6 +6,7 @@ export interface ConnectionSettings {
   logistics_distance: number | null
   auto_create_cargoes: boolean | null
   floor_to_box_count: boolean | null
+  offer_ids_matched_with_vendor: boolean | null
   demand: number | null
   stocks_spreadsheet_id?: string | null
   stocks_sheet_id?: number | null
@@ -17,6 +18,7 @@ export interface ConnectionSettingsUpdate {
   logistics_distance?: number
   auto_create_cargoes?: boolean
   floor_to_box_count?: boolean
+  offer_ids_matched_with_vendor?: boolean
   demand?: number
   stocks_spreadsheet_id?: string
   stocks_sheet_id?: number
