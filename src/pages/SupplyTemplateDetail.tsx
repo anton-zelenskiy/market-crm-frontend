@@ -24,7 +24,6 @@ import {
   FileExcelOutlined,
   ThunderboltOutlined,
   CheckCircleFilled,
-  ExclamationCircleFilled,
   DeleteOutlined,
   SearchOutlined,
   SettingOutlined,
@@ -62,6 +61,9 @@ import {
   useTaskProgress,
   useTaskCompletion,
 } from '../context/TaskProgressContext'
+import SupplyCreationOverview from '../components/SupplyCreationOverview'
+import SupplyCreationResultsTable from '../components/SupplyCreationResultsTable'
+import { buildSupplyCreationSummary, supplyOutcomeLabels, supplyOutcomeColors } from '../lib/supplyCreationSummary'
 import SupplyConfigModal, {
   type SupplyConfigFormValues,
 } from '../components/SupplyConfigModal'
@@ -272,10 +274,10 @@ const ClusterHeaderComponent = (params: any) => {
           <CheckCircleFilled style={{ fontSize: '16px', color: '#52c41a' }} />
         </Tooltip>
       )}
-      {supplyStatus === 'no_timeslot' && (
-        <Tooltip title="Нет доступных таймслотов на выбранную дату — создайте поставку вручную">
-          <ExclamationCircleFilled style={{ fontSize: '16px', color: '#faad14' }} />
-        </Tooltip>
+      {supplyStatus && supplyStatus !== 'created' && (
+        <Tag color={supplyOutcomeColors[supplyStatus as keyof typeof supplyOutcomeColors]} style={{ margin: 0 }}>
+          {supplyOutcomeLabels[supplyStatus as keyof typeof supplyOutcomeLabels]}
+        </Tag>
       )}
       {isNeighborCluster && (
         <Tooltip title="Соседний кластер">
@@ -330,12 +332,17 @@ const SupplyTemplateDetail: React.FC = () => {
   const [saving, setSaving] = useState(false)
   const [company, setCompany] = useState<Company | null>(null)
   const [drafts, setDrafts] = useState<SupplyDraft[]>([])
+  const [draftsLoading, setDraftsLoading] = useState(true)
+  const [draftsError, setDraftsError] = useState(false)
+  const [problemsOnly, setProblemsOnly] = useState(false)
+  const resultsRef = useRef<HTMLDivElement>(null)
   const [warehouseModalVisible, setWarehouseModalVisible] = useState(false)
   const [creatingDraft, setCreatingDraft] = useState(false)
   const [downloadingBundle, setDownloadingBundle] = useState(false)
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null)
   const [creatingAllSupplies, setCreatingAllSupplies] = useState(false)
-  const { startTask } = useTaskProgress()
+  const { startTask, tasks } = useTaskProgress()
+  const bulkTaskRunning = tasks.some(task => task.kind === 'bulk_supply' && task.context?.snapshotId === Number(snapshotId) && ['pending', 'running'].includes(task.status))
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [warehouseLoading, setWarehouseLoading] = useState(false)
   const [form] = Form.useForm()
@@ -470,25 +477,14 @@ const SupplyTemplateDetail: React.FC = () => {
     return splitItemsIntoBoxBundles(previewItems, boxCountByOfferId, floorToBoxCount)
   }, [previewItems, boxCountByOfferId, floorToBoxCount])
 
-  // Per-cluster supply status derived from existing drafts: 'created' if any draft for
-  // the cluster has a supply order_id, 'no_timeslot' if a timeslot check ran and found
-  // nothing. No entry (nothing shown) if the cluster was never attempted.
-  const clusterSupplyStatus = useMemo(() => {
-    const map = new Map<string, 'created' | 'no_timeslot'>()
-    for (const draft of drafts) {
-      const clusterName = draft.cluster?.cluster_name
-      if (!clusterName) continue
-      if (draft.supply_create_info?.order_id) {
-        map.set(clusterName, 'created')
-      } else if (
-        draft.supply_create_info?.timeslot_checked &&
-        map.get(clusterName) !== 'created'
-      ) {
-        map.set(clusterName, 'no_timeslot')
-      }
-    }
-    return map
-  }, [drafts])
+  const supplySummary = useMemo(
+    () => buildSupplyCreationSummary(tableData, drafts, snapshot?.bulk_supply_progress),
+    [tableData, drafts, snapshot?.bulk_supply_progress],
+  )
+  const clusterSupplyStatus = useMemo(() => new Map(
+    supplySummary.rows.filter(row => row.drafts.length || row.reasons.length)
+      .map(row => [row.cluster, row.outcome]),
+  ), [supplySummary])
 
   const [isDirty, setIsDirty] = useState(false)
 
@@ -584,6 +580,7 @@ const SupplyTemplateDetail: React.FC = () => {
       if (snapshotData) {
         setTableData(snapshotData.data)
       }
+      return snapshotData
     } catch (error: any) {
       message.error(
         error.response?.data?.detail || 'Ошибка загрузки данных шаблона'
@@ -596,15 +593,21 @@ const SupplyTemplateDetail: React.FC = () => {
   const loadDrafts = async () => {
     if (!snapshotId) return
 
+    setDraftsLoading(true)
+    setDraftsError(false)
     try {
       const draftsData = await suppliesApi.getSnapshotDrafts(
         parseInt(snapshotId)
       )
       setDrafts(draftsData.drafts)
+      return draftsData.drafts
     } catch (error: any) {
+      setDraftsError(true)
       message.error(
         error.response?.data?.detail || 'Ошибка загрузки черновиков'
       )
+    } finally {
+      setDraftsLoading(false)
     }
   }
 
@@ -846,9 +849,16 @@ const SupplyTemplateDetail: React.FC = () => {
     { kind: 'bulk_supply', contextMatch: { snapshotId: currentSnapshotId } },
     async (task) => {
       if (task.status === 'completed') {
-        await Promise.all([loadDrafts(), loadSnapshot()])
-        message.success('Создание поставок завершено')
+        const [updatedDrafts, updatedSnapshot] = await Promise.all([loadDrafts(), loadSnapshot()])
+        if (!updatedDrafts || !updatedSnapshot) return
+        const result = buildSupplyCreationSummary(updatedSnapshot.data, updatedDrafts, updatedSnapshot.bulk_supply_progress)
+        if (result.remaining === 0 && result.rows.every(row => row.outcome === 'created')) {
+          message.success('Весь план включён в созданные поставки')
+        } else {
+          message.warning('Создание завершено. Есть незавершённые поставки — проверьте результаты по кластерам.', 8)
+        }
       } else {
+        await Promise.all([loadDrafts(), loadSnapshot()])
         message.error(
           task.error || task.message || 'Ошибка создания поставок'
         )
@@ -1127,36 +1137,6 @@ const SupplyTemplateDetail: React.FC = () => {
       })
     })
   }, [])
-
-  const getStatusColor = (status: string | null) => {
-    switch (status) {
-      case 'CALCULATION_STATUS_SUCCESS':
-        return 'green'
-      case 'CALCULATION_STATUS_FAILED':
-        return 'red'
-      case 'CALCULATION_STATUS_IN_PROGRESS':
-        return 'blue'
-      case 'CALCULATION_STATUS_EXPIRED':
-        return 'orange'
-      default:
-        return 'default'
-    }
-  }
-
-  const getStatusText = (status: string | null) => {
-    switch (status) {
-      case 'CALCULATION_STATUS_SUCCESS':
-        return 'Успешно'
-      case 'CALCULATION_STATUS_FAILED':
-        return 'Ошибка'
-      case 'CALCULATION_STATUS_IN_PROGRESS':
-        return 'В процессе'
-      case 'CALCULATION_STATUS_EXPIRED':
-        return 'Истек'
-      default:
-        return status || 'Неизвестно'
-    }
-  }
 
   // Handle cell editing for to_supply columns (AG Grid format)
   const handleCellValueChanged = useCallback((event: CellValueChangedEvent) => {
@@ -1587,10 +1567,10 @@ const SupplyTemplateDetail: React.FC = () => {
       if (visibleSubColumns.includes('to_supply')) {
         children.push({
           field: 'totals_to_supply',
-          headerName: 'К поставке',
-          width: 90,
+          headerName: 'План к поставке',
+          width: 130,
           type: 'numericColumn',
-          valueGetter: (params) => params.data?.totals?.to_supply ?? 0,
+          valueGetter: (params) => params.data?.clusters?.reduce((sum: number, cluster: ClusterData) => sum + Math.max(0, cluster.to_supply || 0), 0) ?? 0,
           valueFormatter: (params) => String(params.value ?? 0),
           cellStyle: { fontWeight: 'bold' }
         })
@@ -1710,14 +1690,12 @@ const SupplyTemplateDetail: React.FC = () => {
                 <Button
                   type="primary"
                   icon={<ThunderboltOutlined />}
-                  loading={creatingAllSupplies}
+                  loading={creatingAllSupplies || bulkTaskRunning}
+                  disabled={draftsLoading || draftsError || !snapshot}
                   onClick={handleCreateAllSupplies}
                 >
                   Создать все поставки
                 </Button>
-                <Text>
-                  Всего: {totalBoxCount} кор. / {formatPalletCount(totalBoxCount)} пал.
-                </Text>
                 <Text type="warning">Логистическое плечо: {logisticsDistance} дней</Text>
               </Space>
             </div>
@@ -1741,85 +1719,35 @@ const SupplyTemplateDetail: React.FC = () => {
             />
           ) : (
             <>
+              {draftsError ? (
+                <Alert type="error" showIcon title="Не удалось загрузить результаты создания"
+                  description="Количество в созданных поставках и остаток плана временно недоступны."
+                  action={<Button onClick={loadDrafts}>Обновить результаты</Button>} />
+              ) : draftsLoading ? <Spin tip="Загрузка результатов поставок..."><div style={{ minHeight: 100 }} /></Spin> : (
+                <SupplyCreationOverview summary={supplySummary}
+                  totalBoxCount={totalBoxCount}
+                  totalPalletCount={formatPalletCount(totalBoxCount)}
+                  onShowProblems={() => {
+                    setProblemsOnly(true)
+                    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }}
+                  plannedDate={snapshot.planned_supply_date ? formatDate(snapshot.planned_supply_date) : null} />
+              )}
+              <Title level={4} style={{ margin: 0 }}>План по товарам</Title>
               <MemoizedTable
                 columnDefs={columnDefs}
                 rowData={tableRows}
                 onCellValueChanged={handleCellValueChanged}
               />
 
-              {/* Drafts list */}
-              <Divider>Черновики поставок</Divider>
-              <Table
-                dataSource={drafts}
-                rowKey="id"
-                onRow={(record: SupplyDraft) => ({
-                  onClick: () => {
-                    const path = `/connections/${connectionId}/supply-templates/${snapshotId}/drafts/${record.id}`
-                    window.open(path, '_blank', 'noopener,noreferrer')
-                  },
-                  style: { cursor: 'pointer' },
-                })}
-                columns={[
-                  {
-                    title: 'Склад отгрузки',
-                    key: 'drop_off_warehouse',
-                    render: (_: any, record: SupplyDraft) => {
-                      return record.drop_off_warehouse?.name || '-'
-                    },
-                  },
-                  {
-                    title: 'Кластер размещения',
-                    key: 'cluster',
-                    render: (_: any, record: SupplyDraft) => {
-                      return record.cluster?.cluster_name || '-'
-                    },
-                  },
-                  {
-                    title: 'Статус',
-                    dataIndex: 'status',
-                    key: 'status',
-                    render: (status: string | null) => (
-                      <Tag color={getStatusColor(status)}>
-                        {getStatusText(status)}
-                      </Tag>
-                    ),
-                  },
-                  {
-                    title: 'ID Заявки',
-                    key: 'order_id',
-                    render: (_: any, record: SupplyDraft) => {
-                      const orderId = record.supply_create_info?.order_id
-                      return orderId ? (
-                        <Tag color="green">{orderId}</Tag>
-                      ) : (
-                        <Text type="secondary">-</Text>
-                      )
-                    },
-                  },
-                  {
-                    title: 'Дата создания',
-                    dataIndex: 'created_at',
-                    key: 'created_at',
-                    render: (date: string) => formatDateTime(date),
-                  },
-                  {
-                    title: 'Действия',
-                    key: 'actions',
-                    render: (_: any, record: SupplyDraft) => (
-                      <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteDraft(record.id)
-                        }}
-                      />
-                    ),
-                  },
-                ]}
-                pagination={{ pageSize: 30 }}
-              />
+              <div ref={resultsRef} style={{ scrollMarginTop: 24 }}>
+                <Divider>Черновики и созданные поставки по кластерам</Divider>
+                {!draftsError && <SupplyCreationResultsTable summary={supplySummary}
+                  connectionId={connectionId} snapshotId={snapshotId}
+                  problemsOnly={problemsOnly} onProblemsOnlyChange={setProblemsOnly}
+                  onRefresh={() => { void Promise.all([loadDrafts(), loadSnapshot()]) }}
+                  onDeleteDraft={handleDeleteDraft} loading={draftsLoading} />}
+              </div>
             </>
           )}
         </Space>

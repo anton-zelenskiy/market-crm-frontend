@@ -195,6 +195,10 @@ export interface SupplySnapshotResponse {
   data: SupplyDataItem[]
   updated_at: string
   planned_supply_date?: string | null
+  bulk_supply_progress?: {
+    status: string
+    clusters: Record<string, { bundles: { status: string; draft_id?: number | null; error?: string | null }[] }>
+  } | null
   cluster_ids: number[] | null
   offer_ids: string[] | null
   supply_products_to_neighbor_cluster: boolean | null
@@ -380,6 +384,8 @@ export interface SupplyDraft {
   errors: any[] | null
   storage_warehouses: DraftStorageWarehouse[]
   drop_off_warehouse: DropOffWarehouse | null
+  products_count?: number | null
+  cargoes_products_count?: number | null
   supply_create_info?: SupplyCreateInfo | null
   storage_warehouse_name?: string | null
   created_at: string
